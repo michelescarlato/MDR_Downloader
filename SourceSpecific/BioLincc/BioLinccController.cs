@@ -167,7 +167,7 @@ namespace MDR_Downloader.biolincc
                                         }
 
                                         bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, st.sd_sid!, st.remote_url, saf_id,
-                                                                          st.last_revised_date, full_path);
+                                                                          st.datasets_updated_date, full_path);
                                         res.num_downloaded++;
                                         if (added) res.num_added++;
 

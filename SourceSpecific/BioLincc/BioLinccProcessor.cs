@@ -266,24 +266,24 @@ public class BioLINCC_Processor
                     }
                 }
 
-                if (attribute_name.ToLower().Contains("last updated"))
+                if (attribute_name.ToLower().Contains("dataset(s) last updated"))
                 {
-                    st.last_updated = attribute_value.RemoveLabelAndSupp(attribute_name, supp_text);
-                    if (st.last_updated == "N/A" || string.IsNullOrEmpty(st.last_updated))
+                    st.datasets_updated = attribute_value.RemoveLabelAndSupp(attribute_name, supp_text);
+                    if (st.datasets_updated == "N/A" || string.IsNullOrEmpty(st.datasets_updated))
                     {
-                        st.last_revised_date = null;
+                        st.datasets_updated_date = null;
                     }
                     else
                     {
                         // date is in the forem of MMMM d, yyyy, and needs to be split accordingly
-                        string last_updated_string = st.last_updated.Replace(", ", "|").Replace(",", "|").Replace(" ", "|");
+                        string last_updated_string = st.datasets_updated.Replace(", ", "|").Replace(",", "|").Replace(" ", "|");
                         string[] updated_parts = last_updated_string.Split("|");
                         int month = updated_parts[0].GetMonthAsInt();
                         if (month > 0
                             && Int32.TryParse(updated_parts[1], out int day)
                             && Int32.TryParse(updated_parts[2], out int year))
                         {
-                            st.last_revised_date = new DateTime(year, month, day);
+                            st.datasets_updated_date = new DateTime(year, month, day);
                         }
                     }
                 }
@@ -292,9 +292,9 @@ public class BioLINCC_Processor
                 {
                     st.publication_year = ((DateTime)st.page_prepared_date).Year;
                 }
-                else if (st.last_revised_date is not null)
+                else if (st.datasets_updated_date is not null)
                 {
-                    st.publication_year = ((DateTime)st.last_revised_date).Year;
+                    st.publication_year = ((DateTime)st.datasets_updated_date).Year;
                 }
 
                 if (attribute_name == "Clinical Trial URLs")
@@ -407,65 +407,54 @@ public class BioLINCC_Processor
 
     void ProcessDescriptiveParas(BioLincc_Record st, HtmlNode description, IEnumerable<HtmlNode> section_headings)
     {
-        string startpoint_text = "";
+        string descriptive_text = description.InnerHtml;
+        int section_start_pos, section_end_pos;
+        string desc_header, check_text;
+        string? descriptive_paras = "";
+
         foreach (HtmlNode section in section_headings)
         {
-            string desc_header = section.InnerText.Trim();
+            desc_header = section.InnerText.Trim();
             if (desc_header == "Objectives")
             {
-                startpoint_text = "<h2 class=\"study-info-heading\">Objectives";
-                break;
+                check_text = "Objectives</h2>";
+                section_start_pos = descriptive_text.IndexOf(check_text) + check_text.Length;
+                section_end_pos = descriptive_text.IndexOf("<h2", section_start_pos);
+                descriptive_paras += desc_header + ": ";
+                if (section_end_pos != -1)
+                {
+                    descriptive_paras += descriptive_text[section_start_pos..section_end_pos];
+                }
             }
-        }
-
-        if (startpoint_text != "")
-        {
-            string descriptive_text = description.InnerHtml;
-            int start_point = descriptive_text.IndexOf(startpoint_text);
-            descriptive_text = descriptive_text[(start_point)..];
-
-            // then identify cut-off point...
-
-            string cutoff_text = "";
-            foreach (HtmlNode section in section_headings)
+            if (desc_header == "Background")
             {
-                string desc_header = section.InnerText.Trim();
-                if (desc_header == "Background")
+                check_text = "Background</h2>";
+                section_start_pos = descriptive_text.IndexOf(check_text) + check_text.Length;
+                section_end_pos = descriptive_text.IndexOf("<h2", section_start_pos);
+                if (section_end_pos != -1)
                 {
-                    cutoff_text = "<h2 class=\"study-info-heading\">Background";
-                    break;
+                    descriptive_paras += desc_header + ": " + descriptive_text[section_start_pos..section_end_pos];
                 }
-                if (desc_header == "Subjects")
-                {
-                    cutoff_text = "<h2 class=\"study-info-heading\">Subjects";
-                    break;
-                }
-                if (desc_header == "Design")
-                {
-                    cutoff_text = "<h2 class=\"study-info-heading\">Design";
-                    break;
-                }
-
-                if (cutoff_text != "")
-                {
-                    int cutoff_point = descriptive_text.IndexOf(cutoff_text);
-                    descriptive_text = descriptive_text[..(cutoff_point)];
-                }
-
-                descriptive_text = descriptive_text.Replace("<!-- study description column -->", "").Trim();
-                descriptive_text = descriptive_text.Replace("\n", "").Replace("\r", "").Trim();
-                descriptive_text = descriptive_text.Replace(">Objectives<", "Objectives: ");
-                descriptive_text = descriptive_text.Replace("<p>", "\n").Replace("</p>", "\n").Replace("<br />", "\n").Replace("<br>", "\n");
-                descriptive_text = descriptive_text.Replace("<b>", "").Replace("</b>", "").Replace("<em>", "").Replace("</em>", "");
-                descriptive_text = descriptive_text.Replace("<i>", "").Replace("</i>", "").Replace("<u>", "").Replace("</u>", "");
-                descriptive_text = descriptive_text.Replace("/h2>", "").Replace("<h2 class=\"study-info-heading\"", "");
-                descriptive_text = descriptive_text.Replace("    ", "").Replace("   ", "").Replace("  ", "");
-                descriptive_text = descriptive_text.Replace("\n\n", "\n");
-                descriptive_text = descriptive_text.Replace("Objectives: \n", "Objectives: ");
-
-                st.brief_description = descriptive_text;
             }
-        }
+            if (desc_header == "Subjects")
+            {
+                check_text = "Subjects</h2>";
+                section_start_pos = descriptive_text.IndexOf(check_text) + check_text.Length;
+                section_end_pos = descriptive_text.IndexOf("<h2", section_start_pos);
+                if (section_end_pos != -1)
+                {
+                    descriptive_paras += desc_header + ": " + descriptive_text[section_start_pos..section_end_pos];
+                }
+            }
+        }            
+        
+        // This should do most if not all of the necessary text cleaning.
+
+        descriptive_paras = descriptive_paras.Replace("<br>", "\n").Replace("<p>", "").Replace("</p>", "");
+        descriptive_paras = descriptive_paras.Replace("<b>", "").Replace("</b>", "");
+        descriptive_paras = descriptive_paras.CompressSpaces();
+        
+        st.brief_description = descriptive_paras;
     }
 
 

@@ -27,7 +27,6 @@ namespace MDR_Downloader.yoda
         public string? data_partner { get; set; }
         public string? conditions_studied { get; set; }
         public string? primary_citation_link { get; set; }
-        public DateTime? last_revised_date { get; set; }
 
         public List<SuppDoc>? supp_docs { get; set; }
         public List<Identifier>? study_identifiers { get; set; }
@@ -141,10 +140,12 @@ namespace MDR_Downloader.yoda
     public class Reference
     {
         public string? pmid { get; set; }
+        public string? link { get; set; }
 
-        public Reference(string? _pmid)
+        public Reference(string? _pmid, string? _link)
         {
             pmid = _pmid;
+            link = _link;
         }
 
         public Reference()

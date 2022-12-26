@@ -116,16 +116,16 @@ class CTG_Controller
             int amount = (int)opts.AmountIds;
             int offset = (int)opts.OffsetIds;
 
-            int loop_count = amount % 20 == 0
-                            ? (int)amount / 20
-                            : ((int)amount / 20) + 1;
+            int loop_count = amount % 100 == 0
+                            ? (int)amount / 100
+                            : ((int)amount / 100) + 1;
             int min_id, max_id;
 
             for (int i = 0; i < loop_count; i++)
             {
                 Thread.Sleep(800);
-                min_id = offset + (i * 20) + 1;
-                max_id = offset + (i * 20) + 20;
+                min_id = offset + (i * 100) + 1;
+                max_id = offset + (i * 100) + 100;
 
                 // get the correct NCTIds
                 string firstNctId = "NCT" + min_id.ToString("00000000");
@@ -133,7 +133,7 @@ class CTG_Controller
 
                 string start_url = "https://clinicaltrials.gov/api/query/full_studies?expr=AREA%5BNCTId%5DRANGE%5B";
                 string id_params = firstNctId + "%2C" + lastNctId;
-                string end_url = $"%5D&min_rnk=1&max_rnk=20&fmt=json";
+                string end_url = $"%5D&min_rnk=1&max_rnk=100&fmt=json";
                 string url = start_url + id_params + end_url;
 
                 string? responseBody = await ch.GetStringFromURLAsync(url);

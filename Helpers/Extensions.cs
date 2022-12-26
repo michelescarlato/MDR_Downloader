@@ -86,6 +86,27 @@ public static class StringExtensions
         }
     }
 
+    public static string? CompressSpaces(this string? instring)
+    {
+        if (string.IsNullOrEmpty(instring))
+        {
+            return null;
+        }
+        else
+        {
+            while (instring.Contains("  "))
+            {
+                instring = instring.Replace("  ", " ");
+            }
+            instring = instring.Replace("\n ", "\n");
+            while (instring.Contains("\n\n"))
+            {
+                instring = instring.Replace("\n\n", "\n");
+            }
+            return instring;
+        }
+    }
+
 
     public static string? ReplacNBSpaces(this string? instring)
     {

@@ -513,7 +513,7 @@ namespace MDR_Downloader.yoda
                 // try to extract pmid
                 if (st.primary_citation_link.Contains("pubmed"))
                 {
-                    // drop this common suffix
+                    // drop this common suffix if it is present
                     string link = st.primary_citation_link.Replace("?dopt=Abstract", "");
                     string pos_pmid = "";
                         
@@ -536,15 +536,14 @@ namespace MDR_Downloader.yoda
                     {
                         if (Int32.TryParse(pos_pmid, out int pmid_as_int))
                         {
-                            study_references.Add(new Reference(link));
+                            study_references.Add(new Reference(pos_pmid, link));
                         }
                     }
                     else
                     {
-                        // primary citation link includes pubmed but no numner
-                        // This seems to be just a link to the pubmed site (!)
-                        // if so the citation number is 0 and the citation itsdelf
-                        // should be blank.
+                        // primary citation link includes pubmed but no number
+                        // This usually seems to be just a link to the pubmed site (!)
+                        // if so the citation itself should be blank.
                         if (link == "https://pubmed.ncbi.nlm.nih.gov/" || link.EndsWith("pubmed/"))
                         {
                             st.primary_citation_link = null;
@@ -561,7 +560,7 @@ namespace MDR_Downloader.yoda
                     string? pubmed_id = await _ch.GetPMIDFromNLMAsync(pmc_id);
                     if (!string.IsNullOrEmpty(pubmed_id))
                     {
-                        study_references.Add(new Reference(pubmed_id));
+                        study_references.Add(new Reference(pubmed_id, st.primary_citation_link));
                     }
                 }
 
@@ -571,7 +570,7 @@ namespace MDR_Downloader.yoda
                     string pubmed_id = await _ch.GetPMIDFromPageAsync(st.primary_citation_link);
                     if (!string.IsNullOrEmpty(pubmed_id))
                     {
-                        study_references.Add(new Reference(pubmed_id));
+                        study_references.Add(new Reference(pubmed_id, st.primary_citation_link));
                     }
                 }
             }
