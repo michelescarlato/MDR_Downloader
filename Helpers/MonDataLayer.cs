@@ -20,17 +20,19 @@ namespace MDR_Downloader
 
         public MonDataLayer(LoggingHelper logging_helper)
         {
-            _logging_helper = logging_helper; 
-            
+            _logging_helper = logging_helper;
+
             IConfigurationRoot settings = new ConfigurationBuilder()
                 .SetBasePath(AppContext.BaseDirectory)
                 .AddJsonFile("appsettings.json")
                 .Build();
 
-            NpgsqlConnectionStringBuilder builder = new ();
-            builder.Host = settings["host"];
-            builder.Username = settings["user"];
-            builder.Password = settings["password"];
+            NpgsqlConnectionStringBuilder builder = new()
+            {
+                Host = settings["host"],
+                Username = settings["user"],
+                Password = settings["password"]
+            };
 
             string? PortAsString = settings["port"];
             if (string.IsNullOrWhiteSpace(PortAsString)) 
@@ -39,8 +41,7 @@ namespace MDR_Downloader
             }
             else
             {
-                int port_num;
-                if (Int32.TryParse(PortAsString, out port_num))
+                if (Int32.TryParse(PortAsString, out int port_num))
                 {
                     builder.Port = port_num;
                 }
@@ -315,7 +316,7 @@ namespace MDR_Downloader
                     and sd_id = '" + sd_sid + @"'
                     and source_id = " + source_id.ToString();
             using NpgsqlConnection conn = new(connString);
-            return conn.Query<int>(sql_string).FirstOrDefault() > 0 ? true : false;
+            return conn.Query<int>(sql_string).FirstOrDefault() > 0;
         }
 
 

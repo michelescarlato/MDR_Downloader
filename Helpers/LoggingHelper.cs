@@ -1,6 +1,4 @@
-﻿using Dapper;
-using Dapper.Contrib.Extensions;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 
 
 namespace MDR_Downloader
@@ -166,7 +164,7 @@ namespace MDR_Downloader
             LogLine("filter" + filter_id);
             string ignore_recent_days = (opts.SkipRecentDays is null) ? " was not provided" : " is " + opts.SkipRecentDays.ToString();
             LogLine("ignore recent downloads parameter" + ignore_recent_days);
-            if (opts.FetchTypeId == 146)
+            if (opts.FetchTypeId == 146 || opts.FetchTypeId == 303)
             {
                 LogLine("Offset for record Ids: " + opts.OffsetIds);
                 LogLine("Amount of record Ids: " + opts.AmountIds);

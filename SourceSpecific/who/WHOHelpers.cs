@@ -816,110 +816,60 @@ namespace MDR_Downloader.who
 
         public int get_reg_source(string trial_id)
         {
-            int source_id = 0;
-            string tid = trial_id.ToUpper();
-            if (tid.StartsWith("NCT"))
+            if (string.IsNullOrEmpty(trial_id))
             {
-                source_id = 100120;
-            }
-            else if (tid.StartsWith("EUCTR"))
-            {
-                source_id = 100123;
-            }
-            else if (tid.StartsWith("JPRN"))
-            {
-                source_id = 100127;
-            }
-            else if (tid.StartsWith("ACTRN"))
-            {
-                source_id = 100116;
-            }
-            else if (tid.StartsWith("RBR"))
-            {
-                source_id = 100117;
-            }
-            else if (tid.StartsWith("CHICTR"))
-            {
-                source_id = 100118;
-            }
-            else if (tid.StartsWith("KCT"))
-            {
-                source_id = 100119;
-            }
-            else if (tid.StartsWith("CTRI"))
-            {
-                source_id = 100121;
-            }
-            else if (tid.StartsWith("RPCEC"))
-            {
-                source_id = 100122;
-            }
-            else if (tid.StartsWith("DRKS"))
-            {
-                source_id = 100124;
-            }
-            else if (tid.StartsWith("IRCT"))
-            {
-                source_id = 100125;
-            }
-            else if (tid.StartsWith("ISRCTN"))
-            {
-                source_id = 100126;
-            }
-            else if (tid.StartsWith("PACTR"))
-            {
-                source_id = 100128;
-            }
-            else if (tid.StartsWith("PER"))
-            {
-                source_id = 100129;
-            }
-            else if (tid.StartsWith("SLCTR"))
-            {
-                source_id = 100130;
-            }
-            else if (tid.StartsWith("TCTR"))
-            {
-                source_id = 100131;
-            }
-            else if (tid.StartsWith("NL") || tid.StartsWith("NTR"))
-            {
-                source_id = 100132;
-            }
-            else if (tid.StartsWith("LBCTR"))
-            {
-                source_id = 101989;
+                return 0;
             }
             else
             {
-                source_id = 0;
+                string tid = trial_id.ToUpper();
+                return tid switch
+                {
+                    string when tid.StartsWith("NCT") => 100120,
+                    string when tid.StartsWith("EUCTR") => 100123,
+                    string when tid.StartsWith("JPRN") => 100127,
+                    string when tid.StartsWith("ACTRN") => 100116,
+                    string when tid.StartsWith("RBR") => 100117,
+                    string when tid.StartsWith("CHICTR") => 100118,
+                    string when tid.StartsWith("KCT") => 100119,
+                    string when tid.StartsWith("CTRI") => 100121,
+                    string when tid.StartsWith("RPCEC") => 100122,
+                    string when tid.StartsWith("DRKS") => 100124,
+                    string when tid.StartsWith("IRCT") => 100125,
+                    string when tid.StartsWith("ISRCTN") => 100126,
+                    string when tid.StartsWith("PACTR") => 100128,
+                    string when tid.StartsWith("PER") => 100129,
+                    string when tid.StartsWith("SLCTR") => 100130,
+                    string when tid.StartsWith("TCTR") => 100131,
+                    string when tid.StartsWith("NL") || tid.StartsWith("NTR") => 100132,
+                    string when tid.StartsWith("LBCTR") => 101989,
+                    _ => 0
+                };
             }
-            return source_id;
         }
 
 
         public string get_folder(int source_id)
         {
-            string folder_path = "";
-            switch (source_id)
+            return source_id switch
             {
-                case 100116: { folder_path = @"C:\MDR_Data\anzctr\"; break; }
-                case 100117: { folder_path = @"C:\MDR_Data\rebec\"; break; }
-                case 100118: { folder_path = @"C:\MDR_Data\chictr\"; break; }
-                case 100119: { folder_path = @"C:\MDR_Data\cris\"; break; }
-                case 100121: { folder_path = @"C:\MDR_Data\ctri\"; break; }
-                case 100122: { folder_path = @"C:\MDR_Data\rpcec\"; break; }
-                case 100124: { folder_path = @"C:\MDR_Data\drks\"; break; }
-                case 100125: { folder_path = @"C:\MDR_Data\irct\"; break; }
-                case 100127: { folder_path = @"C:\MDR_Data\jprn\"; break; }
-                case 100128: { folder_path = @"C:\MDR_Data\pactr\"; break; }
-                case 100129: { folder_path = @"C:\MDR_Data\rpuec\"; break; }
-                case 100130: { folder_path = @"C:\MDR_Data\slctr\"; break; }
-                case 100131: { folder_path = @"C:\MDR_Data\thctr\"; break; }
-                case 100132: { folder_path = @"C:\MDR_Data\nntr\"; break; }
-                case 101989: { folder_path = @"C:\MDR_Data\lebctr\"; break; }
-            }
-            return folder_path;
+                100116 => @"C:\MDR_Data\anzctr\",
+                100117 => @"C:\MDR_Data\rebec\",
+                100118 => @"C:\MDR_Data\chictr\",
+                100119 => @"C:\MDR_Data\cris\",
+                100121 => @"C:\MDR_Data\ctri\",
+                100122 => @"C:\MDR_Data\rpcec\",
+                100124 => @"C:\MDR_Data\drks\",
+                100125 => @"C:\MDR_Data\irct\",
+                100127 => @"C:\MDR_Data\jprn\",
+                100128 => @"C:\MDR_Data\pactr\",
+                100129 => @"C:\MDR_Data\rpuec\",
+                100130 => @"C:\MDR_Data\slctr\",
+                100131 => @"C:\MDR_Data\thctr\",
+                100132 => @"C:\MDR_Data\nntr\",
+                101989 => @"C:\MDR_Data\lebctr\",
+                _ => ""
+            };
         }
     }
 }

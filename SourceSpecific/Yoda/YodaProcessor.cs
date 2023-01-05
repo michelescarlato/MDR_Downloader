@@ -1,15 +1,11 @@
 ﻿using HtmlAgilityPack;
-using MDR_Downloader.biolincc;
 using MDR_Downloader.Helpers;
 using ScrapySharp.Extensions;
 using ScrapySharp.Html;
 using ScrapySharp.Network;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Web;
-using static Microsoft.FSharp.Core.ByRefKinds;
+
 
 namespace MDR_Downloader.yoda
 {
@@ -195,7 +191,7 @@ namespace MDR_Downloader.yoda
             SponsorDetails? sponsor = null;
             StudyDetails? sd = null;
 
-            bool isRegistered = sm.sd_sid!.StartsWith("Y-") ? true : false;
+            bool isRegistered = sm.sd_sid!.StartsWith("Y-");
             if (isRegistered)
             {
                 if (reg_id is not null)
@@ -254,38 +250,22 @@ namespace MDR_Downloader.yoda
                     }
                     else
                     {
-                        switch (st.data_partner)
+                        sponsor_code = st.data_partner switch 
                         {
-                            case ("Johnson & Johnson"):
-                                {
-                                    sponsor_code = "JandJ"; break;
-                                }
-                            case ("Queen Mary University of London"):
-                                {
-                                    sponsor_code = "QMUL"; break;
-                                }
-                            case ("McNeil Consumer Healthcare"):
-                                {
-                                    sponsor_code = "McNeil CH"; break;
-                                }
-                            case ("Robert Wood Johnson Foundation"):
-                                {
-                                    sponsor_code = "RWJFound"; break;
-                                }
-                            default:
-                                {
-                                    sponsor_code = st.data_partner; break;
-                                }
-                        }
+                            "Johnson & Johnson" => "JandJ",
+                            "Queen Mary University of London" => "QMUL",
+                            "McNeil Consumer Healthcare" => "McNeil CH",
+                            "Robert Wood Johnson Foundation" => "RWJFound",
+                            _ => st.data_partner
+                        };
                     }
                     pp_id = "Y-" + sponsor_code + "-" + protid;
                 }
                 else
                 {
-                    using MD5 md5 = MD5.Create();
                     string input = sm.study_name + sm.enrolment_num + sm.csr_link;
                     byte[] inputBytes = System.Text.Encoding.ASCII.GetBytes(input);
-                    byte[] hashbytes = md5.ComputeHash(inputBytes);
+                    byte[] hashbytes = MD5.HashData(inputBytes);
                     pp_id = "Y-" + string.Concat(hashbytes.Select(x => x.ToString("X2"))).ToLower();
                 }
 
@@ -355,9 +335,11 @@ namespace MDR_Downloader.yoda
                     if (csrLink != "" || csrComment != "")
                     {
                         // add a new supp doc record
-                        SuppDoc suppdoc = new("CSR Summary");
-                        suppdoc.url = csrLink;
-                        suppdoc.comment = csrComment;
+                        SuppDoc suppdoc = new("CSR Summary")
+                        {
+                            url = csrLink,
+                            comment = csrComment
+                        };
                         supp_docs.Add(suppdoc);
 
                         // is this the same link as in the main table
@@ -419,9 +401,11 @@ namespace MDR_Downloader.yoda
                         else
                         {
                             // add a new supp doc record
-                            SuppDoc suppdoc = new("Data Definition Specification");
-                            suppdoc.url = dataLink;
-                            suppdoc.comment = dataComment;
+                            SuppDoc suppdoc = new("Data Definition Specification")
+                            {
+                                url = dataLink,
+                                comment = dataComment
+                            };
                             supp_docs.Add(suppdoc);
                         }
                     }
@@ -455,9 +439,11 @@ namespace MDR_Downloader.yoda
                         else
                         {
                             // add a new supp doc record
-                            SuppDoc suppdoc = new("Annotated Case Report Form");
-                            suppdoc.url = crfLink;
-                            suppdoc.comment = crfComment;
+                            SuppDoc suppdoc = new("Annotated Case Report Form")
+                            {  
+                                url = crfLink,
+                                comment = crfComment
+                            };
                             supp_docs.Add(suppdoc);
                         }
                     }
@@ -465,33 +451,34 @@ namespace MDR_Downloader.yoda
             }
 
 
-            // eliminate supp_docs that are explicitly not available
+            // Review supp_docs.
+
             List<SuppDoc> supp_docs_available = new();
+            bool add_this_doc;
             foreach (SuppDoc suppdoc in supp_docs)
             {
-                // remove null comments
-                suppdoc.comment = suppdoc.comment ?? "";
-                bool add_this_doc = true;
-
-                // if link present...
-                if (suppdoc.url is not null && suppdoc.url.Trim() != "")
+                if (!string.IsNullOrEmpty(suppdoc.comment) && 
+                        (suppdoc.comment.ToLower() == "not available" || suppdoc.comment.ToLower() == "not yet available"
+                        || suppdoc.comment.ToLower() == "not yet avaiable"))
                 {
-                    suppdoc.comment = "Available now";
-                }
+                    // Exclude docs explicitly described as not available.
 
-                if (suppdoc.comment != "")
-                {
-                    // exclude docs explicitly described as not available
-                    if (suppdoc.comment.ToLower() == "not available" || suppdoc.comment.ToLower() == "not yet available"
-                        || suppdoc.comment.ToLower() == "not yet avaiable")
-                    {
-                        add_this_doc = false;
-                    }
+                     add_this_doc = false;
                 }
                 else
                 {
-                    // default if no comment or link
-                    suppdoc.comment = "Available upon data request approval";
+                    // If a URL link present...indicate that in the comment, otherwise
+                    // add the presumed default condition in the comment
+
+                    if (!string.IsNullOrEmpty(suppdoc.url))
+                    {
+                        suppdoc.comment = "Available now";
+                    }
+                    else 
+                    {
+                        suppdoc.comment = "Available upon approval of data request";
+                    }
+                    add_this_doc = true;
                 }
 
                 if (add_this_doc) supp_docs_available.Add(suppdoc);
@@ -567,7 +554,7 @@ namespace MDR_Downloader.yoda
                 else
                 {
                     // else try and retrieve from linking out to the pubmed page
-                    string pubmed_id = await _ch.GetPMIDFromPageAsync(st.primary_citation_link);
+                    string pubmed_id = await GetPMIDFromPageAsync(st.primary_citation_link);
                     if (!string.IsNullOrEmpty(pubmed_id))
                     {
                         study_references.Add(new Reference(pubmed_id, st.primary_citation_link));
@@ -598,6 +585,37 @@ namespace MDR_Downloader.yoda
             }
             return sd;
         }
+
+
+        public async Task<string> GetPMIDFromPageAsync(string citation_link)
+        {
+            string pmid = "";
+            WebPage? page = await _ch.GetPageAsync(citation_link);
+            if (page is not null)
+            {
+                // only works with pmid pages, that have this dl tag....
+                HtmlNode? ids_div = page.Find("dl", By.Class("rprtid")).FirstOrDefault();
+                if (ids_div is not null)
+                {
+                    HtmlNode[] dts = ids_div.CssSelect("dt").ToArray();
+                    HtmlNode[] dds = ids_div.CssSelect("dd").ToArray();
+
+                    if (dts is not null && dds is not null)
+                    {
+                        for (int i = 0; i < dts.Length; i++)
+                        {
+                            string dts_type = dts[i].InnerText.Trim();
+                            if (dts_type == "PMID:")
+                            {
+                                pmid = dds[i].InnerText.Trim();
+                            }
+                        }
+                    }
+                }
+            }
+            return pmid;
+        }
+
 
     }
 }

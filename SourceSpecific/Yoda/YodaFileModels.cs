@@ -18,7 +18,7 @@ namespace MDR_Downloader.yoda
         public int? study_type_id { get; set; }
         public string? compound_generic_name { get; set; }
         public string? compound_product_name { get; set; }
-        public string?therapaeutic_area { get; set; }
+        public string? therapaeutic_area { get; set; }
         public string? enrolment { get; set; }
         public string? percent_female { get; set; }
         public string? percent_white { get; set; }

@@ -82,7 +82,6 @@ namespace MDR_Downloader.yoda
             }
             else
             {
-                search_page_limit = 0;
                 _logging_helper.LogError("Unable to extract record count total on first search page");
                 return res;
             }
@@ -114,7 +113,7 @@ namespace MDR_Downloader.yoda
             // Duplicates rare but do occur but seem to be temporary features.
 
             int n = 0;
-            List<Summary> study_list = new List<Summary>();
+            List<Summary> study_list = new();
 
             foreach (Summary sm in all_study_list)
             {
@@ -179,7 +178,7 @@ namespace MDR_Downloader.yoda
                                     }
 
                                     bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, st.sd_sid!, st.remote_url, saf_id,
-                                                                      st.last_revised_date, full_path);
+                                                                      null, full_path);
                                     res.num_downloaded++;
                                     if (added) res.num_added++;
 

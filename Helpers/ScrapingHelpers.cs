@@ -4,6 +4,7 @@ using ScrapySharp.Network;
 using HtmlAgilityPack;
 using System.Text;
 using System.Text.Json;
+using System;
 
 namespace MDR_Downloader.Helpers
 {
@@ -28,7 +29,6 @@ namespace MDR_Downloader.Helpers
         }
 
 
-
         public async Task<WebPage?> GetPageAsync(string url)
         {
             try
@@ -43,38 +43,7 @@ namespace MDR_Downloader.Helpers
         }
 
 
-        public async Task<string> GetPMIDFromPageAsync(string citation_link)
-        {
-            string pmid = "";
-            WebPage? page = await GetPageAsync(citation_link);
-            if (page is not null)
-            {
-                // only works with pmid pages, that have this dl tag....
-                HtmlNode? ids_div = page.Find("dl", By.Class("rprtid")).FirstOrDefault();
-                if (ids_div is not null)
-                {
-                    HtmlNode[] dts = ids_div.CssSelect("dt").ToArray();
-                    HtmlNode[] dds = ids_div.CssSelect("dd").ToArray();
-
-                    if (dts is not null && dds is not null)
-                    {
-                        for (int i = 0; i < dts.Length; i++)
-                        {
-                            string dts_type = dts[i].InnerText.Trim();
-                            if (dts_type == "PMID:")
-                            {
-                                pmid = dds[i].InnerText.Trim();
-                            }
-                        }
-                    }
-                }
-            }
-            return pmid;
-        }
-
-
-
-        public async Task<string?> GetStringFromURLAsync(string url)
+        public async Task<string?> GetAPIResponseAsync(string url)
         {
             try
             {
@@ -97,19 +66,23 @@ namespace MDR_Downloader.Helpers
           
             try
             {
-                HttpResponseMessage response = await webClient.GetAsync(query_url);
-                response.EnsureSuccessStatusCode();
-                var responseBody = await response.Content.ReadAsStringAsync();
-
-                var options = new JsonSerializerOptions
+                string? responseBody = await GetAPIResponseAsync(query_url);
+                if (responseBody == null)
                 {
-                    PropertyNameCaseInsensitive = true,
-                    ReadCommentHandling = JsonCommentHandling.Skip,
-                    AllowTrailingCommas = true
-                };
+                    return null;
+                }
+                else 
+                { 
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        ReadCommentHandling = JsonCommentHandling.Skip,
+                        AllowTrailingCommas = true
+                    };
 
-                PMCResponse? PMC_object = JsonSerializer.Deserialize<PMCResponse>(responseBody, options);
-                return PMC_object?.records?[0].pmid;
+                    PMCResponse? PMC_object = JsonSerializer.Deserialize<PMCResponse>(responseBody, options);
+                    return PMC_object?.records?[0].pmid;
+                }
             }
             catch (Exception e)
             {

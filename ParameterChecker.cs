@@ -20,6 +20,8 @@ internal class ParameterChecker
         // and return an error. If parameters can be passed, check their validity
         // and if invalid log the issue and return an error, otherwise return the 
         // parameters, processed as an instance of the Options class, and the source.
+        // N.B. No log file is available yet - needs to be created in the error parser.
+
 
         var parsedArguments = Parser.Default.ParseArguments<Options>(args);
         if (parsedArguments.Errors.Any())
@@ -29,7 +31,7 @@ internal class ParameterChecker
         }
         else
         {
-            var opts = parsedArguments.Value;
+            var opts = parsedArguments.Value; 
             return CheckArgumentValuesAreValid(opts);  
         }
     }
@@ -37,6 +39,7 @@ internal class ParameterChecker
     internal ParamsCheckResult CheckArgumentValuesAreValid(Options opts)
     {
         // 'opts' is passed by reference and may be changed by the checking mechanism.
+        // N.B. No log file is available yet - needs to be created in exception handler.
 
         try
         {
@@ -45,7 +48,7 @@ internal class ParameterChecker
             Source? source = _mon_data_layer.FetchSourceParameters(opts.SourceId);
             if (source is null)
             {
-                // N.B. No log file available yet - needs to be created in exception handler
+
                 throw new ArgumentException("The first argument does not correspond to a known source");
             }
 
@@ -77,16 +80,13 @@ internal class ParameterChecker
             {
                 if (!string.IsNullOrEmpty(opts.CutoffDateAsString))
                 {
-                    string cutoff_date_as_string = opts.CutoffDateAsString;
-                    if (!string.IsNullOrEmpty(cutoff_date_as_string))
+                    string cutoffDateAsString = opts.CutoffDateAsString;
+                    if (Regex.Match(cutoffDateAsString, @"^20\d{2}-[0,1]\d{1}-[0, 1, 2, 3]\d{1}$").Success)
                     {
-                        if (Regex.Match(cutoff_date_as_string, @"^20\d{2}-[0,1]\d{1}-[0, 1, 2, 3]\d{1}$").Success)
-                        {
-                            opts.CutoffDate = new DateTime(
-                                        Int32.Parse(cutoff_date_as_string.Substring(0, 4)),
-                                        Int32.Parse(cutoff_date_as_string.Substring(5, 2)),
-                                        Int32.Parse(cutoff_date_as_string.Substring(8, 2)));
-                        }
+                        opts.CutoffDate = new DateTime(
+                                    Int32.Parse(cutoffDateAsString.Substring(0, 4)),
+                                    Int32.Parse(cutoffDateAsString.Substring(5, 2)),
+                                    Int32.Parse(cutoffDateAsString.Substring(8, 2)));
                     }
                 }
                 else
@@ -110,12 +110,14 @@ internal class ParameterChecker
                 }
             }
 
-            // If a file is required check a name is supplied and that it
-            // corresponds to a file.
+            // If a file (or for some download types a folder path) is required check a name is 
+            // supplied and that it corresponds to an existing file or folder.
 
             if (sf_type.requires_file)
             {
-                if (string.IsNullOrEmpty(opts.FileName) || !File.Exists(opts.FileName))
+                if (string.IsNullOrEmpty(opts.FileName) || 
+                          (!File.Exists(opts.FileName) && !Directory.Exists(opts.FileName))
+                          )
                 {
                     string error_message = "This search fetch type requires a file name";
                     error_message += " and no valid file path and name is supplied";
@@ -133,7 +135,7 @@ internal class ParameterChecker
                 }
             }
 
-            // parameters valid - return opts and the source.
+            // Parameters are valid - return opts and the source.
 
             return new ParamsCheckResult(false, false, opts, source);
         }
@@ -202,7 +204,7 @@ public class Options
     [Option('a', "amount for id based download", Required = false, HelpText = "Integer indicating the nmumber of ids to be iuused in fetching data.")]
     public int? AmountIds { get; set; }
 
-    [Option('o', "offset for id based download", Required = false, HelpText = "Integer indicartingthe offset to use when interrogatring the list of Ids.")]
+    [Option('o', "offset for id based download", Required = false, HelpText = "Integer indicating the offset to use when interrogatring the list of Ids.")]
     public int? OffsetIds { get; set; }
 
     [Option('q', "focused-search_id", Required = false, HelpText = "Integer id representing id of focused search / fetch.")]
@@ -216,6 +218,8 @@ public class Options
 
     [Option('L', "no_Logging", Required = false, HelpText = "If present prevents the logging record in sf.saf_events")]
     public bool? NoLogging { get; set; }
+
+
 
 }
 

@@ -19,6 +19,11 @@ public class Fullstudiesresponse
     public Fullstudy[]? FullStudies { get; set; }
 }
 
+public class FSRootobject
+{
+    public Fullstudy? FullStudy { get; set; }
+}
+
 public class Fullstudy
 {
     public int? Rank { get; set; }

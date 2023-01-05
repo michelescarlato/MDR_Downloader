@@ -127,7 +127,7 @@ namespace MDR_Downloader.pubmed
                 // and that (usually) have been revised recently 
                 // and calculate the loop parameters.
 
-                string? responseBody = await ch.GetStringFromURLAsync(search_url);
+                string? responseBody = await ch.GetAPIResponseAsync(search_url);
                 if (responseBody is not null)
                 {
                     int totalRecords = 0;
@@ -227,7 +227,7 @@ namespace MDR_Downloader.pubmed
                     string_num++;
                     post_URL = post_baseURL + "&id=" + idstring;
                     System.Threading.Thread.Sleep(200);
-                    string? post_responseBody = await ch.GetStringFromURLAsync(post_URL);
+                    string? post_responseBody = await ch.GetAPIResponseAsync(post_URL);
                     if (post_responseBody is not null)
                     {
                         using (TextReader post_reader = new StringReader(post_responseBody))
@@ -257,7 +257,7 @@ namespace MDR_Downloader.pubmed
                                     search_URL += "&WebEnv=" + web_env + "&usehistory=y";
 
                                     Thread.Sleep(200);
-                                    string? search_responseBody = await ch.GetStringFromURLAsync(search_URL);
+                                    string? search_responseBody = await ch.GetAPIResponseAsync(search_URL);
                                     if (search_responseBody is not null)
                                     {
                                         int totalRecords = 0;
@@ -327,7 +327,7 @@ namespace MDR_Downloader.pubmed
         public async Task FetchPubMedRecordsAsync(string fetch_URL, DownloadResult res, Source source, int saf_id)
         {
             ScrapingHelpers ch = new(_logging_helper);
-            string? responseBody = await ch.GetStringFromURLAsync(fetch_URL);
+            string? responseBody = await ch.GetAPIResponseAsync(fetch_URL);
             if (responseBody is not null)
             {
                 XmlWriterSettings xml_settings = new()

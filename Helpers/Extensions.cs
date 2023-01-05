@@ -1,8 +1,7 @@
 ﻿using HtmlAgilityPack;
 using ScrapySharp.Extensions;
-using System.Runtime.ConstrainedExecution;
 using System.Text.RegularExpressions;
-using System.Threading;
+
 
 namespace MDR_Downloader.Helpers;
 
@@ -131,10 +130,7 @@ public static class StringExtensions
 }
 
 
-
-
-
-public static class scrapingExtensions
+public static class ScrapingExtensions
 {
     public static string InnerValue(this HtmlNode node)
     {
@@ -298,34 +294,17 @@ public static partial class DateExtensions
         else
         {
             string time_string = instring.ToLower();
-            if (time_string.Contains("year"))
-            {
-                return "Years";
-            }
-            else if (time_string.Contains("month"))
-            {
-                return "Months";
-            }
-            else if (time_string.Contains("week"))
-            {
-                return "Weeks";
-            }
-            else if (time_string.Contains("day"))
-            {
-                return "Days";
-            }
-            else if (time_string.Contains("hour"))
-            {
-                return "Hours";
-            }
-            else if (time_string.Contains("min"))
-            {
-                return "Minutes";
-            }
-            else
-            {
-                return "Other (" + time_string + ")";
-            }
+            return time_string switch 
+            { 
+                string when time_string.Contains("year") => "Years",
+                string when time_string.Contains("month") => "Months",
+                string when time_string.Contains("week") => "Weeks",
+                string when time_string.Contains("day") => "Days",
+                string when time_string.Contains("hour") => "Hours",
+                string when time_string.Contains("min") => "Minutes",
+                _ => "Other (" + time_string + ")"
+
+            };
         }
     }
 
@@ -425,7 +404,6 @@ public static partial class DateExtensions
 
     }
 }
-
 
 
 public class SplitDate

@@ -19,9 +19,9 @@ namespace MDR_Downloader.pubmed
     [System.CodeDom.Compiler.GeneratedCodeAttribute("xsd", "4.7.3081.0")]
     [System.SerializableAttribute()]
     [System.Diagnostics.DebuggerStepThroughAttribute()]
-    [System.ComponentModel.DesignerCategoryAttribute("code")]
-    [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true)]
-    [System.Xml.Serialization.XmlRootAttribute(Namespace = "", IsNullable = false)]
+    [DesignerCategoryAttribute("code")]
+    [XmlTypeAttribute(AnonymousType = true)]
+    [XmlRootAttribute(Namespace = "", IsNullable = false)]
 
     public partial class eSearchResult
     {
@@ -36,7 +36,7 @@ namespace MDR_Downloader.pubmed
 
         public string WebEnv;
 
-        [System.Xml.Serialization.XmlArrayItemAttribute("Id", IsNullable = false)]
+        [XmlArrayItemAttribute("Id", IsNullable = false)]
         public int[] IdList;
 
         public object TranslationSet;
@@ -50,8 +50,8 @@ namespace MDR_Downloader.pubmed
     [System.CodeDom.Compiler.GeneratedCodeAttribute("xsd", "4.7.3081.0")]
     [System.SerializableAttribute()]
     [System.Diagnostics.DebuggerStepThroughAttribute()]
-    [System.ComponentModel.DesignerCategoryAttribute("code")]
-    [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true)]
+    [DesignerCategoryAttribute("code")]
+    [XmlTypeAttribute(AnonymousType = true)]
     public partial class eSearchResultTranslationStack
     {
 
@@ -64,8 +64,8 @@ namespace MDR_Downloader.pubmed
     [System.CodeDom.Compiler.GeneratedCodeAttribute("xsd", "4.7.3081.0")]
     [System.SerializableAttribute()]
     [System.Diagnostics.DebuggerStepThroughAttribute()]
-    [System.ComponentModel.DesignerCategoryAttribute("code")]
-    [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true)]
+    [DesignerCategoryAttribute("code")]
+    [XmlTypeAttribute(AnonymousType = true)]
     public partial class eSearchResultTranslationStackTermSet
     {
 
