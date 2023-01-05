@@ -201,6 +201,11 @@ public class Options
 
     public DateTime? CutoffDate { get; set; }
 
+    [Option('e', "end_date", Required = false, HelpText = "Only data revised or added before this date will be considered")]
+    public string? EndDateAsString { get; set; }
+
+    public DateTime? EndDate { get; set; }
+
     [Option('a', "amount for id based download", Required = false, HelpText = "Integer indicating the nmumber of ids to be iuused in fetching data.")]
     public int? AmountIds { get; set; }
 

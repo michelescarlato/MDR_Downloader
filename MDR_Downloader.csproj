@@ -12,6 +12,7 @@
     <Compile Remove="SourceSpecific\ctg\ctgapi2.cs" />
     <Compile Remove="SourceSpecific\ctg\CTGModels.cs" />
     <Compile Remove="SourceSpecific\ctg\CTGProcessor.cs" />
+    <Compile Remove="SourceSpecific\isrctn\isctrn web model.cs" />
   </ItemGroup>
 
   <ItemGroup>

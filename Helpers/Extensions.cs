@@ -312,6 +312,16 @@ public static partial class DateExtensions
     public static DateTime? FetchDateTimeFromISO(this string iso_string)
     {
         // iso_string assumed to be in format yyyy-mm-dd.
+        if (string.IsNullOrEmpty(iso_string))
+
+        {
+            return null;
+        }
+
+        if (iso_string.Length > 10)
+        {
+            iso_string = iso_string[0..10];  // if date-time only interested in the date
+        }
 
         int year = int.Parse(iso_string[0..4]);
         int month = int.Parse(iso_string[5..7]);
