@@ -19,7 +19,7 @@ namespace MDR_Downloader.who
             _mon_data_layer = mon_data_layer;
         }
 
-        public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, int saf_id, Source source)
+        public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, Source source)
         {
             // WHO processing unusual in that it is from a csv file
             // The program loops through the file and creates an XML file from each row
@@ -81,7 +81,7 @@ namespace MDR_Downloader.who
                                     _logging_helper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
                                 }
 
-                                bool added = _mon_data_layer.UpdateStudyDownloadLog(r.source_id, r.sd_sid!, r.remote_url, saf_id,
+                                bool added = _mon_data_layer.UpdateStudyDownloadLog(r.source_id, r.sd_sid!, r.remote_url, (int)opts.saf_id,
                                                                    r.record_date?.FetchDateTimeFromISO(), full_path);
                                 res.num_downloaded++;
                                 if (added) res.num_added++;

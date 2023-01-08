@@ -80,6 +80,37 @@ namespace MDR_Downloader
         }
 
 
+        public void LogCommandLineParameters(Options opts)
+        {
+            LogLine("****** DOWNLOAD ******");
+            LogHeader("Set up");
+            LogLine("source_id is " + opts.SourceId.ToString());
+            LogLine("type_id is " + opts.FetchTypeId.ToString());
+            string file_name = (opts.FileName is null) ? " was not provided" : " is " + opts.FileName;
+            LogLine("file_name" + file_name);
+            string cutoff_date = (opts.CutoffDate is null) ? " was not provided" : " is " + opts.CutoffDateAsString;
+            LogLine("cutoff_date" + cutoff_date);
+            string filter_id = (opts.FocusedSearchId is null) ? " was not provided" : " is " + opts.FocusedSearchId.ToString();
+            LogLine("filter" + filter_id);
+            string ignore_recent_days = (opts.SkipRecentDays is null) ? " was not provided" : " is " + opts.SkipRecentDays.ToString();
+            LogLine("ignore recent downloads parameter" + ignore_recent_days);
+            if (opts.FetchTypeId == 146 || opts.FetchTypeId == 303)
+            {
+                LogLine("Offset for record Ids: " + opts.OffsetIds);
+                LogLine("Amount of record Ids: " + opts.AmountIds);
+            }
+            if (opts.PreviousSearches?.Any() == true)
+            {
+                foreach (int i in opts.PreviousSearches)
+                {
+                    LogLine("previous_search is " + i.ToString());
+                }
+            }
+            string no_logging = (opts.NoLogging is null) ? " was not provided" : " is " + opts.NoLogging;
+            LogLine("no_Logging" + no_logging);
+        }
+
+
         internal void LogHeader(string message)
         {
             string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
@@ -148,42 +179,6 @@ namespace MDR_Downloader
             Transmit(dt_string + "**** " + "Records downloaded: " + res.num_downloaded.ToString() + " ****");
             Transmit(dt_string + "**** " + "Records added: " + res.num_added.ToString() + " ****");
         }
-
-       
-        public string LogCommandLineParameters(Options opts)
-        {
-            LogLine("****** DOWNLOAD ******");
-            LogHeader("Set up");
-            LogLine("source_id is " + opts.SourceId.ToString());
-            LogLine("type_id is " + opts.FetchTypeId.ToString());
-            string file_name = (opts.FileName is null) ? " was not provided" : " is " + opts.FileName;
-            LogLine("file_name" + file_name);
-            string cutoff_date = (opts.CutoffDate is null) ? " was not provided" : " is " + opts.CutoffDateAsString;
-            LogLine("cutoff_date" + cutoff_date);
-            string filter_id = (opts.FocusedSearchId is null) ? " was not provided" : " is " + opts.FocusedSearchId.ToString();
-            LogLine("filter" + filter_id);
-            string ignore_recent_days = (opts.SkipRecentDays is null) ? " was not provided" : " is " + opts.SkipRecentDays.ToString();
-            LogLine("ignore recent downloads parameter" + ignore_recent_days);
-            if (opts.FetchTypeId == 146 || opts.FetchTypeId == 303)
-            {
-                LogLine("Offset for record Ids: " + opts.OffsetIds);
-                LogLine("Amount of record Ids: " + opts.AmountIds);
-            }
-            string previous_saf_ids = "";
-            if (opts.PreviousSearches?.Any() == true)
-            {
-                foreach (int i in opts.PreviousSearches)
-                {
-                    LogLine("previous_search is " + i.ToString());
-                    previous_saf_ids += ", " + i.ToString();
-                }
-                previous_saf_ids = previous_saf_ids.Substring(2);
-            }
-            string no_logging = (opts.NoLogging is null) ? " was not provided" : " is " + opts.NoLogging;
-            LogLine("no_Logging" + no_logging);
-            return previous_saf_ids;
-        }
-
     }
 }
 

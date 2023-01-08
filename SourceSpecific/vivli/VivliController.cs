@@ -22,17 +22,17 @@ namespace MDR_Downloader.vivli
             processor = new Vivli_Processor();
         }
 
-        public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, int saf_id, Source source)
+        public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, Source source)
         {
-            FetchURLDetails(opts, saf_id, source);
-            await LoopThroughPagesAsync(opts, saf_id, source);
+            FetchURLDetails(opts, source);
+            await LoopThroughPagesAsync(opts, source);
 
             // for now
             DownloadResult res = new();
             return res;
         }
 
-        public void FetchURLDetails(Options opts, int saf_id, Source source)
+        public void FetchURLDetails(Options opts, Source source)
         {
             string? file_base = source.local_folder;
             int source_id = source.id;
@@ -73,7 +73,7 @@ namespace MDR_Downloader.vivli
             }
         }
 
-        public async Task LoopThroughPagesAsync(Options opts, int saf_id, Source source)
+        public async Task LoopThroughPagesAsync(Options opts, Source source)
         {
 
             // Go through the vivli data, fetcvhing the stored urls

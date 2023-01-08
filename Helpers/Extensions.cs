@@ -93,16 +93,21 @@ public static class StringExtensions
         }
         else
         {
-            while (instring.Contains("  "))
+            string outstring = instring.Trim();
+            outstring = outstring.Replace("\r\n", "\n");    // regularise endings
+            
+            while (outstring.Contains("  "))
             {
-                instring = instring.Replace("  ", " ");
+                outstring = outstring.Replace("  ", " ");
             }
-            instring = instring.Replace("\n ", "\n");
-            while (instring.Contains("\n\n"))
+            outstring = outstring.Replace("\n:\n", ":\n");
+            outstring = outstring.Replace("\n ", "\n");
+            while (outstring.Contains("\n\n"))
             {
-                instring = instring.Replace("\n\n", "\n");
+                outstring = outstring.Replace("\n\n", "\n");
             }
-            return instring;
+            outstring = outstring.TrimEnd('\n');
+            return outstring;
         }
     }
 

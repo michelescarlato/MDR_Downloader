@@ -67,7 +67,7 @@ namespace MDR_Downloader.pubmed
         }
 
 
-        public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, int saf_id, Source source)
+        public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, Source source)
         {
             DownloadResult res = new();
 
@@ -75,20 +75,20 @@ namespace MDR_Downloader.pubmed
             {
                 // download articles with references to trial registries, that
                 // have been revised since the cutoff date
-                res = await ProcessPMIDsListfromBanksAsync(opts, saf_id, source);
+                res = await ProcessPMIDsListfromBanksAsync(opts, source);
             }
 
             if (opts.FocusedSearchId == 10004)
             {
                 // download pmids listed as references in other sources,
                 // that have been revised since the cutoff date 
-                res = await ProcessPMIDsListfromDBSourcesAsync(opts, saf_id, source);
+                res = await ProcessPMIDsListfromDBSourcesAsync(opts, source);
             }
             return res;
         }
 
 
-        public async Task<DownloadResult> ProcessPMIDsListfromBanksAsync(Options opts, int saf_id, Source source)
+        public async Task<DownloadResult> ProcessPMIDsListfromBanksAsync(Options opts, Source source)
         {
             DownloadResult res = new();
             string date_string = "";
@@ -162,7 +162,7 @@ namespace MDR_Downloader.pubmed
 
                                 string fetch_URL = fetch_baseURL + "&retstart=" + (i * retmax).ToString() + "&retmax=" + retmax.ToString();
                                 fetch_URL += "&retmode=xml";
-                                await FetchPubMedRecordsAsync(fetch_URL, res, source, saf_id);
+                                await FetchPubMedRecordsAsync(fetch_URL, res, source, (int)opts.saf_id);
                                 Thread.Sleep(300);
                             }
                             catch (HttpRequestException e)
@@ -179,7 +179,7 @@ namespace MDR_Downloader.pubmed
         }
 
 
-        public async Task<DownloadResult> ProcessPMIDsListfromDBSourcesAsync(Options opts, int saf_id, Source source)
+        public async Task<DownloadResult> ProcessPMIDsListfromDBSourcesAsync(Options opts, Source source)
         {
             DownloadResult res = new();
             XmlSerializer post_xSerializer = new(typeof(ePostResult));
@@ -247,7 +247,7 @@ namespace MDR_Downloader.pubmed
                                     fetch_URL = fetch_baseURL + "&WebEnv=" + web_env + "&query_key=" + query_key.ToString();
                                     fetch_URL += "&retmax=100&retmode=xml";
                                     Thread.Sleep(200);
-                                    await FetchPubMedRecordsAsync(fetch_URL, res, source, saf_id);
+                                    await FetchPubMedRecordsAsync(fetch_URL, res, source, (int)opts.saf_id);
                                 }
                                 else
                                 {
@@ -277,7 +277,7 @@ namespace MDR_Downloader.pubmed
                                                 fetch_URL = fetch_baseURL + "&WebEnv=" + web_env + "&query_key=" + query_key.ToString();
                                                 fetch_URL += "&retmax=100&retmode=xml";
                                                 Thread.Sleep(200);
-                                                await FetchPubMedRecordsAsync(fetch_URL, res, source, saf_id);
+                                                await FetchPubMedRecordsAsync(fetch_URL, res, source, (int)opts.saf_id);
                                             }
                                         }
                                     }

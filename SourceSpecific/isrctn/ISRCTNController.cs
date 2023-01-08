@@ -1,11 +1,5 @@
-﻿using MDR_Downloader;
-using MDR_Downloader.Helpers;
-using MDR_Downloader.pubmed;
-using System;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Text;
+﻿using MDR_Downloader.Helpers;
+using System.Collections.Generic;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Xml.Serialization;
@@ -16,11 +10,21 @@ class ISRCTN_Controller
 {
     private readonly LoggingHelper _logging_helper;
     private readonly MonDataLayer _mon_data_layer;
+    private readonly JsonSerializerOptions? _json_options;
+    private readonly string _base_url;
 
     public ISRCTN_Controller(MonDataLayer mon_data_layer, LoggingHelper logging_helper)
     {
         _logging_helper = logging_helper;
         _mon_data_layer = mon_data_layer;
+
+        _json_options = new()
+        {
+            AllowTrailingCommas = true,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            WriteIndented = true
+        };
+        _base_url = "https://www.isrctn.com/api/query/format/default?q=";
     }
 
     // ISRCTN data obtained from an API.
@@ -30,7 +34,15 @@ class ISRCTN_Controller
     // between two dates. Doing the latter in batches allows all ISRCTN records to be
     // re-downloaded, if and when necessary.
 
-    public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, int saf_id, Source source)
+    // There does not appear to be a way to rank or order results and select
+    // from within a returned set. If the number of available records for a selected 
+    // period is > 100 records the call is broken down calls for individual days. 
+    // If a day returns > 100 the limit must be raised to the amount concerned.
+    // Note also that the 'days_ago' check is not able to be implemeneted
+    // in a batch download process (unless the system switches to
+    // downloading one study at a time).
+
+    public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, Source source)
     {
         DownloadResult res = new();
 
@@ -40,25 +52,15 @@ class ISRCTN_Controller
             _logging_helper.LogError("Null value passed for local folder value for this source");
             return res;   // return zero result
         }
-        int? days_ago = opts.SkipRecentDays;
         int t = opts.FetchTypeId;
-
-        var json_options = new JsonSerializerOptions()
-        {
-            PropertyNameCaseInsensitive = true,
-            ReadCommentHandling = JsonCommentHandling.Skip,
-            AllowTrailingCommas = true,
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            WriteIndented = true
-        };
 
         if (t == 111 && opts.CutoffDate is not null)
         {
-            return await DownloadRevisedRecords(file_base, (DateTime)opts.CutoffDate, json_options, source.id, saf_id, days_ago);
+            return await DownloadRevisedRecords(file_base, (DateTime)opts.CutoffDate, source.id, (int)opts.saf_id);
         }
         else if (t == 115 && opts.CutoffDate is not null && opts.EndDate is not null)
         {
-            return await DownloadRecordsBetweenDates(file_base, (DateTime)opts.CutoffDate, (DateTime)opts.EndDate, json_options, source.id, saf_id, days_ago);
+            return await DownloadRecordsBetweenDates(file_base, (DateTime)opts.CutoffDate, (DateTime)opts.EndDate, source.id, (int)opts.saf_id);
         }
         else
         {
@@ -67,152 +69,227 @@ class ISRCTN_Controller
         }
     }
 
-    // Unfortunately there does not appear to be a way to rank or order results and 
-    // select from within a returned set. A default limit of 100 records is set in the API 
-    // call but if the returned number is greater than that the call must be broken down
-    // into individual days 
+    // DownloadRevisedRecords returns all records that have been revised on or since 
+    // the cutoff date, including today's records. This means that successive calls will
+    // often overlap on the day of the call. This is by design as the call day's records will
+    // not necessarily be complete when the call is made.
 
-
-    // Get the number of records required and set up the loop
-
-    public async Task<DownloadResult> DownloadRevisedRecords(string file_base, DateTime cut_off_date, JsonSerializerOptions json_options, 
-                                                             int source_id, int saf_id, int? days_ago)
+    public async Task<DownloadResult> DownloadRevisedRecords(string file_base, DateTime cut_off_date, int source_id, int saf_id)
     {
         DownloadResult res = new();
         ScrapingHelpers ch = new(_logging_helper); 
-        ISRCTN_Processor ISRCTN_processor = new();
 
-        string start_url = "https://www.isrctn.com/api/query/format/default?q=";
-        string cut_off_date_param = $"{cut_off_date.Year}-{cut_off_date.Month.ToString("00")}-{cut_off_date.Day.ToString("00")}";
-        string id_params = "lastEdited%20GE%20" + cut_off_date_param + "T00:00:00%20";
+        // initially get a single study to indicate total number to be downloaded.
 
-        // initially get the amount of studies to be downloaded
-
-        string end_url = "&limit=1";
-        string url = start_url + id_params + end_url;
+        string url = GetUrl(1, cut_off_date);
         string? responseBodyAsString = await ch.GetAPIResponseAsync(url);
+        allTrials? initial_result = Deserialize<allTrials?>(responseBodyAsString);
 
-        XmlSerializer xSerializer = new(typeof(allTrials));
-
-        int record_num = 0;
-        if (responseBodyAsString is not null)
+        if (initial_result is not null)
         {
-            using (TextReader reader = new StringReader(responseBodyAsString))
+            int record_num = initial_result.totalCount;
+            if (record_num > 0)
             {
-                allTrials? result = (allTrials?)xSerializer.Deserialize(reader);
-
-                if (result is not null)
+                if (record_num <= 100)
                 {
-                    record_num = result.totalCount;
-                }
-            }
-        }
+                    // Do a single call but with an increased limit.
 
-        if (record_num > 0)
-        {
-            end_url = "&limit=100";
-            if (record_num > 100)
-            {
-                // Split the calls to a per day basis.
-
-                DateTime date_to_check = cut_off_date;
-                DateTime end_date = date_to_check.AddDays(1);
-                string date_to_check_param, end_date_param;
-                while (date_to_check.Date <= DateTime.Now.Date)
-                {
-                    // do the call with an end date which is the next day
-                    date_to_check_param = $"{date_to_check.Year}-{date_to_check.Month.ToString("00")}-{date_to_check.Day.ToString("00")}";
-                    end_date_param = $"{end_date.Year}-{end_date.Month.ToString("00")}-{end_date.Day.ToString("00")}";
-                    id_params = "lastEdited%20GE%20" + date_to_check_param + "T00:00:00%20AND%20lastEdited%20LT%20" + end_date_param + "T00:00:00";
-                    url = start_url + id_params + end_url;
-
+                    url = GetUrl(record_num, cut_off_date);
                     responseBodyAsString = await ch.GetAPIResponseAsync(url);
-
                     if (responseBodyAsString is not null)
                     {
-                        DownloadResult batch_res = await DownloadBatch(responseBodyAsString, file_base, json_options, source_id, saf_id);
+                        DownloadResult batch_res = await DownloadBatch(responseBodyAsString, file_base, source_id, saf_id);
                         res.num_checked += batch_res.num_checked;
                         res.num_downloaded += batch_res.num_downloaded;
                         res.num_added += batch_res.num_added;
                     }
+                }
+                else
+                { 
+                    // Split the calls to a per day basis.
 
-                    date_to_check = date_to_check.AddDays(1);
-                    end_date = date_to_check.AddDays(1);
+                    DateTime date_to_check = cut_off_date;
+                    while (date_to_check.Date <= DateTime.Now.Date)
+                    {
+                        DownloadResult day_res = await DownloadStudiesFromSingleDay(date_to_check, file_base, source_id, saf_id);
+                        res.num_checked += day_res.num_checked;
+                        res.num_downloaded += day_res.num_downloaded;
+                        res.num_added += day_res.num_added;
+
+                        string feedback = $"{day_res.num_downloaded} studies downloaded, for {date_to_check.ToShortDateString()}.";
+                        feedback += $" Total downloaded: {res.num_downloaded}";
+                        _logging_helper.LogLine(feedback);
+
+                        date_to_check = date_to_check.AddDays(1);
+                        Thread.Sleep(800);  // Add a pause between calls.
+                    }
                 }
             }
-            else
-            {
-                url = start_url + id_params + end_url;
-                responseBodyAsString = await ch.GetAPIResponseAsync(url);
+        }
 
+        return res;
+    }
+
+    // Downloads all studies last edited from the first date (inclusively) and the 
+    // last date (exclusively) - i.e. GE date 1 and LT date 2.
+    // By default the download is done in batches of 4 days. If the end date is included
+    // in a batch, the batch is made up to the end date.
+
+    public async Task<DownloadResult> DownloadRecordsBetweenDates(string file_base, DateTime start_date, DateTime end_date, int source_id, int saf_id)
+    {
+        DownloadResult res = new();
+        ISRCTN_Processor ISRCTN_processor = new();
+        ScrapingHelpers ch = new(_logging_helper);
+
+        // If the start date is earlier than 10/11/2005 it is made into 10/11/2005,
+        // the earliest date in the ISRCTN system for 'date last edited'.
+        // If the end date is later than today it is made today.
+        // Dates are transformed into number of days post 01/01/2005.
+        // Day numbers are then used to loop through the requested period.
+
+        start_date = start_date < new DateTime(2005, 11, 10) ? new DateTime(2005, 11, 10) : start_date;
+        end_date = end_date > DateTime.Now ? DateTime.Now.Date : end_date;
+
+        DateTime baseDate = new DateTime(2005, 1, 1);
+        int startday = (start_date - baseDate).Days;
+        int endday = (end_date - baseDate).Days;
+        string? responseBodyAsString;
+        string url;
+
+        for (int d = startday; d < endday; d += 4)
+        {
+            // The 4 days being considered are the start date
+            // and the following three days. 
+
+            DateTime date_GE = baseDate.AddDays(d);
+            DateTime date_LT = date_GE.AddDays(4);
+
+            // Must end on the correct day, therefore
+            // check and truncate end of period if necessary.
+
+            date_LT = date_LT > end_date ? end_date : date_LT;
+
+            // Initial call to get number of studies in this period
+
+            url = GetUrl(1, date_GE, date_LT);
+            responseBodyAsString = await ch.GetAPIResponseAsync(url);
+            allTrials? result = Deserialize<allTrials?>(responseBodyAsString);
+            if (result is not null)
+            {
+                int record_num = result.totalCount;
+                if (record_num > 0)
+                {
+                    if (record_num <= 100)
+                    {
+                        // Do a single call but with the increased lnmit.
+
+                        url = GetUrl(record_num, date_GE, date_LT);
+                        responseBodyAsString = await ch.GetAPIResponseAsync(url);
+                        if (responseBodyAsString is not null)
+                        {
+                            DownloadResult batch_res = await DownloadBatch(responseBodyAsString, file_base, source_id, saf_id);
+                            res.num_checked += batch_res.num_checked;
+                            res.num_downloaded += batch_res.num_downloaded;
+                            res.num_added += batch_res.num_added;
+
+                            string feedback = $"{batch_res.num_downloaded} studies downloaded, ";
+                            feedback += $"with last edited GE { date_GE.ToShortDateString()} and LT { date_LT.ToShortDateString()}. ";
+                            feedback += $"Total downloaded: {res.num_downloaded}";
+                            _logging_helper.LogLine(feedback);
+                            Thread.Sleep(800);  // Add a pause between calls.
+                        }
+                    }
+                    else
+                    { 
+                        // Split the calls to a per day basis.
+
+                        DateTime date_to_check = date_GE;
+                        while (date_to_check.Date < date_LT)
+                        {
+                            DownloadResult day_res = await DownloadStudiesFromSingleDay(date_to_check, file_base, source_id, saf_id);
+                            res.num_checked += day_res.num_checked;
+                            res.num_downloaded += day_res.num_downloaded;
+                            res.num_added += day_res.num_added;
+
+                            string feedback = $"{day_res.num_downloaded} studies downloaded, for {date_to_check.ToShortDateString()}.";
+                            feedback += $" Total downloaded: {res.num_downloaded}";
+                            _logging_helper.LogLine(feedback);
+                            date_to_check = date_to_check.AddDays(1);
+                            Thread.Sleep(800);  // Add a pause between calls.
+                        }
+                    }
+                }
+            }
+        }
+
+        return res;
+    }
+
+    // Downloads the study records where day = last edited is a single designated day
+    // Called from both DownloadRevisedRecords and DownloadRecordsBetweenDates when amounts for
+    // a period exceed 100 and the system switches to getting records one day at a time.
+    // First gets a single record to calculate total amount to be retrieved, and
+    // then sets the limit in a following call to retrieve all records.
+
+    private async Task<DownloadResult> DownloadStudiesFromSingleDay(DateTime date_to_check, string file_base, int source_id, int saf_id)
+    {
+        DownloadResult res = new();
+        ScrapingHelpers ch = new(_logging_helper);
+        DateTime next_day_date = date_to_check.AddDays(1);
+
+        string url = GetUrl(1, date_to_check, next_day_date);
+        string? responseBodyAsString = await ch.GetAPIResponseAsync(url);
+        allTrials? day_result = Deserialize<allTrials?>(responseBodyAsString);
+
+        if (day_result is not null)
+        {
+            int day_record_num = day_result.totalCount;
+            if (day_record_num > 0)
+            {
+                Thread.Sleep(300);
+                url = GetUrl(day_record_num, date_to_check, next_day_date);
+                responseBodyAsString = await ch.GetAPIResponseAsync(url);
                 if (responseBodyAsString is not null)
                 {
-                    DownloadResult batch_res = await DownloadBatch(responseBodyAsString, file_base, json_options, source_id, saf_id);
+                    DownloadResult batch_res = await DownloadBatch(responseBodyAsString, file_base, source_id, saf_id);
                     res.num_checked += batch_res.num_checked;
                     res.num_downloaded += batch_res.num_downloaded;
                     res.num_added += batch_res.num_added;
                 }
             }
         }
-        
-
         return res;
     }
 
+    // Batch download, called by other functions whenever a set of study records has been obtained, (as a string
+    // from an API call). The string first needs deserializing to the response object, and then each individual 
+    // study needs to be transformed into the json file model, and saved as a json file in the appropriate folder.
 
-    public async Task<DownloadResult> DownloadRecordsBetweenDates(string file_base, DateTime cut_off_date, DateTime end_date, JsonSerializerOptions json_options,
-                                                             int source_id, int saf_id, int? days_ago)
+    private async Task<DownloadResult> DownloadBatch(string responseBodyAsString, string file_base, int source_id, int saf_id)
     {
         DownloadResult res = new();
-        ISRCTN_Processor ISRCTN_processor = new();
-        ScrapingHelpers ch = new(_logging_helper);
-
-        string start_url = "https://www.isrctn.com/api/query/format/default?q=";
-        string cut_off_date_param = $"{cut_off_date.Year}-{cut_off_date.Month}-{cut_off_date.Day}";
-        string end_date_param = $"{end_date.Year}-{end_date.Month}-{end_date.Day}";
-        string id_params = "lastEdited%20GE%20" + cut_off_date_param + "T00:00:00%20AND%20lastEdited%20LT%20" + end_date_param + "T00:00:00";
-        string end_url = "&limit=100";
-        string url = start_url + id_params + end_url;
-
-
-        return res;
-    }
-
-
-    async Task<DownloadResult> DownloadBatch(string responseBody, string file_base, JsonSerializerOptions json_options, int source_id, int saf_id)
-    {
-        DownloadResult res = new();
-        allTrials? result;
-        XmlSerializer xSerializer = new(typeof(allTrials));
-
-        try
+        allTrials? result = Deserialize<allTrials?>(responseBodyAsString);
+        if(result is null)
         {
-            using TextReader reader = new StringReader(responseBody);
-            result = (allTrials?)xSerializer.Deserialize(reader);
-        }
-        catch (Exception e)
-        {
-            _logging_helper.LogCodeError("Error with json with " + responseBody, e.Message, e.StackTrace);
+            _logging_helper.LogError("Error deserialising " + responseBodyAsString);
             return res;
         }
-
-        if (result is not null)
+        else
         {
             ISRCTN_Processor isrctn_processor = new();
-
-            FullTrial[]? full_trials = result.fullTrials;
-            if (full_trials?.Any() == true)
-            {
-                foreach (FullTrial f in full_trials)
+            int number_returned = result.totalCount;
+            if (number_returned > 0 && result.fullTrials?.Any() == true) 
+            { 
+                foreach (FullTrial f in result.fullTrials)
                 {
                     res.num_checked++;
                     Study s = isrctn_processor.GetFullDetails(f);
                     if (s is not null && s.sd_sid is not null)
                     {
-                        string full_path = await WriteOutFile(s, s.sd_sid, file_base, json_options);
+                        string full_path = await WriteOutFile(s, s.sd_sid, file_base);
                         if (full_path != "error")
                         {
-                            string remote_url = "https://clinicaltrials.gov/ct2/show/" + s.sd_sid;
+                            string remote_url = "https://www.isrctn.com/" + s.sd_sid;
                             DateTime? last_updated = s.lastUpdated?.FetchDateTimeFromISO();
                             bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, s.sd_sid, remote_url, saf_id,
                                                     last_updated, full_path);
@@ -223,23 +300,21 @@ class ISRCTN_Controller
                 }
             }
         }
-
         return res;
     }
 
-
     // Writes out the file with the correct name to the correct folder, as indented json.
-    // Called from both the DownloadBatch function.
+    // Called from the DownloadBatch function.
     // Returns the full file path as constructed, or an 'error' string if an exception occurred.
 
-    async Task<string> WriteOutFile(Study s, string sd_sid, string file_base, JsonSerializerOptions json_options)
+    private async Task<string> WriteOutFile(Study s, string sd_sid, string file_base)
     {
         string file_name = sd_sid + ".json";
         string full_path = Path.Combine(file_base, file_name!);
         try
         {
             using FileStream jsonStream = File.Create(full_path);
-            await JsonSerializer.SerializeAsync(jsonStream, s, json_options);
+            await JsonSerializer.SerializeAsync(jsonStream, s, _json_options);
             await jsonStream.DisposeAsync();
             return full_path;
         }
@@ -249,4 +324,53 @@ class ISRCTN_Controller
             return "error";
         }
     }
+
+    // String function that constructs the required URL for the ISRCTN API.
+
+    private string GetUrl(int limit, DateTime startdate, DateTime? enddate = null)
+    {
+        string start_date_param, end_date_param, id_params;
+        if (enddate is null)
+        {
+            start_date_param = $"{startdate.Year}-{startdate.Month.ToString("00")}-{startdate.Day.ToString("00")}";
+            id_params = "lastEdited%20GE%20" + start_date_param + "T00:00:00%20";
+        }
+        else
+        {
+            DateTime end_date = (DateTime)enddate;
+            start_date_param = $"{startdate.Year}-{startdate.Month.ToString("00")}-{startdate.Day.ToString("00")}";
+            end_date_param = $"{end_date.Year}-{end_date.Month.ToString("00")}-{end_date.Day.ToString("00")}";
+            id_params = "lastEdited%20GE%20" + start_date_param + "T00:00:00%20AND%20lastEdited%20LT%20" + end_date_param + "T00:00:00";
+        }
+        string end_url = $"&limit={limit}";
+        return _base_url + id_params + end_url;
+    }
+
+    // General XML Deserialize function.
+
+    private T? Deserialize<T>(string? inputString)
+    {
+        if (inputString is null)
+        {
+            return default;
+        }
+
+        T? instance = default;
+        try
+        {
+            var xmlSerializer = new XmlSerializer(typeof(T));
+            using (var stringreader = new StringReader(inputString))
+            {
+                instance = (T?)xmlSerializer.Deserialize(stringreader);
+            }
+        }
+        catch(Exception e)
+        {
+            _logging_helper.LogCodeError("Error when deserialising " + inputString, e.Message, e.StackTrace);
+            return default;
+        }
+
+        return instance;
+    }
 }
+

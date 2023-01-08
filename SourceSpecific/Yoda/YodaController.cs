@@ -24,11 +24,11 @@ namespace MDR_Downloader.yoda
             _mon_data_layer = mon_data_layer;
         }
 
-        public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, int saf_id, Source source)
+        public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, Source source)
         {
-            // For Yoda, all data is downloaded each time during a download, as it takes a relatively short time
-            // and the files simply replaced or - if new - added to the folder. There is therefore not a concept of an
-            // update or focused download, as opposed to a full download.
+            // For Yoda, all data is downloaded each time during a download (t = 102), as it takes a relatively 
+            // short time and the files are simply replaced or - if new - added to the folder. There is therefore 
+            // not a concept of an update or focused download, as opposed to a full download.
 
             DownloadResult res = new();
             ScrapingHelpers ch = new (_logging_helper);
@@ -177,7 +177,7 @@ namespace MDR_Downloader.yoda
                                         _logging_helper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
                                     }
 
-                                    bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, st.sd_sid!, st.remote_url, saf_id,
+                                    bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, st.sd_sid!, st.remote_url, (int)opts.saf_id,
                                                                       null, full_path);
                                     res.num_downloaded++;
                                     if (added) res.num_added++;

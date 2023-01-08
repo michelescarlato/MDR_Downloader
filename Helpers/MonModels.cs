@@ -35,10 +35,14 @@ namespace MDR_Downloader
     {
         public int id { get; set; }
         public string? name { get; set; }
-        public bool requires_date { get; set; }
-        public bool requires_file { get; set; }
-        public bool requires_search_id { get; set; }
-        public bool requires_prev_saf_ids { get; set; }
+        public bool? requires_cutoff_date { get; set; }
+        public bool? requires_end_date { get; set; }
+        public bool? requires_file { get; set; }
+        public bool? requires_folder { get; set; }
+        public bool? requires_startandendnumbers { get; set; }
+        public bool? requires_offsetandamountids { get; set; }
+        public bool? requires_search_id { get; set; }
+        public bool? requires_prev_saf_ids { get; set; }
         public string? description { get; set; }
         public string? list_order { get; set; }
     }
@@ -48,30 +52,46 @@ namespace MDR_Downloader
     public class SAFEvent
     {
         [ExplicitKey]
-        public int id { get; set; }
+        public int? id { get; set; }
         public int? source_id { get; set; }
-        public int? type_id { get; set; }
         public DateTime? time_started { get; set; }
         public DateTime? time_ended { get; set; }
         public int? num_records_checked { get; set; }
         public int? num_records_added { get; set; }
         public int? num_records_downloaded { get; set; }
+        public int? type_id { get; set; }
+        public string? filefolder_path { get; set; }
+        public DateTime? cut_off_date { get; set; }
+        public DateTime? end_date { get; set; }
         public int? filter_id { get; set; }
         public string? previous_saf_ids { get; set; }
-        public DateTime? cut_off_date { get; set; }
+        public int? start_page{ get; set; }
+        public int? end_page{ get; set; }
+        public int? ids_offset{ get; set; }
+        public int? ids_amount { get; set; }
         public string? comments { get; set; }
 
         public SAFEvent() { }
 
-        public SAFEvent(int _id, int? _source_id, int? _type_id, int? _filter_id, 
-                  DateTime? _cut_off_date, string? _previous_saf_ids)
+        public SAFEvent(int? _id, int? _source_id, int? _type_id,
+                        string? _filefolder_path, 
+                        DateTime? _cut_off_date, DateTime? _end_date, 
+                        int? _filter_id, string? _previous_saf_ids,
+                        int? _start_page, int? _end_page,
+                        int? _ids_offset, int? _ids_amount)
         {
             id = _id;
             source_id = _source_id;
             type_id = _type_id;
-            filter_id = _filter_id;
+            filefolder_path = _filefolder_path;
             cut_off_date = _cut_off_date;
+            end_date = _end_date;
+            filter_id = _filter_id;
             previous_saf_ids = _previous_saf_ids;
+            start_page= _start_page;
+            end_page= _end_page;
+            ids_offset = ids_offset;
+            ids_amount = ids_amount;
             time_started = DateTime.Now;
         }
     }
@@ -109,21 +129,6 @@ namespace MDR_Downloader
             last_downloaded = DateTime.Now;
             local_path = _local_path;
         }
-
-        // constructor when an 'assumed complete' judgement can be expected (not always there)
-        public StudyFileRecord(int? _source_id, string? _sd_id, string? _remote_url, int? _last_saf_id,
-                                              bool? _assume_complete, string? _local_path)
-        {
-            source_id = _source_id;
-            sd_id = _sd_id;
-            remote_url = _remote_url;
-            last_saf_id = _last_saf_id;
-            assume_complete = _assume_complete;
-            download_status = 2;
-            last_downloaded = DateTime.Now;
-            local_path = _local_path;
-        }
-
 
         public StudyFileRecord()
         { }
@@ -164,21 +169,6 @@ namespace MDR_Downloader
             local_path = _local_path;
         }
 
-        // constructor when an 'assumed complete' judgement can be expected (not always there)
-        public ObjectFileRecord(int? _source_id, string? _sd_id, string? _remote_url, int? _last_saf_id,
-                                              bool? _assume_complete, string? _local_path)
-        {
-            source_id = _source_id;
-            sd_id = _sd_id;
-            remote_url = _remote_url;
-            last_saf_id = _last_saf_id;
-            assume_complete = _assume_complete;
-            download_status = 2;
-            last_downloaded = DateTime.Now;
-            local_path = _local_path;
-        }
-
-
         // constructor when a new file record required, when a pmid new to the system is found
         public ObjectFileRecord(int? _source_id, string? _sd_id, string? _remote_url, int? _last_saf_id)
         {
@@ -194,17 +184,35 @@ namespace MDR_Downloader
 
     }
 
+
     public class DownloadResult
     {
         public int num_checked { get; set; }
         public int num_added { get; set; }
         public int num_downloaded { get; set; }
+        public string error_message { get; set; }
 
         public DownloadResult()
         {
             num_checked = 0;
             num_added = 0;
             num_downloaded = 0;
+        }
+
+        public DownloadResult(string _error_message)
+        {
+            num_checked = 0;
+            num_added = 0;
+            num_downloaded = 0;
+            error_message = _error_message;
+        }
+
+        public DownloadResult(int _num_checked, int _num_added, int _num_downloaded, string _error_message)
+        {
+            num_checked = _num_checked;
+            num_added = _num_added;
+            num_downloaded = _num_downloaded;
+            error_message = _error_message;
         }
     }
 

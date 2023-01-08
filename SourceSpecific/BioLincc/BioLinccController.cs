@@ -1,18 +1,11 @@
 ﻿using HtmlAgilityPack;
-using MDR_Downloader.ctg;
 using MDR_Downloader.Helpers;
-using MDR_Downloader.pubmed;
 using ScrapySharp.Extensions;
 using ScrapySharp.Html;
 using ScrapySharp.Network;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Xml.Serialization;
+
 
 namespace MDR_Downloader.biolincc
 {
@@ -26,36 +19,33 @@ namespace MDR_Downloader.biolincc
         {
             _logging_helper = logging_helper;
             _mon_data_layer = mon_data_layer;
-            _biolincc_repo = new ();
+            _biolincc_repo = new();
         }
 
 
-        public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, int saf_id, Source source)
+        public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, Source source)
         {
-            /******************************************************************************
-            * For BioLincc, all data is downloaded each time during a download, 
-            * as it takes a relatively short time to run through about 300 studies.
-            * 
-            * Obtaining the data has two stages.
-            * The first gets the web page list and then loops through it to fetch details
-            * of each study, which are then stored as local files in the usual fashion.
-            * Noter that id a n object cannot be classified it is filed, for later 
-            * inspection, and the study id is not stored.
-            * 
-            * The second uses the data collected about which BIOLINCC stuydies linke to 
-            * which NCT studies (it is always not 1-to-1) to update the 'in multi-BioLINCC
-            * group' field, when multiple BioLINCC studies correspond to a single NCT study,
-            * for those records that require it.
-            * 
-            ******************************************************************************/
+            // For BioLincc, all data is downloaded each time during a download, 
+            // (t= 102) as it takes a relatively short time to run through about 300 studies.
+            // 
+            // Obtaining the data has two stages.
+            // The first gets the web page list and then loops through it to fetch details
+            // of each study, which are then stored as local files in the usual fashion.
+            // Noter that id a n object cannot be classified it is filed, for later 
+            // inspection, and the study id is not stored.
+            // 
+            // The second uses the data collected about which BIOLINCC stuydies linke to 
+            // which NCT studies (it is always not 1-to-1) to update the 'in multi-BioLINCC
+            // group' field, when multiple BioLINCC studies correspond to a single NCT study,
+            // for those records that require it.
 
-            DownloadResult res = await LoopThroughPagesAsync(opts, saf_id, source);
-            await PostProcessDataAsync(source, saf_id);
+            DownloadResult res = await LoopThroughPagesAsync(opts, source);
+            await PostProcessDataAsync(source, opts.saf_id);
             return res;
         }
 
 
-        public async Task<DownloadResult> LoopThroughPagesAsync(Options opts, int saf_id, Source source)
+        public async Task<DownloadResult> LoopThroughPagesAsync(Options opts, Source source)
         {
             DownloadResult res = new ();
             ScrapingHelpers ch = new(_logging_helper);
@@ -166,7 +156,7 @@ namespace MDR_Downloader.biolincc
                                             _logging_helper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
                                         }
 
-                                        bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, st.sd_sid!, st.remote_url, saf_id,
+                                        bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, st.sd_sid!, st.remote_url, opts.saf_id,
                                                                           st.datasets_updated_date, full_path);
                                         res.num_downloaded++;
                                         if (added) res.num_added++;
@@ -194,7 +184,7 @@ namespace MDR_Downloader.biolincc
         }
 
 
-        public async Task PostProcessDataAsync(Source source, int saf_id)
+        public async Task PostProcessDataAsync(Source source, int? saf_id)
         {
             // Allows groups of Biolinnc trials that equate to a single NCT registry to be identified.
 

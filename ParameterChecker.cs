@@ -52,7 +52,7 @@ internal class ParameterChecker
                 throw new ArgumentException("The first argument does not correspond to a known source");
             }
 
-            // Check source fetch type id is valid. 
+            // Check source fetch type id is valid and obtain parameter requirements associated with this type. 
 
             SFType? sf_type = _mon_data_layer.FetchTypeParameters(opts.FetchTypeId);
             if (sf_type is null)
@@ -76,7 +76,7 @@ internal class ParameterChecker
             // If a date is required check one is present and is valid. 
             // It should be in the ISO YYYY-MM-DD format.
 
-            if (sf_type.requires_date == true)
+            if (sf_type.requires_cutoff_date == true)
             {
                 if (!string.IsNullOrEmpty(opts.CutoffDateAsString))
                 {
@@ -92,7 +92,7 @@ internal class ParameterChecker
                 else
                 {
                     // Try and find the last download date and use that
-                    if (sf_type.requires_search_id && opts.FocusedSearchId is not null)
+                    if (sf_type.requires_search_id == true && opts.FocusedSearchId is not null)
                     {
                         opts.CutoffDate = _mon_data_layer.ObtainLastDownloadDateWithFilter(source.id, (int)opts.FocusedSearchId);
                     }
@@ -104,30 +104,105 @@ internal class ParameterChecker
 
                 if (opts.CutoffDate is null)
                 {
-                    string error_message = "This search fetch type requires a date";
+                    string error_message = "This search fetch type requires a cutoff date";
                     error_message += " in the format YYYY-MM-DD and this is missing";
                     throw new ArgumentException(error_message);
                 }
             }
 
+            if (sf_type.requires_end_date == true)
+            {
+                if (!string.IsNullOrEmpty(opts.EndDateAsString))
+                {
+                    string EndDateAsString = opts.EndDateAsString;
+                    if (Regex.Match(EndDateAsString, @"^20\d{2}-[0,1]\d{1}-[0, 1, 2, 3]\d{1}$").Success)
+                    {
+                        opts.EndDate = new DateTime(
+                                    Int32.Parse(EndDateAsString.Substring(0, 4)),
+                                    Int32.Parse(EndDateAsString.Substring(5, 2)),
+                                    Int32.Parse(EndDateAsString.Substring(8, 2)));
+                    }
+                }
+
+                if (opts.EndDate is null)
+                {
+                    string error_message = "This search fetch type requires an end date";
+                    error_message += " in the format YYYY-MM-DD and this is missing";
+                    throw new ArgumentException(error_message);
+                }
+            }
+
+
             // If a file (or for some download types a folder path) is required check a name is 
             // supplied and that it corresponds to an existing file or folder.
 
-            if (sf_type.requires_file)
+            if (sf_type.requires_file == true)
             {
-                if (string.IsNullOrEmpty(opts.FileName) || 
-                          (!File.Exists(opts.FileName) && !Directory.Exists(opts.FileName))
-                          )
+                if (string.IsNullOrEmpty(opts.FileName) || !File.Exists(opts.FileName))
                 {
-                    string error_message = "This search fetch type requires a file name";
+                    string error_message = "This search fetch type requires a file path";
                     error_message += " and no valid file path and name is supplied";
                     throw new ArgumentException(error_message);
                 }
             }
 
-            if (sf_type.requires_prev_saf_ids)
+            if (sf_type.requires_folder == true)
             {
-                if ((opts.PreviousSearches?.Any() == true))
+                if (string.IsNullOrEmpty(opts.FileName) || !Directory.Exists(opts.FileName))
+                {
+                    string error_message = "This search fetch type requires a folder path";
+                    error_message += " and no valid folder path supplied";
+                    throw new ArgumentException(error_message);
+                }
+            }
+
+
+            if (sf_type.requires_startandendnumbers == true)
+            {
+                if (!opts.StartPage.HasValue || opts.StartPage == 0)
+                {
+                    string error_message = "This search fetch type requires an integer";
+                    error_message += " value for a start page index (> 0) and none was supplied";
+                    throw new ArgumentException(error_message);
+                }
+                if (!opts.EndPage.HasValue || opts.EndPage == 0)
+                {
+                    string error_message = "This search fetch type requires an integer";
+                    error_message += " value for an end page index (> 0) and none was supplied";
+                    throw new ArgumentException(error_message);
+                }
+
+            }
+
+            if (sf_type.requires_offsetandamountids == true)
+            {
+                if (!opts.OffsetIds.HasValue)
+                {
+                    string error_message = "This search fetch type requires an integer";
+                    error_message += " value for an Id offset (within an ordered list of";
+                    error_message += " study ids, and none was supplied";
+                    throw new ArgumentException(error_message);
+                }
+                if (!opts.AmountIds.HasValue)
+                {
+                    string error_message = "This search fetch type requires an integer";
+                    error_message += " value for the number of Ids to be examined after";
+                    error_message += " the offset and none was supplied";
+                    throw new ArgumentException(error_message);
+                }
+            }
+
+            if (sf_type.requires_prev_saf_ids == true)
+            {
+                if (opts.PreviousSearches?.Any() == true)
+                {
+                    foreach (int i in opts.PreviousSearches)
+                    {
+                        opts.previous_saf_ids += ", " + i.ToString();
+                    }
+                    opts.previous_saf_ids = opts.previous_saf_ids![2..];
+                }
+                else
                 {
                     string error_message = "This search fetch type requires one or more";
                     error_message += " previous search-fetch ids and none were supplied.";
@@ -193,8 +268,7 @@ public class Options
     [Option('t', "sf_type_id", Required = true, HelpText = "Integer id representing type of search / fetch.")]
     public int FetchTypeId { get; set; }
 
-    [Option('f', "file_name", Required = false, HelpText = "Filename of csv file with data.")]
-    public string? FileName { get; set; }
+    public int? saf_id { get; set; }
 
     [Option('d', "cutoff_date", Required = false, HelpText = "Only data revised or added since this date will be considered")]
     public string? CutoffDateAsString { get; set; }
@@ -206,25 +280,34 @@ public class Options
 
     public DateTime? EndDate { get; set; }
 
+    [Option('f', "file_name", Required = false, HelpText = "Filename of csv file with data.")]
+    public string? FileName { get; set; }
+
     [Option('a', "amount for id based download", Required = false, HelpText = "Integer indicating the nmumber of ids to be iuused in fetching data.")]
     public int? AmountIds { get; set; }
 
     [Option('o', "offset for id based download", Required = false, HelpText = "Integer indicating the offset to use when interrogatring the list of Ids.")]
     public int? OffsetIds { get; set; }
 
-    [Option('q', "focused-search_id", Required = false, HelpText = "Integer id representing id of focused search / fetch.")]
-    public int? FocusedSearchId { get; set; }
-
     [Option('I', "skip_recent", Required = false, HelpText = "Integer id representing the number of days ago, to skip recent downloads (0 = today).")]
     public int? SkipRecentDays { get; set; }
-
-    [Option('p', "previous_searches", Required = false, Separator = ',', HelpText = "One or more ids of the search(es) that will be used to retrieve the data")]
-    public IEnumerable<int>? PreviousSearches { get; set; }
 
     [Option('L', "no_Logging", Required = false, HelpText = "If present prevents the logging record in sf.saf_events")]
     public bool? NoLogging { get; set; }
 
+    [Option('S', "start_page", Required = false, HelpText = "First summary page number to be considered if downloading all EU CTR records (starts at 1)")]
+    public int? StartPage { get; set; }
 
+    [Option('E', "end_page", Required = false, HelpText = "Last summary page number to be considered if downloading all EU CTR record")]
+    public int? EndPage { get; set; }
+
+    [Option('q', "focused-search_id", Required = false, HelpText = "Integer id representing id of focused search / fetch.")]
+    public int? FocusedSearchId { get; set; }
+
+    [Option('p', "previous_searches", Required = false, Separator = ',', HelpText = "One or more ids of the search(es) that will be used to retrieve the data")]
+    public IEnumerable<int>? PreviousSearches { get; set; }
+
+    public string? previous_saf_ids { get; set; }
 
 }
 

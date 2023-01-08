@@ -1,10 +1,6 @@
-﻿using System;
-using System.Runtime.Intrinsics.X86;
-using System.Text.Encodings.Web;
+﻿using System.Text.Encodings.Web;
 using System.Text.Json;
 using MDR_Downloader.Helpers;
-using MDR_Downloader.who;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace MDR_Downloader.ctg;
 
@@ -20,7 +16,7 @@ class CTG_Controller
     }
 
 
-    public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, int saf_id, Source source)
+    public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, Source source)
     {
         // Data retrieval is normally via an API call to revised files using a cut off revision date, 
         // that date being normally the date of the most recent dowenload.
@@ -60,16 +56,16 @@ class CTG_Controller
 
         if (t == 111 && opts.CutoffDate is not null)
         {
-            return await DownloadRevisedRecords(file_base, (DateTime)opts.CutoffDate, json_options, source.id, saf_id);
+            return await DownloadRevisedRecords(file_base, (DateTime)opts.CutoffDate, json_options, source.id, (int)opts.saf_id!);
         }
         else if (t == 146 && opts.OffsetIds is not null && opts.AmountIds is not null)
         {
-            return await DownloadRecordsById(file_base, (int)opts.OffsetIds, (int)opts.AmountIds, json_options, source.id, saf_id);
+            return await DownloadRecordsById(file_base, (int)opts.OffsetIds, (int)opts.AmountIds, json_options, source.id, (int)opts.saf_id!);
         }
         else if (t == 303 && !string.IsNullOrEmpty(opts.FileName) && opts.OffsetIds is not null && opts.AmountIds is not null)
         {
             return await ReexportBulkDownloadedRecords(file_base, opts.FileName, (int)opts.OffsetIds,
-                                                       (int)opts.AmountIds, json_options, source.id, saf_id);
+                                                       (int)opts.AmountIds, json_options, source.id, (int)opts.saf_id!);
         }
         else
         {

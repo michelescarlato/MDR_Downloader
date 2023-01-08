@@ -25,9 +25,12 @@ public class Downloader
     {
         // Log parameters and set up search and fetch record.
 
-        string previous_saf_ids = _logging_helper.LogCommandLineParameters(opts);
-        int saf_id = _mon_data_layer.GetNextSearchFetchId();
-        SAFEvent saf = new(saf_id, source.id, opts.FetchTypeId, opts.FocusedSearchId, opts.CutoffDate, previous_saf_ids);
+        _logging_helper.LogCommandLineParameters(opts);
+        opts.saf_id = _mon_data_layer.GetNextSearchFetchId();
+        SAFEvent saf = new(opts.saf_id, source.id, opts.FetchTypeId, opts.FileName, 
+                           opts.CutoffDate, opts.EndDate, opts.FocusedSearchId, 
+                           opts.previous_saf_ids, opts.StartPage, opts.EndPage,
+                           opts.OffsetIds, opts.AmountIds);
         DownloadResult res = new();
 
         switch (source.id)
@@ -35,37 +38,37 @@ public class Downloader
             case 101900:
                 {
                     BioLINCC_Controller biolincc_controller = new(_mon_data_layer, _logging_helper);
-                    res = await biolincc_controller.ObtainDatafromSourceAsync(opts, saf_id, source);
+                    res = await biolincc_controller.ObtainDatafromSourceAsync(opts, source);
                     break;
                 }
             case 101901:
                 {
                     Yoda_Controller yoda_controller = new(_mon_data_layer, _logging_helper);
-                    res = await yoda_controller.ObtainDatafromSourceAsync(opts, saf_id, source);
+                    res = await yoda_controller.ObtainDatafromSourceAsync(opts, source);
                     break;
                 }
             case 100120:
                 {
                     CTG_Controller ctg_controller = new(_mon_data_layer, _logging_helper);
-                    res = await ctg_controller.ObtainDatafromSourceAsync(opts, saf_id, source);
+                    res = await ctg_controller.ObtainDatafromSourceAsync(opts, source);
                     break;
                 }
             case 100126:
                 {
                     ISRCTN_Controller isrctn_controller = new(_mon_data_layer, _logging_helper);
-                    res = await isrctn_controller.ObtainDatafromSourceAsync(opts, saf_id, source); 
+                    res = await isrctn_controller.ObtainDatafromSourceAsync(opts, source); 
                     break;
                 }
             case 100123:
                 {
                     EUCTR_Controller euctr_controller = new(_mon_data_layer, _logging_helper);
-                    res = await euctr_controller.ObtainDatafromSourceAsync(opts, saf_id, source); 
+                    res = await euctr_controller.ObtainDatafromSourceAsync(opts, source); 
                     break;
                 }
             case 100115:
                 {
                     WHO_Controller who_controller = new(_mon_data_layer, _logging_helper);
-                    res = await who_controller.ObtainDatafromSourceAsync(opts, saf_id, source);
+                    res = await who_controller.ObtainDatafromSourceAsync(opts, source);
                     break;
                 }
             case 100135:
@@ -73,14 +76,14 @@ public class Downloader
                     // PubMed - See notes at top of PubMed controller for explanation of different download types.
 
                     PubMed_Controller pubmed_controller = new(_mon_data_layer, _logging_helper);
-                    res = await pubmed_controller.ObtainDatafromSourceAsync(opts, saf_id, source);
+                    res = await pubmed_controller.ObtainDatafromSourceAsync(opts, source);
                     break;
                 }
             case 101940:
                 {
                     // vivli
                     Vivli_Controller vivli_controller = new(_mon_data_layer, _logging_helper);
-                    res = await vivli_controller.ObtainDatafromSourceAsync(opts, saf_id, source);
+                    res = await vivli_controller.ObtainDatafromSourceAsync(opts, source);
                     break;
                 }
         }

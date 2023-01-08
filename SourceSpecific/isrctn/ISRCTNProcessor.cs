@@ -1,5 +1,6 @@
 ﻿using HtmlAgilityPack;
 using MDR_Downloader.euctr;
+using MDR_Downloader.Helpers;
 using MDR_Downloader.isrctn;
 using MDR_Downloader.pubmed;
 using ScrapySharp.Html;
@@ -19,33 +20,6 @@ namespace MDR_Downloader.isrctn;
 
 public class ISRCTN_Processor
 {
-    
-    /*public int GetListLength(string initialDownload)
-    {
-        // gets the numbers of records found for the current search
-
-       
-
-        var resultsHeader = homePage.Find("h1", By.Class("Results_title")).FirstOrDefault();
-        if (resultsHeader is not null)
-        {
-            string results_string = InnerContent(resultsHeader);
-            string results_num = results_string.Substring(0, results_string.IndexOf("results")).Trim();
-            if (Int32.TryParse(results_num, out int result_count))
-            {
-                return result_count;
-            }
-            else
-            {
-                return 0;
-            }
-        }
-        else
-        {
-            return 0;
-        }
-    }*/
-
     public Study GetFullDetails(FullTrial ft)
     {
         Study st = new();
@@ -63,7 +37,7 @@ public class ISRCTN_Processor
         var tr = ft.trial;
         if (tr is not null)
         {
-            st.sd_sid = "ISRCTN" + tr.isrctn?.value.ToString();
+            st.sd_sid = "ISRCTN" + tr.isrctn?.value.ToString("00000000");
             st.dateIdAssigned = tr.isrctn?.dateAssigned;
             st.lastUpdated = tr.lastUpdated;
 
@@ -82,16 +56,26 @@ public class ISRCTN_Processor
                 string? pes = d.plainEnglishSummary;
                 if (pes is not null)
                 {
+                    // Attempt to find the beginningof the 'discarded' sections.
+                    // If found discard those sections.
+
                     int endpos = pes.IndexOf("What are the possible benefits and risks");
+                    if (endpos == -1)
+                    {
+                        endpos = pes.IndexOf("What are the potential benefits and risks");
+                    }
                     if (endpos != -1)
                     {
                         pes = pes[..endpos];
                     }
-                    pes.Replace("Background and study aims", "Background and study aims\n");
-                    pes.Replace("Who can participate?", "\nWho can participate?\n");
-                    pes.Replace("What does the study involve?", "\nWhat does the study involve?\n");
+
+                    pes = pes.Replace("Background and study aims", "Background and study aims\n");
+                    pes = pes.Replace("Who can participate?", "\nWho can participate?\n");
+                    pes = pes.Replace("What does the study involve?", "\nWhat does the study involve?\n");
+                    pes = pes.CompressSpaces();
+                    
+                    st.plainEnglishSummary = pes;
                 }
-                st.plainEnglishSummary = pes;
             }
 
             var g = tr.trialDesign;

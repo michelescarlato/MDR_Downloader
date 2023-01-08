@@ -1,194 +1,289 @@
 ﻿using MDR_Downloader.Helpers;
 using ScrapySharp.Network;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Xml.Serialization;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using static System.Net.Mime.MediaTypeNames;
 
-namespace MDR_Downloader.euctr
+namespace MDR_Downloader.euctr;
+
+class EUCTR_Controller
 {
-    class EUCTR_Controller
+    private readonly LoggingHelper _logging_helper;
+    private readonly MonDataLayer _mon_data_layer;
+    private readonly JsonSerializerOptions? _json_options;
+    private readonly EUCTR_Processor _processor;
+    private readonly string _baseURL;
+    int _access_error_num = 0;
+
+    public EUCTR_Controller(MonDataLayer mon_data_layer, LoggingHelper logging_helper)
     {
-        LoggingHelper _logging_helper;
-        MonDataLayer _mon_data_layer;
-
-        EUCTR_Processor processor;
-
-        int access_error_num = 0;
-        int pause_error_num = 0;
-
-        public EUCTR_Controller(MonDataLayer mon_data_layer, LoggingHelper logging_helper)
+        _logging_helper = logging_helper;
+        _mon_data_layer = mon_data_layer;
+        _json_options = new()
         {
-            processor = new EUCTR_Processor();
-            
-            _logging_helper = logging_helper;
-            _mon_data_layer = mon_data_layer;
+            AllowTrailingCommas = true,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            WriteIndented = true
+        };
+        _processor = new();
+        _baseURL = "https://www.clinicaltrialsregister.eu/ctr-search/search?page=";
+    }
+
+    // 
+
+    public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, Source source)
+    {
+        DownloadResult res = new();
+        ScrapingHelpers ch = new(_logging_helper);
+        string? file_base = source.local_folder;
+
+        if (file_base is null)
+        {
+            _logging_helper.LogError("Null value passed for local folder value for this source");
+            return res;   // return zero result
         }
 
-        public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, int saf_id, Source source)
+        // first ensure that the web site is up
+        // and get total record numbers and total page numbers
+        
+        int saf_id = (int)opts.saf_id!;    // will be non-null
+        WebPage? initialPage = await ch.GetPageAsync(_baseURL + "1");
+        if (initialPage is null)
         {
-            // consider type - from args
-            // if sf_type = 141, 142, 143 (normally 142 here) only download files 
-            // not already marked as 'complete' - i.e. very unlikely to change. This is 
-            // signalled by including the flag in the call to the processor routine.
+            _logging_helper.LogError("Unable to open initial summary page (web site may be down), so unable to proceed");
+            return res;   // return zero result
+        }
 
-            DownloadResult res = new ();
-            string? file_base = source.local_folder;
-            if (file_base is null)
+        // first get total number of records 
+        // Only proceed if that initial task is possible
+
+        int rec_num = _processor.GetListLength(initialPage);
+        if (rec_num == 0)
+        {
+            _logging_helper.LogError("Unable to capture total record numbers in preliminaryu set up, so unable to proceed");
+            return res;  // return zero result
+        }
+
+        int total_summary_pages = rec_num % 20 == 0 ? rec_num / 20 : (rec_num / 20) + 1;
+
+        // if sf_type = 145 only scrape & download files with a download status of 0
+        // if type = 146 scrape all records in the designated page range (20 records per page)
+        // in both cases ignore records that have been downloaded in recent interval (I, 'skip recent' parameter)
+        int start_page, end_page;
+
+        if (opts.FetchTypeId == 145)
+        {
+            if (opts.StartPage is null)
             {
-                _logging_helper.LogError("Null value passed for local folder value for this source");
-                return res;   // return zero result
+                opts.StartPage = 0; // by default start at the beginning, but can be over-written by StartPage parameter
+            }
+            start_page = (int)opts.StartPage;
+            end_page = total_summary_pages;
+        }
+        else if (opts.FetchTypeId == 146)
+        {
+            if (opts.StartPage is not null && opts.EndPage is not null)
+            {
+                start_page = (int)opts.StartPage;
+                end_page = opts.EndPage > total_summary_pages ? total_summary_pages : (int)opts.EndPage;
+            }
+            else
+            {
+                _logging_helper.LogError("Valid start and end page numbers not provided for page based download");
+                return res;  // return zero result
+            }
+        }
+        else
+        {
+            _logging_helper.LogError("Download type requested not in allowed list for EU CTR"); 
+            return res;  // return zero result
+        }
+
+        res = await LoopThroughDesignatedPagesAsync(opts.FetchTypeId, start_page, end_page, opts.SkipRecentDays, source.id, saf_id, file_base);
+
+        return res;
+    }
+
+
+    async Task<DownloadResult> LoopThroughDesignatedPagesAsync(int type_id, int start_page, int end_page, int? days_ago, int source_id, int saf_id, string filebase)
+    {
+        DownloadResult res = new DownloadResult();
+        ScrapingHelpers ch = new(_logging_helper);
+
+        for (int i = start_page; i <= end_page; i++)
+        {
+            // if (res.num_downloaded > 2) break; // for testing
+
+            Thread.Sleep(100);
+
+            // Go to the summary page indicated by current value of i
+            // Each page has up to 20 listed studies. Get a list of their Ids.
+
+            WebPage? summaryPage = await ch.GetPageAsync(_baseURL + i.ToString());
+            if (summaryPage is null)
+            {
+                _logging_helper.LogError($"Unable to reach summary data page {i} - skipping this page");
+                break;
             }
 
-            int? days_ago = opts.SkipRecentDays;
-            int sf_type_id = opts.FetchTypeId;
-            int source_id = source.id;
-            ScrapingHelpers ch = new (_logging_helper);
-            XmlSerializer writer = new (typeof(EUCTR_Record));
-            
-            bool do_all_records = !(sf_type_id == 141 || sf_type_id == 142 || sf_type_id == 143);
-            string baseURL = "https://www.clinicaltrialsregister.eu/ctr-search/search?query=&page=";
-            WebPage? searchPage = await ch.GetPageAsync(baseURL);
-            if (searchPage is null)
+            List<Study_Summmary>? summaries = _processor.GetStudyList(summaryPage);
+            if (summaries?.Any() != true)
             {
-                _logging_helper.LogError("Attempt to access first search page failed");
-                return res;   // return zero result
+                _logging_helper.LogError($"Problem in collecting summary data on page {i} - skipping this page");
+                break;
             }
 
-            int skipped = 0;
-            int rec_num = processor.GetListLength(searchPage);
-            if (rec_num != 0)
+            // Calculate how many of the 20 need to be downloaded and mark those that do.
+            // No 'last updated' field to check, so have to be selected using much cruder techniques
+
+            int num_to_download = 0;
+            foreach (Study_Summmary s in summaries)
             {
-                int loop_limit = rec_num % 20 == 0 ? rec_num / 20 : (rec_num / 20) + 1;
-                for (int i = 0; i <= loop_limit; i++)
+                bool do_download = false;
+                res.num_checked++;
+                if (s.eudract_id is not null)
                 {
-                    // Go to the summary page indicated by current value of i
-                    // Each page has up to 20 listed studies.
-                    // Once on that page each of the studies is processed in turn...
-                    searchPage = await ch.GetPageAsync(baseURL + i.ToString());
-                    if (searchPage is not null)
+                    StudyFileRecord? file_record = _mon_data_layer.FetchStudyFileRecord(s.eudract_id, source_id);
+                    if (file_record is null)
                     {
-                        List<EUCTR_Summmary> summaries = processor.GetStudySuummaries(searchPage);
+                        // a new record not yet existing in study sourece table - must be downloaded.
 
-                        foreach (EUCTR_Summmary s in summaries)
-                        {
-                            // Check the euctr_id (sd_id) is not 'assumed complete' if only incomplete 
-                            // records are being considered; only proceed if this is the case
-                            bool do_download = false;
-                            res.num_checked++;
-
-                            StudyFileRecord? file_record = _mon_data_layer.FetchStudyFileRecord(s.eudract_id!, source_id);
-                            if (file_record is null)
-                            {
-                                do_download = true;  // record does not yet exist
-                            }
-                            else if (do_all_records || file_record.assume_complete != true)
-                            {
-                                // if record exists only consider it if the 'incomplete only' flag is being ignored,
-                                // or the completion status is false or null
-                                // Even then do a double check to ensure the record has not been recently downloaded
-                                if (days_ago == null || !_mon_data_layer.Downloaded_recently(source_id, s.eudract_id!, (int)days_ago))
-                                {
-                                    do_download = true; // download if not assumed complete, or incomplete only flag does not apply
-                                }
-                            }
-                            if (!do_download) skipped++;
-
-                            if (do_download)
-                            {
-                                // transfer summary details to the main EUCTR_record object
-                                EUCTR_Record st = new EUCTR_Record(s);
-
-                                WebPage? detailsPage = await ch.GetPageAsync(st.details_url!);
-                                if (detailsPage is not null)
-                                {
-                                    st = processor.ExtractProtocolDetails(st, detailsPage);
-
-                                    // Then get results details
-
-                                    if (st.results_url is not null)
-                                    {
-                                        System.Threading.Thread.Sleep(800);
-                                        WebPage? resultsPage = await ch.GetPageAsync(st.results_url);
-                                        if (resultsPage is not null)
-                                        {
-                                            st = processor.ExtractResultDetails(st, resultsPage);
-                                        }
-                                        else
-                                        {
-                                            _logging_helper.LogError("Problem in navigating to result details, id is " + s.eudract_id);
-                                        }
-                                    }
-
-                                    // Write out study record as XML.
-                                    if (!Directory.Exists(file_base))
-                                    {
-                                        Directory.CreateDirectory(file_base);
-                                    }
-                                    string file_name = "EU " + st.eudract_id + ".xml";
-                                    string full_path = Path.Combine(file_base, file_name);
-                                    FileStream file = File.Create(full_path);
-                                    writer.Serialize(file, st);
-                                    file.Close();
-
-                                    bool assume_complete = false;
-                                    if (st.trial_status == "Completed" && st.results_url is not null)
-                                    {
-                                        assume_complete = true;
-                                    }
-                                    bool added = _mon_data_layer.UpdateStudyDownloadLogWithCompStatus(source_id, st.eudract_id!,
-                                                                       st.details_url!, saf_id,
-                                                                       assume_complete, full_path);
-                                    res.num_downloaded++;
-                                    if (added) res.num_added++;
-                                }
-                                else
-                                {
-                                    _logging_helper.LogError("Problem in navigating to protocol details, id is " + s.eudract_id);
-                                    CheckAccessErrorCount();
-                                }
-
-                                System.Threading.Thread.Sleep(800);
-                            }
-
-                            if (res.num_checked % 10 == 0)
-                            {
-                                _logging_helper.LogLine("EUCTR pages checked: " + res.num_checked.ToString());
-                                _logging_helper.LogLine("EUCTR pages skipped: " + skipped.ToString());
-                            }
-                        }
-
+                        do_download = true;
                     }
                     else
                     {
-                        _logging_helper.LogError("Problem in navigating to summary page, page value is " + i.ToString());
-                        CheckAccessErrorCount();
+                        if (type_id == 146 || (type_id == 145 && file_record.download_status == 0))
+                        {
+                            // download all records for download type 146 (in the designated pages),
+                            // but only those with download status 0 for type 145.
+
+                            do_download = true;
+
+                            // However, in either case may have been downloaded in designated recent days,
+                            // in which case do not need to download again.
+
+                            if (days_ago != null)
+                            {
+                                if (_mon_data_layer.Downloaded_recently(source_id, s.eudract_id, (int)days_ago))
+                                {
+                                    do_download = false;
+                                }
+                            }
+                        }
+                    }
+                }
+                s.do_download = do_download;
+                if (do_download) num_to_download++;
+            }
+
+            // only proceed further if there are any studies to download on this page 
+            // For each study that needs to be downloaded...
+            // First, get full details into the summaries - transfer those details to
+            // a new  main EUCTR Study object and then get full protocol details
+
+            if (num_to_download > 0)
+            {
+                for (int j = 0; j < summaries.Count; j++)
+                {
+                    Study_Summmary s = summaries[j];
+                    if ((bool)s.do_download!)
+                    {
+                        Study st = _processor.GetInfoFromSummary(s);
+                        if (st.details_url is null)
+                        {
+                            _logging_helper.LogError($"Problem in obtaining protocol details url from summary page, for {s.eudract_id}");
+                            CheckAccessErrorCount();
+                        }
+                        else
+                        { 
+                            WebPage? detailsPage = await ch.GetPageAsync(st.details_url);
+                            if (detailsPage is null)
+                            {
+                                _logging_helper.LogError($"Problem in navigating to protocol details page for {s.eudract_id}");
+                                CheckAccessErrorCount();
+                            }
+                            else 
+                            { 
+                                st = _processor.ExtractProtocolDetails(st, detailsPage);
+
+                                // Then get results details if available
+
+                                if (st.results_url != null)
+                                {
+                                    Thread.Sleep(800);
+                                    WebPage? resultsPage = await ch.GetPageAsync(st.results_url);
+                                    if (resultsPage is not null)
+                                    {
+                                        st = _processor.ExtractResultDetails(st, resultsPage);
+                                    }
+                                    else
+                                    {
+                                        _logging_helper.LogError($"Problem in navigating to result details, for {s.eudract_id}");
+                                        CheckAccessErrorCount();
+                                    }
+                                }
+
+                                // Write out study record as json.
+                                // Update the source data record, modifying it or adding a new one.
+
+                                string full_path = await WriteOutFile(st, st.sd_sid!, filebase);
+                                if (full_path != "error")
+                                {
+                                    string? remote_url = st.details_url;
+                                    bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, s.eudract_id, remote_url, saf_id,
+                                                            null, full_path);
+                                    res.num_downloaded++;
+                                    if (added) res.num_added++;
+                                }
+                                res.num_downloaded++;
+                            }
+                        }
+
+                        if (res.num_checked % 100 == 0)
+                        {
+                            _logging_helper.LogLine("EUCTR pages checked: " + res.num_checked.ToString());
+                            _logging_helper.LogLine("EUCTR pages downloaded: " + res.num_downloaded.ToString());
+                        }
+                        Thread.Sleep(500);
                     }
                 }
             }
-
-            _logging_helper.LogLine("Number of errors: " + access_error_num.ToString());
-            return res;
         }
 
-
-        private void CheckAccessErrorCount()
-        {
-            access_error_num++;
-            if (access_error_num % 5 == 0)
-            {
-                // do a 5 minute pause
-                TimeSpan pause = new TimeSpan(0, 1, 0);
-                System.Threading.Thread.Sleep(pause);
-                pause_error_num++;
-                access_error_num = 0;
-            }
-            //if (pause_error_num > 5)
-            //{
-                //  throw new Exception("Too many access errors");
-            //}
-        }
-        
+        return res;
     }
+                
+
+    // Writes out the file with the correct name to the correct folder, as indented json.
+    // Called from the DownloadBatch function.
+    // Returns the full file path as constructed, or an 'error' string if an exception occurred.
+
+    private async Task<string> WriteOutFile(Study s, string sd_sid, string file_base)
+    {
+        string file_name = "EU " + sd_sid + ".json";
+        string full_path = Path.Combine(file_base, file_name!);
+        try
+        {
+            using FileStream jsonStream = File.Create(full_path);
+            await JsonSerializer.SerializeAsync(jsonStream, s, _json_options);
+            await jsonStream.DisposeAsync();
+            return full_path;
+        }
+        catch (Exception e)
+        {
+            _logging_helper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
+            return "error";
+        }
+    }
+
+    private void CheckAccessErrorCount()
+    {
+        _access_error_num++;
+        if (_access_error_num % 5 == 0)
+        {
+            TimeSpan pause = new TimeSpan(0, 1, 0);   // a 5 minute pause
+            Thread.Sleep(pause);
+        }
+    }
+
 }
