@@ -94,8 +94,10 @@ public static class StringExtensions
         else
         {
             string outstring = instring.Trim();
+
             outstring = outstring.Replace("\r\n", "\n");    // regularise endings
-            
+            outstring = outstring.Replace("\r", "\n");
+
             while (outstring.Contains("  "))
             {
                 outstring = outstring.Replace("  ", " ");

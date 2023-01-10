@@ -73,25 +73,20 @@ namespace MDR_Downloader
 
         public SAFEvent() { }
 
-        public SAFEvent(int? _id, int? _source_id, int? _type_id,
-                        string? _filefolder_path, 
-                        DateTime? _cut_off_date, DateTime? _end_date, 
-                        int? _filter_id, string? _previous_saf_ids,
-                        int? _start_page, int? _end_page,
-                        int? _ids_offset, int? _ids_amount)
+        public SAFEvent(Options _opts, int? _source_id)
         {
-            id = _id;
+            id = _opts.saf_id;
             source_id = _source_id;
-            type_id = _type_id;
-            filefolder_path = _filefolder_path;
-            cut_off_date = _cut_off_date;
-            end_date = _end_date;
-            filter_id = _filter_id;
-            previous_saf_ids = _previous_saf_ids;
-            start_page= _start_page;
-            end_page= _end_page;
-            ids_offset = ids_offset;
-            ids_amount = ids_amount;
+            type_id = _opts.FetchTypeId;
+            filefolder_path = _opts.FileName;
+            cut_off_date = _opts.CutoffDate;
+            end_date = _opts.EndDate;
+            filter_id = _opts.FocusedSearchId;
+            previous_saf_ids = _opts.previous_saf_ids;
+            start_page = _opts.StartPage;
+            end_page = _opts.EndPage;
+            ids_offset = _opts.OffsetIds;
+            ids_amount = _opts.AmountIds;
             time_started = DateTime.Now;
         }
     }

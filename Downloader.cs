@@ -23,14 +23,13 @@ public class Downloader
 
     public async Task RunDownloaderAsync(Options opts, Source source)
     {
-        // Log parameters and set up search and fetch record.
+        // Set up the search and fetch summary record for this download,
+        // Log parameters, and establish appropriate controller class,
+        // then call it with parameters.
 
-        _logging_helper.LogCommandLineParameters(opts);
         opts.saf_id = _mon_data_layer.GetNextSearchFetchId();
-        SAFEvent saf = new(opts.saf_id, source.id, opts.FetchTypeId, opts.FileName, 
-                           opts.CutoffDate, opts.EndDate, opts.FocusedSearchId, 
-                           opts.previous_saf_ids, opts.StartPage, opts.EndPage,
-                           opts.OffsetIds, opts.AmountIds);
+        SAFEvent saf = new(opts, source.id);
+        _logging_helper.LogCommandLineParameters(opts);
         DownloadResult res = new();
 
         switch (source.id)
@@ -73,8 +72,6 @@ public class Downloader
                 }
             case 100135:
                 {
-                    // PubMed - See notes at top of PubMed controller for explanation of different download types.
-
                     PubMed_Controller pubmed_controller = new(_mon_data_layer, _logging_helper);
                     res = await pubmed_controller.ObtainDatafromSourceAsync(opts, source);
                     break;

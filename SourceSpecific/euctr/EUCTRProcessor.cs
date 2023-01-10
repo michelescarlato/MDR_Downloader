@@ -56,7 +56,7 @@ public class EUCTR_Processor
                         if (idDetails?.Any() == true)
                         {
                             string? euctr_id = idDetails[0].InnerValue();
-                            summaries.Add(new Study_Summmary(euctr_id, studyDetails));
+                            summaries.Add(new Study_Summmary(euctr_id, box));
                         }
                     }
                 }
@@ -143,7 +143,7 @@ public class EUCTR_Processor
             // Because of an additional initial 'Trial protocol:' span
             // there should normally be links + 1 span (status) numbers.
             // Status does not seem to be given for 'Outside EU/EEA'
-            // though this always seems to be at the end of the list.
+            // though this is usuallyu (but not always) seems to be at the end of the list.
             // If it is links and span numbers will be equal.
             // first valid status found used as overall trial status
 
@@ -156,16 +156,24 @@ public class EUCTR_Processor
                 // Status also generally not given for 'Outside EU/EEA'
                 // though this always seems to be at the end of the list
 
+                int status_diff = 1;
                 for (int j = 0; j < links.Count; j++)
                 {
                     int status_num = 0;
                     string country_code = links[j].InnerText;
-                    if (country_code != "Outside EU/EEA")
+                    if (country_code == "Outside EU/EEA")
+                    {
+                        // the inclusion of the Outside EU/EEA puts the 
+                        // stataus list back into 'sybc' with the country list.
+
+                        status_diff = 0;
+                    }
+                    else
                     {
                         string country_name = GetCountryName(country_code);
                         if (country_name != "")
                         {
-                            string study_status = statuses[j + 1].InnerText.Trim(parantheses);
+                            string study_status = statuses[j + status_diff].InnerText.Trim(parantheses);
                             if (study_status != "GB - no longer in EU/EEA")
                             {
                                 countries.Add(new Country(country_name, study_status));
@@ -279,9 +287,6 @@ public class EUCTR_Processor
         {
             st.population = GetStudyPopulation(population_rows);
         }
-
-
-        // inclusion and extraction criteria
 
         return st;
     }
@@ -543,6 +548,7 @@ public class EUCTR_Processor
                                     string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
                                     if (!string.IsNullOrEmpty(value))
                                     {
+                                        value = value.CompressSpaces()!;
                                         values.Add(new item_value(value));
                                     }
                                 }
@@ -554,10 +560,10 @@ public class EUCTR_Processor
                         line.item_number = 1;
                         string value = HttpUtility.HtmlDecode(cells[2].InnerText).Trim();
                         if (!string.IsNullOrEmpty(value))
-                        { 
-                            values.Add(new item_value(value.Replace("|", "<br/>"))); 
+                        {
+                            value = value.CompressSpaces()!;
+                            values.Add(new item_value(value.Replace("|", "\n")));
                         }
-
                     }
 
                     if (values.Count > 0)
@@ -565,38 +571,6 @@ public class EUCTR_Processor
                         line.item_number = values.Count;
                         line.item_values = values;
                         study_features.Add(line);
-                    }
-                }
-
-
-                // inclusion - exclusion criteria
-
-                if (code.Contains("E.3") || code.Contains("E.4"))
-                {
-                    DetailLine line = new DetailLine();
-                    List<item_value> values = new List<item_value>();
-                    line.item_code = code;
-                    line.item_name = HttpUtility.HtmlDecode(cells[1].InnerText);
-                    if (cells[2].CssSelect("table").Any())
-                    {
-                        var inner_table = cells[2].CssSelect("table");
-                        var inner_rows = inner_table.CssSelect("tr").ToArray();
-                        line.item_number = inner_rows.Length;
-                        if (inner_rows.Count() > 0)
-                        {
-                            foreach (HtmlNode inner_row in inner_rows)
-                            {
-                                var inner_cell = inner_row.CssSelect("td").FirstOrDefault();
-                                string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
-                                if (value.ToLower() == "yes") values.Add(new item_value(value));
-                            }
-                        }
-                    }
-                    else
-                    {
-                        line.item_number = 1;
-                        string value = HttpUtility.HtmlDecode(cells[2].InnerText).Trim();
-                        if (value.ToLower() == "yes") values.Add(new item_value(value));
                     }
                 }
 
@@ -620,8 +594,11 @@ public class EUCTR_Processor
                             foreach (HtmlNode inner_row in inner_rows)
                             {
                                 var inner_cell = inner_row.CssSelect("td").FirstOrDefault();
-                                string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
-                                if (value.ToLower() == "yes") values.Add(new item_value(value));
+                                if (inner_cell is not null)
+                                {
+                                    string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
+                                    if (value.ToLower() == "yes") values.Add(new item_value(value));
+                                }
                             }
                         }
                     }
@@ -652,19 +629,22 @@ public class EUCTR_Processor
                         foreach (HtmlNode inner_row in inner_rows)
                         {
                             var inner_cell = inner_row.CssSelect("td").FirstOrDefault();
-                            string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
-                            bool add_country = true;
-                            foreach (Country c in summ_countries)
+                            if (inner_cell is not null)
                             {
-                                if (c.name == value)
+                                string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
+                                bool add_country = true;
+                                foreach (Country c in summ_countries)
                                 {
-                                    add_country = false;
-                                    break;
+                                    if (c.name == value)
+                                    {
+                                        add_country = false;
+                                        break;
+                                    }
                                 }
-                            }
-                            if (add_country)
-                            {
-                                summ_countries.Add(new Country(value, null));
+                                if (add_country)
+                                {
+                                    summ_countries.Add(new Country(value, null));
+                                }
                             }
                         }
                     }

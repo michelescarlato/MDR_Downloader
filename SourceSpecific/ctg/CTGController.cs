@@ -58,11 +58,11 @@ class CTG_Controller
         {
             return await DownloadRevisedRecords(file_base, (DateTime)opts.CutoffDate, json_options, source.id, (int)opts.saf_id!);
         }
-        else if (t == 146 && opts.OffsetIds is not null && opts.AmountIds is not null)
+        else if (t == 142 && opts.OffsetIds is not null && opts.AmountIds is not null)
         {
             return await DownloadRecordsById(file_base, (int)opts.OffsetIds, (int)opts.AmountIds, json_options, source.id, (int)opts.saf_id!);
         }
-        else if (t == 303 && !string.IsNullOrEmpty(opts.FileName) && opts.OffsetIds is not null && opts.AmountIds is not null)
+        else if (t == 141 && !string.IsNullOrEmpty(opts.FileName) && opts.OffsetIds is not null && opts.AmountIds is not null)
         {
             return await ReexportBulkDownloadedRecords(file_base, opts.FileName, (int)opts.OffsetIds,
                                                        (int)opts.AmountIds, json_options, source.id, (int)opts.saf_id!);
@@ -166,9 +166,9 @@ class CTG_Controller
         }
     }
 
-    // The t = 146, download all studies in a specified Id range option.
+    // The t = 142, download all studies in a specified Id range option.
     // If all parameters are present the main loop is set up and for each
-    // iteration the first nd last Ids are derived, for insertion in the 
+    // iteration the first and last Ids are derived, for insertion in the 
     // query string. The resulting batch response (usually about 10 studies
     // for any 100 ids) 
 
@@ -220,7 +220,7 @@ class CTG_Controller
     }
 
 
-    // The t = 303 option that takes json files already downloaded via the VTG 'ImportALL' option
+    // The t = 141 option that takes json files already downloaded via the VTG 'ImportALL' option
     // and which re-exports them using the ECRIN CTG model, i.e. with only relevant fierlds included.
 
     async Task<DownloadResult> ReexportBulkDownloadedRecords(string file_base, string source_parent_folder, int offset, int amount,

@@ -113,9 +113,6 @@ class EUCTR_Controller
         for (int i = start_page; i <= end_page; i++)
         {
             // if (res.num_downloaded > 2) break; // for testing
-
-            Thread.Sleep(100);
-
             // Go to the summary page indicated by current value of i
             // Each page has up to 20 listed studies. Get a list of their Ids.
 
@@ -162,7 +159,7 @@ class EUCTR_Controller
                             // However, in either case may have been downloaded in designated recent days,
                             // in which case do not need to download again.
 
-                            if (days_ago != null)
+                            if (days_ago is not null)
                             {
                                 if (_mon_data_layer.Downloaded_recently(source_id, s.eudract_id, (int)days_ago))
                                 {
@@ -179,7 +176,7 @@ class EUCTR_Controller
             // only proceed further if there are any studies to download on this page 
             // For each study that needs to be downloaded...
             // First, get full details into the summaries - transfer those details to
-            // a new  main EUCTR Study object and then get full protocol details
+            // a new main EUCTR Study object and then get full protocol details
 
             if (num_to_download > 0)
             {
@@ -195,7 +192,8 @@ class EUCTR_Controller
                             CheckAccessErrorCount();
                         }
                         else
-                        { 
+                        {
+                            Thread.Sleep(300);
                             WebPage? detailsPage = await ch.GetPageAsync(st.details_url);
                             if (detailsPage is null)
                             {
@@ -210,7 +208,7 @@ class EUCTR_Controller
 
                                 if (st.results_url != null)
                                 {
-                                    Thread.Sleep(800);
+                                    Thread.Sleep(600);
                                     WebPage? resultsPage = await ch.GetPageAsync(st.results_url);
                                     if (resultsPage is not null)
                                     {
@@ -235,19 +233,12 @@ class EUCTR_Controller
                                     res.num_downloaded++;
                                     if (added) res.num_added++;
                                 }
-                                res.num_downloaded++;
                             }
                         }
-
-                        if (res.num_checked % 100 == 0)
-                        {
-                            _logging_helper.LogLine("EUCTR pages checked: " + res.num_checked.ToString());
-                            _logging_helper.LogLine("EUCTR pages downloaded: " + res.num_downloaded.ToString());
-                        }
-                        Thread.Sleep(500);
                     }
-                }
+                }  
             }
+            _logging_helper.LogLine($"Page {i} processed: {res.num_checked} studies checked, {res.num_downloaded} downloaded");
         }
 
         return res;

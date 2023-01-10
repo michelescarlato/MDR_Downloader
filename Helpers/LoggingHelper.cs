@@ -84,30 +84,61 @@ namespace MDR_Downloader
         {
             LogLine("****** DOWNLOAD ******");
             LogHeader("Set up");
-            LogLine("source_id is " + opts.SourceId.ToString());
-            LogLine("type_id is " + opts.FetchTypeId.ToString());
-            string file_name = (opts.FileName is null) ? " was not provided" : " is " + opts.FileName;
-            LogLine("file_name" + file_name);
-            string cutoff_date = (opts.CutoffDate is null) ? " was not provided" : " is " + opts.CutoffDateAsString;
-            LogLine("cutoff_date" + cutoff_date);
-            string filter_id = (opts.FocusedSearchId is null) ? " was not provided" : " is " + opts.FocusedSearchId.ToString();
-            LogLine("filter" + filter_id);
-            string ignore_recent_days = (opts.SkipRecentDays is null) ? " was not provided" : " is " + opts.SkipRecentDays.ToString();
-            LogLine("ignore recent downloads parameter" + ignore_recent_days);
-            if (opts.FetchTypeId == 146 || opts.FetchTypeId == 303)
+            LogLine($"Download event Id is {opts.saf_id}");
+            LogLine("");
+            LogLine($"Source_id is {opts.SourceId}");
+            LogLine($"Type_id is {opts.FetchTypeId}");
+            if (opts.FileName is not null)
             {
-                LogLine("Offset for record Ids: " + opts.OffsetIds);
-                LogLine("Amount of record Ids: " + opts.AmountIds);
+                LogLine($"File name is {opts.FileName}");
+            }
+            if (opts.CutoffDate is not null)
+            {
+                LogLine($"Cutoff date is {opts.CutoffDateAsString}");
+            }
+            if (opts.EndDate is not null)
+            {
+                LogLine($"End date is {opts.EndDateAsString}");
+            }
+            if (opts.FocusedSearchId is not null)
+            {
+                LogLine($"Filter is {opts.FocusedSearchId}");
+            }
+            if (opts.SkipRecentDays is not null)
+            {
+                string day_word = "";
+                if (opts.SkipRecentDays > 1)
+                {
+                    day_word = $"in most recent {opts.SkipRecentDays} days";
+                    
+                }
+                else
+                {
+                    day_word = opts.SkipRecentDays == 0 ? "today" : "today or yesterday";
+                }
+                LogLine($"Ignore files already downloaded {day_word}");
+            }
+            if (opts.FetchTypeId == 141 || opts.FetchTypeId == 142)
+            {
+                LogLine($"Offset for record Ids: {opts.OffsetIds}");
+                LogLine($"Amount of record Ids: {opts.AmountIds}");
+            }
+            if (opts.FetchTypeId == 146)
+            {
+                LogLine($"Start Page: {opts.StartPage}");
+                LogLine($"End pages: {opts.EndPage}");
             }
             if (opts.PreviousSearches?.Any() == true)
             {
                 foreach (int i in opts.PreviousSearches)
                 {
-                    LogLine("previous_search is " + i.ToString());
+                    LogLine($"previous_search is {i}");
                 }
             }
-            string no_logging = (opts.NoLogging is null) ? " was not provided" : " is " + opts.NoLogging;
-            LogLine("no_Logging" + no_logging);
+            if (opts.NoLogging is not null)
+            {
+                LogLine($"Logging suppressed");
+            }
         }
 
 
