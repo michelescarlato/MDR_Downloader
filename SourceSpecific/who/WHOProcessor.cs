@@ -7,9 +7,15 @@ namespace MDR_Downloader.who
 {
     public class WHO_Processor
     {
-        public WHORecord? ProcessStudyDetails(WHO_SourceRecord sr, LoggingHelper logging_helper)
+        WHOHelpers _wh;
+
+        public WHO_Processor()
         {
-            WHOHelpers wh = new WHOHelpers();
+            _wh = new();
+        }
+
+        public WHORecord? ProcessStudyDetails(WHO_SourceRecord sr)
+        {
             WHORecord r = new WHORecord();
             string sd_sid;
 
@@ -20,7 +26,7 @@ namespace MDR_Downloader.who
 
             sd_sid = sr.TrialID.Replace("/", "-").Replace(@"\", "-").Replace(".", "-").Trim();
             r.sd_sid = sd_sid;
-            int source_id = wh.get_reg_source(sd_sid);
+            int source_id = _wh.get_reg_source(sd_sid);
 
             if (source_id == 100120 || source_id == 100123 || source_id == 100126)
             {
@@ -67,7 +73,7 @@ namespace MDR_Downloader.who
             string? sec_ids = sr.SecondaryIDs.Tidy();
             if (!string.IsNullOrEmpty(sec_ids))
             {
-                wh.SplitAndAddIds(secondary_ids, sd_sid, sec_ids, "secondary ids");
+                _wh.SplitAndAddIds(secondary_ids, sd_sid, sec_ids, "secondary ids");
             }
 
             string? study_type = sr.study_type.Tidy();
@@ -92,7 +98,7 @@ namespace MDR_Downloader.who
             string? study_status = sr.Recruitment_status.Tidy();
             if (study_status is not null && study_status.Length > 5)
             {
-                r.study_status = wh.GetStatus(study_status);
+                r.study_status = _wh.GetStatus(study_status);
             }
 
             List<StudyFeature> study_features = new List<StudyFeature>();
@@ -107,29 +113,29 @@ namespace MDR_Downloader.who
             {
                 if (r.study_type == "Observational")
                 {
-                    study_features = wh.AddObsStudyFeatures(study_features, design_list);
+                    study_features = _wh.AddObsStudyFeatures(study_features, design_list);
                 }
                 else
                 {               
-                    study_features = wh.AddIntStudyFeatures(study_features, design_list);
-                    study_features = wh.AddMaskingFeatures(study_features, design_list);
+                    study_features = _wh.AddIntStudyFeatures(study_features, design_list);
+                    study_features = _wh.AddMaskingFeatures(study_features, design_list);
                 }
             }
 
             if (phase_statement is not null)
             {
-                 study_features = wh.AddPhaseFeatures(study_features, phase_statement);
+                 study_features = _wh.AddPhaseFeatures(study_features, phase_statement);
             }
 
             string? countries = sr.Countries.Tidy();
             if (!string.IsNullOrEmpty(countries))
             {
-                r.country_list = wh.split_and_dedup_countries(countries);
+                r.country_list = _wh.split_and_dedup_countries(countries);
             }
 
             if (sr.Conditions is not null)
             {
-                r.condition_list = wh.GetConditions(sd_sid, sr.Conditions);
+                r.condition_list = _wh.GetConditions(sd_sid, sr.Conditions);
             }
 
             r.interventions = sr.Interventions.Tidy();
@@ -221,7 +227,7 @@ namespace MDR_Downloader.who
             r.bridging_flag = sr.Bridging_flag.Tidy();
             if (!string.IsNullOrEmpty(r.bridging_flag) && r.bridging_flag != r.sd_sid)
             {
-                wh.SplitAndAddIds(secondary_ids, r.sd_sid, r.bridging_flag, "bridging flag");
+                _wh.SplitAndAddIds(secondary_ids, r.sd_sid, r.bridging_flag, "bridging flag");
             }
 
             r.bridged_type = sr.Bridged_type.Tidy();
@@ -229,7 +235,7 @@ namespace MDR_Downloader.who
             r.childs = sr.Childs.Tidy();
             if (!string.IsNullOrEmpty(r.childs))
             {
-                wh.SplitAndAddIds(secondary_ids, r.sd_sid, r.childs, "bridged child recs");
+                _wh.SplitAndAddIds(secondary_ids, r.sd_sid, r.childs, "bridged child recs");
             }
 
             r.type_enrolment = sr.type_enrolment.Tidy();
@@ -265,7 +271,7 @@ namespace MDR_Downloader.who
                 }
             }
 
-            r.folder_name = wh.get_folder(source_id);
+            r.folder_name = _wh.get_folder(source_id);
             r.secondary_ids = secondary_ids;
             r.study_features = study_features;
 

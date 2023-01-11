@@ -121,7 +121,8 @@ public class EUCTR_Processor
             st.meddra_terms = meddra_terms;
         }
 
-        // population age and gender - 2 td elements in a fixed order
+        // population age and gender - 2 td elements in a fixed order.
+
         HtmlNode[]? popDetails = studyDetails[5].CssSelect("td").ToArray();
         if (popDetails?.Any() == true)
         {
@@ -164,7 +165,7 @@ public class EUCTR_Processor
                     if (country_code == "Outside EU/EEA")
                     {
                         // the inclusion of the Outside EU/EEA puts the 
-                        // stataus list back into 'sybc' with the country list.
+                        // stataus list back into 'sync' with the country list.
 
                         status_diff = 0;
                     }
@@ -234,10 +235,12 @@ public class EUCTR_Processor
     {
         var summary = detailsPage.Find("table", By.Class("summary")).FirstOrDefault();
 
-        // if no summary probably missing page - seems to occur for one record
+        // if no summary probably missing page - seems to occur for one record.
+
         if (summary == null) return st;
 
-        // get the date added to system from the 6th row of the summary table
+        // Get the date added to system from the 6th row of the summary table.
+
         var summary_rows = summary.CssSelect("tbody tr").ToArray();
         if (summary_rows != null)
         {
@@ -385,7 +388,6 @@ public class EUCTR_Processor
                         line.item_values = values;
                         study_identifiers.Add(line);
                     }
-
                 }
             }
         }
@@ -649,7 +651,6 @@ public class EUCTR_Processor
                         }
                     }
                 }
-
             }
         }
 

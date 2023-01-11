@@ -28,16 +28,25 @@ namespace MDR_Downloader.who
 
             // In some cases the file will be one of a set created from a large
             // 'all data' download, in other cases it will be a weekly update file
-            // In both cases any existing XML files of the same name shoud be overwritten
+            // In both cases any existing XML files of the same name shoud be overwritten.
+
+            DownloadResult res = new();
+            string? file_base = source.local_folder;
+
+            if (file_base is null)
+            {
+                _logging_helper.LogError("Null value passed for local folder value for this source");
+                return res;   // return zero result
+            }
 
             WHO_Processor who_processor = new();
-            XmlSerializer writer = new(typeof(WHORecord));
-            DownloadResult res = new();
-            string sourcefile = opts.FileName!;     // checked as non-null
+            string sourcefile = opts.FileName!;     // already checked as non-null
+
             var csv_reader_config = new CsvConfiguration(CultureInfo.InvariantCulture)
             {
                 HasHeaderRecord = false,
             };
+
             var json_options = new JsonSerializerOptions()
             {
                 Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
@@ -46,50 +55,48 @@ namespace MDR_Downloader.who
 
             using (var reader = new StreamReader(sourcefile, true))
             {
-                using (var csv = new CsvReader(reader, csv_reader_config))
+                using var csv = new CsvReader(reader, csv_reader_config);
+                var records = csv.GetRecords<WHO_SourceRecord>();
+                _logging_helper.LogLine("Rows loaded into WHO record structure");
+
+                // Consider each study row in turn and turn it into a WHO record class.
+
+                foreach (WHO_SourceRecord sr in records)
                 {
-                    var records = csv.GetRecords<WHO_SourceRecord>();
-                    _logging_helper.LogLine("Rows loaded into WHO record structure");
+                    res.num_checked++;
+                    WHORecord? r = who_processor.ProcessStudyDetails(sr);
 
-                    // Consider each study in turn.
-
-                    foreach (WHO_SourceRecord sr in records)
+                    if (r is not null)
                     {
-                        res.num_checked++;
-                        WHORecord? r = who_processor.ProcessStudyDetails(sr, _logging_helper);
+                        // Write out study record as JSON, log the download.
 
-                        if (r is not null)
+                        if (!string.IsNullOrEmpty(r.folder_name))
                         {
-                            // Write out study record as XML, log the download
-                            string? file_base = r.folder_name;
-                            if (file_base is not null)
+                            if (!Directory.Exists(r.folder_name))
                             {
-                                if (!Directory.Exists(file_base))
-                                {
-                                    Directory.CreateDirectory(file_base);
-                                }
-                                string file_name = r.sd_sid + ".json";
-                                string full_path = Path.Combine(file_base, file_name);
-                                try
-                                {
-                                    using FileStream jsonStream = File.Create(full_path);
-                                    await JsonSerializer.SerializeAsync(jsonStream, r, json_options);
-                                    await jsonStream.DisposeAsync();
-                                }
-                                catch (Exception e)
-                                {
-                                    _logging_helper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
-                                }
-
-                                bool added = _mon_data_layer.UpdateStudyDownloadLog(r.source_id, r.sd_sid!, r.remote_url, (int)opts.saf_id,
-                                                                   r.record_date?.FetchDateTimeFromISO(), full_path);
-                                res.num_downloaded++;
-                                if (added) res.num_added++;
+                                Directory.CreateDirectory(r.folder_name);
                             }
-                        }
+                            string file_name = r.sd_sid + ".json";
+                            string full_path = Path.Combine(r.folder_name, file_name);
+                            try
+                            {
+                                using FileStream jsonStream = File.Create(full_path);
+                                await JsonSerializer.SerializeAsync(jsonStream, r, json_options);
+                                await jsonStream.DisposeAsync();
+                            }
+                            catch (Exception e)
+                            {
+                                _logging_helper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
+                            }
 
-                        if (res.num_checked % 100 == 0) _logging_helper.LogLine(res.num_checked.ToString());
+                            bool added = _mon_data_layer.UpdateStudyDownloadLog(r.source_id, r.sd_sid!, r.remote_url, (int)opts.saf_id!,
+                                                                r.record_date?.FetchDateTimeFromISO(), full_path);
+                            res.num_downloaded++;
+                            if (added) res.num_added++;
+                        }
                     }
+
+                    if (res.num_checked % 100 == 0) _logging_helper.LogLine(res.num_checked.ToString());
                 }
             }
             return res;

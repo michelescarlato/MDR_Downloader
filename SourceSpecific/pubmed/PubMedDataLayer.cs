@@ -133,8 +133,7 @@ namespace MDR_Downloader.pubmed
         {
             using NpgsqlConnection conn = new(connString);
             
-            string sql_string = @"INSERT INTO pp.distinct_pmids(
-                          pmid)
+            string sql_string = @"INSERT INTO pp.distinct_pmids(pmid)
                           SELECT DISTINCT pmid
                           FROM pp.pmids_by_source_total
                           ORDER BY pmid;";

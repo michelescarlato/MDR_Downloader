@@ -346,6 +346,7 @@ class ISRCTN_Controller
         return _base_url + id_params + end_url;
     }
 
+
     // General XML Deserialize function.
 
     private T? Deserialize<T>(string? inputString)

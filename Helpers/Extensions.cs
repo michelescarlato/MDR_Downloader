@@ -11,7 +11,7 @@ public static class StringExtensions
     public static string? Tidy(this string? instring)
     {
         // Simple extension that returns null for null values and
-        // text based 'NULL equivalents', and otherwise thrims the 
+        // text based 'NULL equivalents', and otherwise trims the 
         // string
 
         if (instring is null || instring == "NULL" || instring == "null"

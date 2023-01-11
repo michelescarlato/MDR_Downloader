@@ -16,30 +16,24 @@ namespace MDR_Downloader.who
            
         }
 
-        public List<string>? split_string(string instring)
+        public List<string>? split_string(string? instring)
         {
-            if (string.IsNullOrEmpty(instring))
+            string? string_list = instring.Tidy();
+            if (string.IsNullOrEmpty(string_list))
             {
                 return null;
             }
             else
             {
-                string? string_list = instring.Tidy();
-                if (string.IsNullOrEmpty(string_list))
-                {
-                    return null;
-                }
-                else
-                {
-                    return string_list.Split(";").ToList();
-                }
+                return string_list.Split(";").ToList();
             }
         }
 
 
         public List<string>? split_and_dedup_countries(string countries)
         {
-            // countries known to be non-null and already 'tidied'
+            // countries known to be non-null and already 'tidied'.
+
             List<string> outstrings = new List<string>();
             List<string> instrings = countries.Split(";").ToList();
 
@@ -94,7 +88,6 @@ namespace MDR_Downloader.who
                             // does it have an ICD code or similar at the front?
                             // if so extract and put code in code field
 
-                            // Need a regex here to pick up ICD codes
                             string code = "", code_system = "";
 
                             if (s1.Contains("generalization"))
@@ -153,7 +146,8 @@ namespace MDR_Downloader.who
                             char[] chars_to_lose2 = { ' ', '-', ',' };
                             s1 = s1.Trim(chars_to_lose2);
 
-                            // check not duplicated
+                            // check not duplicated.
+
                             bool add_condition = true;
                             if (conditions.Count > 0)
                             {
@@ -167,7 +161,8 @@ namespace MDR_Downloader.who
                                 }
                             }
 
-                            // check not a too broad ICD10 classification
+                            // check not a too broad (range) ICD10 classification.
+
                             if (Regex.Match(s1, @"^[A-Z]\d{2}-[A-Z]\d{2}$").Success)
                             {
                                 add_condition = false;

@@ -13,6 +13,7 @@
     <Compile Remove="SourceSpecific\ctg\CTGModels.cs" />
     <Compile Remove="SourceSpecific\ctg\CTGProcessor.cs" />
     <Compile Remove="SourceSpecific\isrctn\isctrn web model.cs" />
+    <Compile Remove="SourceSpecific\pubmed\PubMedSearchResult.cs" />
   </ItemGroup>
 
   <ItemGroup>
