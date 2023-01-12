@@ -46,7 +46,6 @@ public class PubMed_Processor
 
         List<string>? ArticleLangs = new();
         List<Creator>? Creators = new();
-        List<AbstractSection>? AbstractSections = new();
         List<ArticleType>? ArticleTypes = new();
         List<EReference>? EReferences = new();
         List<Database>? DatabaseList = new();
@@ -115,37 +114,31 @@ public class PubMed_Processor
                                                 article.ArticleDate?.Day);
         b.articleDateType = article.ArticleDate?.DateType;
         b.pubModel = article.PubModel;
-        b.abstractCopyright = article.Abstract?.CopyrightInformation;
+        //b.abstractCopyright = article.Abstract?.CopyrightInformation;
 
-        if (citation.ChemicalList is not null)
+        if (citation.ChemicalList is not null && citation.MeshHeadingList.Length > 0)
         {
-            if(citation.ChemicalList.Chemicals?.Any() == true)
+            foreach (var s in citation.ChemicalList)
             {
-                foreach (var s in citation.ChemicalList.Chemicals)
-                {
-                    SubstanceList.Add(new Substance(s.NameOfSubstance?.UI,
-                                                    s.NameOfSubstance?.Value));
-                }
+                SubstanceList.Add(new Substance(s.NameOfSubstance?.UI,
+                                                s.NameOfSubstance?.Value));
             }
         }
 
-        if (citation.MeshHeadingList is not null)
+        if (citation.MeshHeadingList is not null && citation.MeshHeadingList.Length > 0)
         {
-            if (citation.MeshHeadingList.DescriptorNames?.Any() == true)
+            foreach (var m in citation.MeshHeadingList)
             {
-                foreach (var m in citation.MeshHeadingList.DescriptorNames)
-                {
-                    MeshList.Add(new MeshTerm(m.DescriptorName?.UI, m.DescriptorName?.MajorTopicYN,
-                                 m.DescriptorName?.Type, m.DescriptorName?.Value));
-                }
+                MeshList.Add(new MeshTerm(m.DescriptorName?.UI, m.DescriptorName?.MajorTopicYN,
+                                m.DescriptorName?.Type, m.DescriptorName?.Value));
             }
         }
 
         if (citation.SupplMeshList is not null)
         {
-            if (citation.SupplMeshList.SupplMeshNames?.Any() == true)
+            if (citation.SupplMeshList.SupplMeshName?.Any() == true)
             {
-                foreach (var s in citation.SupplMeshList.SupplMeshNames)
+                foreach (var s in citation.SupplMeshList.SupplMeshName)
                 {
                     SupplMeshList.Add(new SupplMeshTerm(s.Type, s.UI, s.Value));
                 }
@@ -154,30 +147,28 @@ public class PubMed_Processor
 
         if (citation.KeywordList is not null)
         {
-            if (citation.KeywordList.Keywords?.Any() == true)
+            b.keywordOwner = citation.KeywordList.Owner;
+            if (citation.KeywordList.Keyword?.Any() == true)
             {
-                foreach (var k in citation.KeywordList.Keywords)
+                foreach (var k in citation.KeywordList.Keyword)
                 {
                     KeywordList.Add(new KWord(k.MajorTopicYN, k.Value));
                 }
             }
         }
 
-        if (citation.CommentsCorrectionsList is not null)
+        if (citation.CommentsCorrectionsList is not null && citation.CommentsCorrectionsList.Length > 0)
         {
-            if (citation.CommentsCorrectionsList.CommentsCorrections?.Any() == true)
+            foreach (var c in citation.CommentsCorrectionsList)
             {
-                foreach (var c in citation.CommentsCorrectionsList.CommentsCorrections)
-                {
-                    CorrectionsList.Add(new Correction(c.RefSource, c.PMID?.Value, 
-                                                       c.PMID?.Version, c.RefType));
-                }
+                CorrectionsList.Add(new Correction(c.RefSource, c.PMID?.Value, 
+                                                    c.PMID?.Version, c.RefType));
             }
         }
 
+
         if (article.Languages is not null && article.Languages.Length > 0)
         {
-
             foreach (string lang in article.Languages)
             {
                 ArticleLangs.Add(lang);
@@ -200,41 +191,40 @@ public class PubMed_Processor
             }
         }
 
+ 
         if (article.AuthorList is not null)
         {
-            if (article.AuthorList.Authors?.Any() == true)
+            if (article.AuthorList.Author?.Any() == true)
             {
-                foreach (var a in article.AuthorList.Authors)
+                foreach (var a in article.AuthorList.Author)
                 {
-                    string[]? affiliations = null;
+                    List<AffiliationInfo>? affiliations = null;
+                    if (a.Affiliations?.Any() == true)
+                    {
+                        affiliations = new();
+                        foreach (var aff in a.Affiliations)
+                        {
+                            affiliations.Add(new AffiliationInfo(aff.Affiliation, aff.Identifier?.Source,
+                                                                 aff.Identifier?.Value));
+                        }
+                    }
                     Creators.Add(new Creator(a.CollectiveName, a.LastName, a.ForeName,
-                                             a.Initials, a.Suffix, a.Identifier.Source,
-                                             a.Identifier.Value, affiliations));
+                                             a.Initials, a.Suffix, a.Identifier?.Source,
+                                             a.Identifier?.Value, affiliations));
                 }
             }
         }
 
-        if (article.Abstract is not null)
+        
+
+        if (article.PublicationTypeList is not null && article.PublicationTypeList.Length > 0)
         {
-            if (article.Abstract.AbstractTexts?.Any() == true)
+            foreach (var p in article.PublicationTypeList)
             {
-                foreach (var a in article.Abstract.AbstractTexts)
-                {
-                    AbstractSections.Add(new AbstractSection(a.Text, a.Label, a.NlmCategory));
-                }
+                ArticleTypes.Add(new ArticleType(p.UI, p.Value));
             }
         }
 
-        if (article.PublicationTypeList is not null)
-        {
-            if (article.PublicationTypeList.PublicationTypes?.Any() == true)
-            {
-                foreach (var p in article.PublicationTypeList.PublicationTypes)
-                {
-                    ArticleTypes.Add(new ArticleType(p.UI, p.Value));
-                }
-            }
-        }
 
         if (article.DataBankList is not null)
         {
@@ -242,22 +232,32 @@ public class PubMed_Processor
             {
                 foreach (var d in article.DataBankList.DataBanks)
                 {
-                    string[]? accessionNumbers = null;
+                    List<string>? accessionNumbers = null;
+                    if (d.AccessionNumberList is not null && d.AccessionNumberList.Length > 0)
+                    {
+                        accessionNumbers = new();
+                        foreach (string accNum in d.AccessionNumberList)
+                        {
+                            accessionNumbers.Add(accNum);
+                        }
+                    }
                     DatabaseList.Add(new Database(d.DataBankName, accessionNumbers));
                 }
             }
         }
 
+
         if (article.GrantList is not null)
         {
-            if (article.GrantList.Grants?.Any() == true)
+            if (article.GrantList.Grant?.Any() == true)
             {
-                foreach (var g in article.GrantList.Grants)
+                foreach (var g in article.GrantList.Grant)
                 {
                     FundingList.Add(new Fund(g.GrantID, g.Acronym, g.Agency, g.Country));
                 }
             }
         }
+
 
         var pubmedData = art.PubmedData;
         if (pubmedData is not null)
@@ -281,10 +281,8 @@ public class PubMed_Processor
             }
         }
 
-
         b.ArticleLangs = ArticleLangs;
         b.Creators = Creators;
-        b.AbstractSections = AbstractSections;
         b.ArticleTypes = ArticleTypes;
         b.EReferences = EReferences;
         b.DatabaseList = DatabaseList;

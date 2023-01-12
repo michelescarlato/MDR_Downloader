@@ -67,7 +67,6 @@ public class FullObject
     public string? articleDateType { get; set; }
 
     public string? pubModel { get; set; }
-    public string? abstractCopyright { get; set; }
 
     public string? journalIssnType { get; set; }
     public string? journalIssn { get; set; }
@@ -87,7 +86,7 @@ public class FullObject
 
     public List<string>? ArticleLangs { get; set; }
     public List<Creator>? Creators { get; set; }
-    public List<AbstractSection>? AbstractSections { get; set; }
+
     public List<ArticleType>? ArticleTypes { get; set; }
     public List<EReference>? EReferences { get; set; }
     public List<Database>? DatabaseList { get; set; }
@@ -95,7 +94,10 @@ public class FullObject
     public List<Substance>? SubstanceList { get; set; }
     public List<MeshTerm>? MeshList { get; set; }
     public List<SupplMeshTerm>? SupplMeshList { get; set; }
+
+    public string? keywordOwner{ get; set; }
     public List<KWord>? KeywordList { get; set; }
+
     public List<Correction>? CorrectionsList { get; set; }
     public List<AdditionalId>? AdditionalIds { get; set; }
     public List<HistoryDate>? History { get; set; }
@@ -108,18 +110,26 @@ public class NumericDate
     public int? Month { get; set; }
     public int? Day { get; set; }
 
+    public NumericDate()
+    { }
+    
     public NumericDate(int? year, int? month, int? day)
     {
         Year = year;
         Month = month;
         Day = day;
     }
+
+    
 }
 
 public class EReference
 {
     public string? EIdType { get; set; }
     public string? Value { get; set; }
+
+    public EReference()
+    { }
 
     public EReference(string? eIdType, string? value)
     {
@@ -128,19 +138,6 @@ public class EReference
     }
 }
 
-public class AbstractSection
-{
-    public string? Text { get; set; }
-    public string? Label { get; set; }
-    public string? NlmCategory { get; set; }
-
-    public AbstractSection(string? text, string? label, string? nlmCategory)
-    {
-        Text = text;
-        Label = label;
-        NlmCategory = nlmCategory;
-    }
-}
 
 public class Creator
 {
@@ -151,12 +148,15 @@ public class Creator
     public string? Suffix { get; set; }
     public string? IdentifierSource { get; set; }
     public string? IdentifierValue { get; set; }
-    public string[]? AffiliationInfo { get; set; }
+    public List<AffiliationInfo>? AffiliationInfo { get; set; }
+
+    public Creator()
+    { }
 
     public Creator(string? collectiveName, string? familyName, 
                    string? giveneName, string? initials, 
                    string? suffix, string? identifierSource, 
-                   string? identifierValue, string[]? affiliationInfo)
+                   string? identifierValue, List<AffiliationInfo>? affiliationInfo)
     {
         CollectiveName = collectiveName;
         FamilyName = familyName;
@@ -169,10 +169,33 @@ public class Creator
     }
 }
 
+
+public class AffiliationInfo
+{
+    public string? Affiliation { get; set; }
+    public string? IdentifierSource { get; set; }
+    public string? IdentifierValue { get; set; }
+
+    public AffiliationInfo()
+    { }
+
+    public AffiliationInfo(string? affiliation, string? identifierSource, 
+                           string? identifierValue)
+    {
+        Affiliation = affiliation;
+        IdentifierSource = identifierSource;
+        IdentifierValue = identifierValue;
+    }
+}
+
+
 public class AdditionalId
 {
     public string? Source { get; set; }
     public string? Value { get; set; }
+
+    public AdditionalId()
+    { }
 
     public AdditionalId(string? source, string? value)
     {
@@ -184,9 +207,12 @@ public class AdditionalId
 public class Database
 {
     public string? DataBankName { get; set; }
-    public string[]? AccessionNumberList { get; set; }
+    public List<string>? AccessionNumberList { get; set; }
 
-    public Database(string? dataBankName, string[]? accessionNumberList)
+    public Database()
+    { }
+
+    public Database(string? dataBankName, List<string>? accessionNumberList)
     {
         DataBankName = dataBankName;
         AccessionNumberList = accessionNumberList;
@@ -199,6 +225,9 @@ public class Fund
     public string? Acronym { get; set; }
     public string? Agency { get; set; }
     public string? Country { get; set; }
+
+    public Fund()
+    { }
 
     public Fund(string? grantID, string? acronym, 
                 string? agency, string? country)
@@ -215,6 +244,9 @@ public class ArticleType
     public string? UI { get; set; }
     public string? Value { get; set; }
 
+    public ArticleType()
+    { }
+
     public ArticleType(string? uI, string? value)
     {
         UI = uI;
@@ -226,6 +258,9 @@ public class Substance
 {
     public string? UI { get; set; }
     public string? Name { get; set; }
+
+    public Substance()
+    { }
 
     public Substance(string? uI, string? name)
     {
@@ -239,6 +274,9 @@ public class SupplMeshTerm
     public string? Type { get; set; }
     public string? UI { get; set; }
     public string? Value { get; set; }
+
+    public SupplMeshTerm()
+    { }
 
     public SupplMeshTerm(string? type, string? uI, string? value)
     {
@@ -255,6 +293,9 @@ public class MeshTerm
     public string? Type { get; set; }
     public string? Value { get; set; }
 
+    public MeshTerm()
+    { }
+
     public MeshTerm(string? uI, string? majorTopicYN, 
                     string? type, string? value)
     {
@@ -270,6 +311,9 @@ public class KWord
     public string? MajorTopicYN { get; set; }
     public string? Value { get; set; }
 
+    public KWord()
+    { }
+
     public KWord(string? majorTopicYN, string? value)
     {
         MajorTopicYN = majorTopicYN;
@@ -280,33 +324,39 @@ public class KWord
 public class Correction
 {
     public string? RefSource { get; set; }
-    public int? PMID_Value { get; set; }
     public int? PMID_Version { get; set; }
+    public int? PMID_Value { get; set; }
     public string? RefType { get; set; }
 
-    public Correction(string? refSource, int? pMID_Value, 
-                      int? pMID_Version, string? refType)
+    public Correction()
+    { }
+
+    public Correction(string? refSource, int? pMID_Version,
+                      int? pMID_Value, string? refType)
     {
         RefSource = refSource;
-        PMID_Value = pMID_Value;
         PMID_Version = pMID_Version;
+        PMID_Value = pMID_Value;
         RefType = refType;
     }
 }
 
 public class HistoryDate
 {
+    public string PubStatus { get; set; }
     public int? Year { get; set; }
     public int? Month { get; set; }
     public int? Day { get; set; }
-    public string PubStatus { get; set; }
+
+    public HistoryDate()
+    { }
 
     public HistoryDate(int? year, int? month, int? day, string pubStatus)
     {
+        PubStatus = pubStatus;
         Year = year;
         Month = month;
         Day = day;
-        PubStatus = pubStatus;
     }
 }
 
@@ -315,11 +365,14 @@ public class ArticleId
     public string? IdType { get; set; }
     public string? Value { get; set; }
 
+    public ArticleId()
+    { }
+
     public ArticleId(string? idType, string? value)
-    {
+     {
         IdType = idType;
         Value = value;
-    }
+      }
 }
 
 

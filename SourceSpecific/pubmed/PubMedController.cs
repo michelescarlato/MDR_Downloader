@@ -1,4 +1,6 @@
 ﻿using System.Data;
+using System.Reflection.Metadata;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Xml;
 using System.Xml.Serialization;
@@ -6,6 +8,7 @@ using System.Xml.Xsl;
 using MDR_Downloader.biolincc;
 using MDR_Downloader.Helpers;
 using MDR_Downloader.isrctn;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MDR_Downloader.pubmed;
 
@@ -36,18 +39,26 @@ public class PubMed_Controller
 {
     private readonly LoggingHelper _logging_helper;
     private readonly MonDataLayer _mon_data_layer;
+    private readonly JsonSerializerOptions? _json_options;
 
     private readonly PubMedDataLayer pubmed_repo;
     private readonly PubMed_Processor pubmed_processor;
 
     private readonly string api_key;
-    private readonly string post_baseURL, search_baseURL, fetch_baseURL;
+    private readonly string postBaseURL, searchBaseURL, fetchBaseURL;
 
 
     public PubMed_Controller(MonDataLayer mon_data_layer, LoggingHelper logging_helper)
     {
         _logging_helper = logging_helper;
         _mon_data_layer = mon_data_layer;
+
+        _json_options = new()
+        {
+            AllowTrailingCommas = true,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            WriteIndented = true
+        };
 
         pubmed_repo = new(_logging_helper);
         pubmed_processor = new();
@@ -57,9 +68,9 @@ public class PubMed_Controller
 
         api_key = "&api_key=" + _mon_data_layer.PubmedAPIKey;
 
-        post_baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/epost.fcgi?db=pubmed" + api_key;
-        search_baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed" + api_key;
-        fetch_baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed" + api_key;
+        postBaseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/epost.fcgi?db=pubmed" + api_key;
+        searchBaseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed" + api_key;
+        fetchBaseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed" + api_key;
     }
 
 
@@ -67,6 +78,12 @@ public class PubMed_Controller
     {
         DownloadResult res = new();
         string date_string = "";
+        string? file_base = source.local_folder;
+        if (file_base is null)
+        {
+            _logging_helper.LogError("Null value passed for local folder value for this source");
+            return new DownloadResult();   // return zero result
+        }
 
         // If opts.FetchTypeId == 114 date_string is constructed, giving
         // min and max dates. If opts.FetchTypeId == 121 date_string remains "".
@@ -126,21 +143,29 @@ public class PubMed_Controller
         IEnumerable<PMSource> banks = pubmed_repo.FetchDatabanks();
         string web_env = "";
         int query_key = 0;
+        string searchUrl, fetchUrl;
 
         foreach (PMSource s in banks)
         {
             // Use databank details to construct search string
             // if no cutoff date (t = 121) date_string is "".
-            Thread.Sleep(300); 
+
+            if (s.nlm_abbrev != "PACTR")
+            {
+                continue;
+            }
+
             string search_term = "&term=" + s.nlm_abbrev + "[SI]" + date_string;
-            string search_url = search_baseURL + search_term + "&usehistory=y";
+            searchUrl = searchBaseURL + search_term + "&usehistory=y";
+
+
 
             // Get the number of total records that have this databank reference
             // and that (usually) have been revised recently 
             // and calculate the loop parameters.
 
             int totalRecords = 0;
-            string? search_responseBody = await ch.GetAPIResponseAsync(search_url);
+            string? search_responseBody = await ch.GetAPIResponseAsync(searchUrl);
             if (search_responseBody is not null)
             {
                 eSearchResult? search_result = Deserialize<eSearchResult?>(search_responseBody);
@@ -158,17 +183,16 @@ public class PubMed_Controller
             if (totalRecords > 0)
             {
                 int retmax = 100;
-                string fetch_Url = fetch_baseURL + "&WebEnv=" + web_env + "&query_key=" + query_key.ToString();
                 int numCallsNeeded = (int)(totalRecords / retmax) + 1;
                 for (int i = 0; i < numCallsNeeded; i++)
                 {
                     try
                     {
                         // Retrieve the articles as nodes.
-
-                        fetch_Url += "&retstart=" + (i * retmax).ToString() + "&retmax=" + retmax.ToString();
-                        fetch_Url += "&retmode=xml";
-                        await FetchPubMedRecordsAsync(fetch_Url, res, source, (int)opts.saf_id!);
+                        fetchUrl = fetchBaseURL + "&WebEnv=" + web_env + "&query_key=" + query_key.ToString();
+                        fetchUrl += "&retstart=" + (i * retmax).ToString() + "&retmax=" + retmax.ToString();
+                        fetchUrl += "&retmode=xml";
+                        await FetchPubMedRecordsAsync(fetchUrl, res, source, (int)opts.saf_id!, source.local_folder!);
                         Thread.Sleep(300);
                     }
                     catch (HttpRequestException e)
@@ -179,6 +203,7 @@ public class PubMed_Controller
             }
 
             _logging_helper.LogLine("Processed " + totalRecords.ToString() + " from " + s.nlm_abbrev);
+            Thread.Sleep(800);
         }
 
         return res;
@@ -212,7 +237,7 @@ public class PubMed_Controller
             // cutoff date as the last revised date is not known at this time
             // - has to be checked later.
 
-            string post_URL, search_URL, fetch_URL;
+            string postUrl, searchUrl, fetchUrl;
             pubmed_repo.SetUpTempPMIDsBySourceTables();
             IEnumerable<Source> sources = pubmed_repo.FetchSourcesWithReferences();
             foreach (Source s in sources)
@@ -235,10 +260,10 @@ public class PubMed_Controller
             foreach (string idstring in idstrings)
             {
                 string_num++;
-                post_URL = post_baseURL + "&id=" + idstring;
+                postUrl = postBaseURL + "&id=" + idstring;
                 Thread.Sleep(300);
 
-                string? post_responseBody = await ch.GetAPIResponseAsync(post_URL);
+                string? post_responseBody = await ch.GetAPIResponseAsync(postUrl);
                 if (post_responseBody is not null)
                 {
                     ePostResult? post_result = Deserialize<ePostResult?>(post_responseBody);
@@ -252,21 +277,21 @@ public class PubMed_Controller
                             {
                                 // (t = 121) No need to search - fetch all 100 pubmed records immediately.
 
-                                fetch_URL = fetch_baseURL + "&WebEnv=" + web_env + "&query_key=" + query_key.ToString();
-                                fetch_URL += "&retmax=100&retmode=xml";
+                                fetchUrl = fetchBaseURL + "&WebEnv=" + web_env + "&query_key=" + query_key.ToString();
+                                fetchUrl += "&retmax=100&retmode=xml";
                                 Thread.Sleep(200);
-                                await FetchPubMedRecordsAsync(fetch_URL, res, source, (int)opts.saf_id!);
+                                await FetchPubMedRecordsAsync(fetchUrl, res, source, (int)opts.saf_id!, source.local_folder!);
                             }
                             else
                             {
                                 // (t = 114) Search for those that have been revised on or since the cutoff date.
 
-                                search_URL = search_baseURL + "&term=%23" + query_key.ToString() + "+AND+" + date_string;
-                                search_URL += "&WebEnv=" + web_env + "&usehistory=y";
+                                searchUrl = searchBaseURL + "&term=%23" + query_key.ToString() + "+AND+" + date_string;
+                                searchUrl += "&WebEnv=" + web_env + "&usehistory=y";
 
                                 Thread.Sleep(200);
                                 int totalRecords = 0;
-                                string? search_responseBody = await ch.GetAPIResponseAsync(search_URL);
+                                string? search_responseBody = await ch.GetAPIResponseAsync(searchUrl);
                                 eSearchResult? search_result = Deserialize<eSearchResult?>(search_responseBody);
 
                                 // The eSearchResult class corresponds to the returned data.
@@ -279,10 +304,10 @@ public class PubMed_Controller
 
                                     if (totalRecords > 0)
                                     {
-                                        fetch_URL = fetch_baseURL + "&WebEnv=" + web_env + "&query_key=" + query_key.ToString();
-                                        fetch_URL += "&retmax=100&retmode=xml";
+                                        fetchUrl = fetchBaseURL + "&WebEnv=" + web_env + "&query_key=" + query_key.ToString();
+                                        fetchUrl += "&retmax=100&retmode=xml";
                                         Thread.Sleep(200);
-                                        await FetchPubMedRecordsAsync(fetch_URL, res, source, (int)opts.saf_id!);
+                                        await FetchPubMedRecordsAsync(fetchUrl, res, source, (int)opts.saf_id!, source.local_folder!);
                                     }
                                 }
                             }
@@ -305,177 +330,96 @@ public class PubMed_Controller
     }
 
 
-    public async Task FetchPubMedRecordsAsync(string fetch_URL, DownloadResult res, Source source, int saf_id)
+    public async Task FetchPubMedRecordsAsync(string fetch_URL, DownloadResult res, Source source, int saf_id, string file_base)
     {
         ScrapingHelpers ch = new(_logging_helper);
         string? responseBody = await ch.GetAPIResponseAsync(fetch_URL);
         if (responseBody is not null)
         {
+            responseBody = responseBody.Replace("<i>", "&lt;i&gt;");
+            responseBody = responseBody.Replace("</i>", "&lt;/i&gt;");
+            responseBody = responseBody.Replace("<b>", "&lt;b&gt;");
+            responseBody = responseBody.Replace("</b>", "&lt;/b&gt;");
+            responseBody = responseBody.Replace("<sup>", "&lt;sup&gt;");
+            responseBody = responseBody.Replace("</sup>", "&lt;/sup&gt;");
+            responseBody = responseBody.Replace("<sub>", "&lt;sub&gt;");
+            responseBody = responseBody.Replace("</sub>", "&lt;/sub&gt;");
+
             PubmedArticleSet? search_result = Deserialize<PubmedArticleSet?>(responseBody);
             if (search_result is not null)
             {
                 var articles = search_result.PubmedArticles;
                 if (articles?.Any() == true)
                 {
-                    //XmlDocument xdoc = new();
-                    //xdoc.LoadXml(responseBody);
-                    //XmlNodeList articles = xdoc.GetElementsByTagName("PubmedArticle");
                     foreach (PubmedArticle article in articles)
                     {
-                        int? ipmid = article.MedlineCitation?.PMID?.Value;
-                        string? pmid = ipmid.ToString();
-                        FullObject s = pubmed_processor.ProcessData(article);
-                        
-                        if (!string.IsNullOrEmpty(pmid))
+                        res.num_checked++;
+                        FullObject? fob = pubmed_processor.ProcessData(article);
+                        if (fob is not null && fob.ipmid.HasValue && !string.IsNullOrEmpty(fob.sd_oid))
                         {
-                            // get current or new file download record, calculate
-                            // and store last revised date. Write new or replace
+                            // Obtain last revised date if possible. Write out file
                             // file and update file_record (by ref).
 
-                            res.num_checked++;
-                            //DateTime? last_revised_datetime = GetDateLastRevised(article);
-                            ObjectFileRecord? file_record = _mon_data_layer.FetchObjectFileRecord(pmid, source.id);
-                                                        /*
-                            string full_path = await WriteOutFile(article, ipmid, file_record, source);
-
+                            ObjectFileRecord? file_record = _mon_data_layer.FetchObjectFileRecord(fob.sd_oid!, source.id);
+                            string full_path = await WriteOutFile(fob, (int)fob.ipmid!, file_base);
                             if (full_path != "error")
                             {
-                                string remote_url = "https://www.isrctn.com/" + s.sd_sid;
-                                DateTime? last_updated = s.lastUpdated?.FetchDateTimeFromISO();
-                                bool added = _mon_data_layer.UpdateObjectDownloadLog(source_id, s.sd_sid, remote_url, saf_id,
-                                                        last_updated, full_path);
+                                string remote_url = "" + fob.sd_oid;
+                                DateTime? last_revised_datetime = null;
+                                int? year = fob.dateCitationRevised?.Year;
+                                int? month = fob.dateCitationRevised?.Month;
+                                int? day = fob.dateCitationRevised?.Day;
+                                if (year.HasValue && month.HasValue && day.HasValue)
+                                {
+                                    last_revised_datetime = new DateTime((int)year, (int)month, (int)day);
+                                }
+                                bool added = _mon_data_layer.UpdateObjectDownloadLog(source.id, fob.sd_oid, remote_url, saf_id,
+                                                        last_revised_datetime, full_path);
                                 res.num_downloaded++;
                                 if (added) res.num_added++;
                             }
-
-
-                            if (file_record is null)
-                            {
-                                string remote_url = "https://www.ncbi.nlm.nih.gov/pubmed/" + pmid;
-                                file_record = new(source.id, pmid, remote_url, saf_id);
-                                file_record.last_revised = last_revised_datetime;
-
-                                WriteOutFile(article, ipmid, file_record, source);
-
-                                _mon_data_layer.InsertObjectFileRec(file_record);
-                                res.num_added++;
-                                res.num_downloaded++;
-                            }
-                            else
-                            {
-                                file_record.last_saf_id = saf_id;
-                                file_record.last_revised = last_revised_datetime;
-
-                                ReplaceFile(article, file_record)
-
-                                _mon_data_layer.StoreObjectFileRec(file_record);
-                                res.num_downloaded++;
-                            }
-                            //
-
-                            if (res.num_checked % 100 == 0) _logging_helper.LogLine("Checked so far: " + res.num_checked.ToString());
-                        }
-                        */
                         }
                     }
+
+                    if (res.num_checked % 100 == 0) _logging_helper.LogLine("Checked so far: " + res.num_checked.ToString());
                 }
             }
         }
     }
 
 
-    private DateTime? GetDateLastRevised(XmlNode article)
+
+    // Writes out the file with the correct name to the correct folder, as indented json.
+    // Called from the FetchPubMedRecordsAsync function.
+    // Returns the full file path as constructed, or an 'error' string if an exception occurred.
+
+
+    private async Task<string> WriteOutFile(FullObject fob, int ipmid, string file_base)
     {
-        DateTime? date_last_revised = null;
-
-        string? year = article.SelectSingleNode("MedlineCitation/DateRevised/Year")?.InnerText;
-        string? month = article.SelectSingleNode("MedlineCitation/DateRevised/Month")?.InnerText;
-        string? day = article.SelectSingleNode("MedlineCitation/DateRevised/Day")?.InnerText;
-
-        if (year is not null && month is not null && day is not null)
+         string folder_name = Path.Combine(file_base, "PM" + (ipmid / 10000).ToString("00000") + "xxxx");
+        if (!Directory.Exists(folder_name))
         {
-            if (Int32.TryParse(year, out int iyear)
-            && Int32.TryParse(month, out int imonth)
-            && Int32.TryParse(day, out int iday))
-            {
-                date_last_revised = new DateTime(iyear, imonth, iday);
-            }
+            Directory.CreateDirectory(folder_name);
         }
-        return date_last_revised;
+        string file_name = "PM" + ipmid.ToString("000000000") + ".json";
+        //string full_path = Path.Combine(folder_name, file_name!);
+        string full_path = Path.Combine(file_base, file_name!);
+        try
+        {
+            using FileStream jsonStream = File.Create(full_path);
+            await JsonSerializer.SerializeAsync(jsonStream, fob, _json_options);
+            await jsonStream.DisposeAsync();
+            return full_path;
+        }
+        catch (Exception e)
+        {
+            _logging_helper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
+            return "error";
+        }
     }
 
 
-        // Writes out the file with the correct name to the correct folder, as indented json.
-        // Called from the FetchPubMedRecordsAsync function.
-        // Returns the full file path as constructed, or an 'error' string if an exception occurred.
-
-        /*
-        private async Task<string> WriteOutFile(Study s, int ipmid, string file_base)
-        {
-            string folder_name = Path.Combine(file_base, "PM" + (ipmid / 10000).ToString("00000") + "xxxx");
-            if (!Directory.Exists(folder_name))
-            {
-                Directory.CreateDirectory(folder_name);
-            }
-            string filename = "PM" + ipmid.ToString("000000000") + ".json";
-            string full_path = Path.Combine(file_base, file_name!);
-            try
-            {
-                using FileStream jsonStream = File.Create(full_path);
-                await JsonSerializer.SerializeAsync(jsonStream, s, _json_options);
-                await jsonStream.DisposeAsync();
-                return full_path;
-            }
-            catch (Exception e)
-            {
-                _logging_helper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
-                return "error";
-            }
-        }
-        */
-
-        /*
-        private void WriteNewFile(XmlNode article, int ipmid, ObjectFileRecord file_record, Source source, XmlWriterSettings xml_settings)
-        {
-            string folder_name = Path.Combine(source.local_folder!, "PM" + (ipmid / 10000).ToString("00000") + "xxxx");
-            if (!Directory.Exists(folder_name))
-            {
-                Directory.CreateDirectory(folder_name);
-            }
-            string filename = "PM" + ipmid.ToString("000000000") + ".xml";
-            string full_path = Path.Combine(folder_name, filename);
-
-            using (XmlWriter writer = XmlWriter.Create(full_path, xml_settings))
-            {
-                article.WriteTo(writer);
-            }
-
-            file_record.local_path = full_path;
-            file_record.download_status = 2;
-            file_record.last_downloaded = DateTime.Now;
-        }
-
-
-        private void ReplaceFile(XmlNode article, ObjectFileRecord file_record, XmlWriterSettings xml_settings)
-        {
-            string? full_path = file_record.local_path;
-            if (full_path is not null)
-            {
-                // ensure can over write
-                if (File.Exists(full_path))
-                {
-                    File.Delete(full_path);
-                }
-                using (XmlWriter writer = XmlWriter.Create(full_path, xml_settings))
-                {
-                    article.WriteTo(writer);
-                }
-                file_record.last_downloaded = DateTime.Now;
-            }
-        }
-        */
-
-        // General XML Deserialize function.
+    // General XML Deserialize function.
 
     private T? Deserialize<T>(string? inputString)
     {
@@ -488,10 +432,9 @@ public class PubMed_Controller
         try
         {
             var xmlSerializer = new XmlSerializer(typeof(T));
-            using (var stringreader = new StringReader(inputString))
-            {
-                instance = (T?)xmlSerializer.Deserialize(stringreader);
-            }
+            //xmlSerializer.UnknownElement += Serializer_UnknownElement;
+            using var stringreader = new StringReader(inputString);
+            instance = (T?)xmlSerializer.Deserialize(stringreader);
         }
         catch (Exception e)
         {
@@ -501,6 +444,32 @@ public class PubMed_Controller
 
         return instance;
     }
+
+    /*
+    private static void Serializer_UnknownElement(object? sender, XmlElementEventArgs e)
+    {
+        if (e.ObjectBeingDeserialized is AbstractText abtext)
+        {
+            if (e.Element.Name == "i" || e.Element.Name == "sup" || e.Element.Name == "sub" )
+            {
+                ((AbstractText)e.ObjectBeingDeserialized).Text = 
+                //string? Text_Detagged = e.Element.OuterXml.Replace("<", "&lt;").Replace(">", "&gt;");
+
+                return;
+            }
+        }
+    }
+    
+    
+    public class Article
+    {
+        // include your other fields that are not problematic
+        public string Title_Custom { get; set; }
+    }
+ 
+    var myArticles = articlesXmlString.Parse<List<Article>>();
+    Console.Out(myArticles[0].Title_Custom); // "A LMI-Based Algorithm for Designing Subop
+    */
 }
 
 

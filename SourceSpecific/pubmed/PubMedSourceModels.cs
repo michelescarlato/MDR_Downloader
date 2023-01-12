@@ -1,4 +1,6 @@
-﻿using System.ComponentModel;
+﻿using MDR_Downloader.euctr;
+using Microsoft.FSharp.Core;
+using System.ComponentModel;
 using System.Xml.Serialization;
 
 namespace MDR_Downloader.pubmed;
@@ -7,7 +9,7 @@ namespace MDR_Downloader.pubmed;
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
 [XmlRoot(Namespace = "", IsNullable = false)]
-public partial class PubmedArticleSet
+public class PubmedArticleSet
 {
     [XmlElement("PubmedArticle")]
     public PubmedArticle[]? PubmedArticles { get; set; }
@@ -17,7 +19,7 @@ public partial class PubmedArticleSet
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class PubmedArticle
+public class PubmedArticle
 {
     public Citation? MedlineCitation { get; set; }
     public PubmedData? PubmedData { get; set; }
@@ -27,7 +29,7 @@ public partial class PubmedArticle
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class Citation
+public class Citation
 {
     [XmlAttribute()]
     public string Status { get; set; }
@@ -44,10 +46,10 @@ public partial class Citation
     public CitationArticle? Article { get; set; }
     public MedlineJournalInfo? MedlineJournalInfo { get; set; }
 
-    public ChemicalList? ChemicalList { get; set; }
+    public Chemical[]? ChemicalList { get; set; }
     public SuppMeshList? SupplMeshList { get; set; }
-    public CorrectionsList? CommentsCorrectionsList { get; set; }
-    public MeshList? MeshHeadingList { get; set; }
+    public CommentsCorrections[]? CommentsCorrectionsList { get; set; }
+    public MeshHeading[]? MeshHeadingList { get; set; }
     public KeywordList? KeywordList { get; set; }
 }
 
@@ -55,7 +57,7 @@ public partial class Citation
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class PMID
+public class PMID
 {
     [XmlAttribute()]
     public int Version { get; set; }
@@ -68,7 +70,7 @@ public partial class PMID
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class CitationDate
+public class CitationDate
 {
     public int? Year { get; set; }
     public int? Month { get; set; }
@@ -79,7 +81,7 @@ public partial class CitationDate
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class CitationArticle
+public class CitationArticle
 {
     [XmlAttribute()]
     public string PubModel { get; set; }
@@ -95,9 +97,8 @@ public partial class CitationArticle
     [XmlElement("OtherID")]
     public OtherId[]? OtherIDs { get; set; }
 
-    public ArticleAbstract? Abstract { get; set; }
     public AuthorList? AuthorList { get; set; }
-    public PublicationTypeList? PublicationTypeList { get; set; }
+    public PublicationType[]? PublicationTypeList { get; set; }
 
     [XmlElement("ArticleDate")]
     public ArticleDate? ArticleDate { get; set; }
@@ -113,7 +114,7 @@ public partial class CitationArticle
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class Journal
+public class Journal
 {
     public JournalISSN? ISSN { get; set; }
     public JournalIssue? JournalIssue { get; set; }
@@ -125,7 +126,7 @@ public partial class Journal
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class JournalISSN
+public class JournalISSN
 {
     [XmlAttribute()]
     public string? IssnType { get; set; }
@@ -138,7 +139,7 @@ public partial class JournalISSN
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class JournalIssue
+public class JournalIssue
 {
     [XmlAttribute()]
     public string CitedMedium { get; set; }
@@ -152,7 +153,7 @@ public partial class JournalIssue
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class IssuePubDate
+public class IssuePubDate
 {
     public int? Year { get; set; }
     public string? Month { get; set; }
@@ -165,7 +166,7 @@ public partial class IssuePubDate
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class Pagination
+public class Pagination
 {
     public string? MedlinePgn { get; set; }
 }
@@ -174,7 +175,7 @@ public partial class Pagination
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class ELocationID
+public class ELocationID
 {
     [XmlAttribute()]
     public string EIdType { get; set; }
@@ -190,46 +191,21 @@ public partial class ELocationID
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class ArticleAbstract
-{
-    [XmlElement("AbstractText")]
-    public AbstractText[]? AbstractTexts { get; set; }
-
-    public string? CopyrightInformation { get; set; }
-}
-
-
-[Serializable()]
-[DesignerCategory("code")]
-[XmlType(AnonymousType = true)]
-public partial class AbstractText
+public class AuthorList
 {
     [XmlAttribute()]
-    public string Label { get; set; }
+    public string CompleteYN { get; set; }    
     
-    [XmlAttribute()]
-    public string NlmCategory { get; set; }    
-   
-    [XmlText()]
-    public string Text { get; set; }
-
+    [XmlElement("Author", IsNullable = false)]
+    public Author[]? Author { get; set; }
 }
+
 
 
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class AuthorList
-{
-    [XmlArrayItem("Author", IsNullable = false)]
-    public Author[] Authors { get; set; }
-}
-
-
-[Serializable()]
-[DesignerCategory("code")]
-[XmlType(AnonymousType = true)]
-public partial class Author
+public class Author
 {
     public string? CollectiveName { get; set; }
     public string? LastName { get; set; }
@@ -246,7 +222,7 @@ public partial class Author
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class Identifier
+public class Identifier
 {
     [XmlAttribute()]
     public string Source { get; set; }
@@ -259,7 +235,7 @@ public partial class Identifier
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class AuthorAffiliationInfo
+public class AuthorAffiliationInfo
 {
     public string? Affiliation { get; set; }
     public Identifier? Identifier { get; set; }
@@ -269,7 +245,7 @@ public partial class AuthorAffiliationInfo
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class DataBankList
+public class DataBankList
 {
     [XmlElement("DataBank")]
     public DataBank[]? DataBanks { get; set; }
@@ -279,7 +255,7 @@ public partial class DataBankList
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class DataBank
+public class DataBank
 {
     public string? DataBankName { get; set; }
 
@@ -291,17 +267,20 @@ public partial class DataBank
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class GrantList
+public class GrantList
 {
-    [XmlArrayItem("Grant", IsNullable = false)]
-    public Grant[]? Grants { get; set; }
+    [XmlAttribute()]
+    public string CompleteYN { get; set; }
+
+    [XmlElement("Grant", IsNullable = false)]
+    public Grant[]? Grant { get; set; }
 
 }
 
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class Grant
+public class Grant
 {
     public string? GrantID { get; set; }
     public string? Acronym { get; set; }
@@ -313,17 +292,7 @@ public partial class Grant
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class PublicationTypeList
-{
-    [XmlArrayItem("PublicationType", IsNullable = false)]
-    public PublicationType[]? PublicationTypes { get; set; }
-}
-
-
-[Serializable()]
-[DesignerCategory("code")]
-[XmlType(AnonymousType = true)]
-public partial class PublicationType
+public class PublicationType
 {
     [XmlAttribute()]
     public string UI { get; set; }
@@ -336,7 +305,7 @@ public partial class PublicationType
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class ArticleDate
+public class ArticleDate
 {
     public int? Year { get; set; }
     public int? Month { get; set; }
@@ -350,7 +319,7 @@ public partial class ArticleDate
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class MedlineJournalInfo
+public class MedlineJournalInfo
 {
     public string? Country { get; set; }
     public string? MedlineTA { get; set; }
@@ -358,11 +327,10 @@ public partial class MedlineJournalInfo
     public string? ISSNLinking { get; set; }
 }
 
-
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class OtherId
+public class OtherId
 {
     [XmlAttribute()]
     public string Source { get; set; }
@@ -370,21 +338,10 @@ public partial class OtherId
     public string Value { get; set; }
 }
 
-
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class ChemicalList
-{
-    [XmlArrayItem("Chemical", IsNullable = false)]
-    public Chemical[]? Chemicals { get; set; }
-}
-
-
-[Serializable()]
-[DesignerCategory("code")]
-[XmlType(AnonymousType = true)]
-public partial class Chemical
+public class Chemical
 {
     public NameOfSubstance? NameOfSubstance { get; set; }
 }
@@ -393,7 +350,7 @@ public partial class Chemical
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class NameOfSubstance
+public class NameOfSubstance
 {
     [XmlAttribute()]
     public string UI { get; set; }
@@ -406,17 +363,17 @@ public partial class NameOfSubstance
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class SuppMeshList
+public class SuppMeshList
 {
     [XmlArrayItem("SupplMeshName", IsNullable = false)]
-    public SupplMeshName[]? SupplMeshNames { get; set; }
+    public SupplMeshName[]? SupplMeshName { get; set; }
 }
 
 
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class SupplMeshName
+public class SupplMeshName
 {
     [XmlAttribute()]
     public string Type { get; set; }
@@ -432,41 +389,32 @@ public partial class SupplMeshName
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public class CorrectionsList
-{
-    [XmlArrayItem("CommentsCorrections", IsNullable = false)]
-    public CommentsCorrections[]? CommentsCorrections { get; set; }
-}
-
-
-[Serializable()]
-[DesignerCategory("code")]
-[XmlType(AnonymousType = true)]
-public partial class CommentsCorrections
+public class CommentsCorrections
 {
     [XmlAttribute()]
     public string RefType { get; set; }
 
     public string? RefSource { get; set; }
-    public PMID? PMID { get; set; }
+    public CCPMID? PMID { get; set; }
     public string? Note { get; set; }
 }
 
-
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class MeshList
+public class CCPMID
 {
-    [XmlArrayItem("MeshHeading", IsNullable = false)]
-    public MeshHeading[]? DescriptorNames { get; set; }
+    [XmlAttribute()]
+    public int Version { get; set; }
+
+    [XmlText()]
+    public int Value { get; set; }
 }
 
-
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class MeshHeading
+public class MeshHeading
 {
     public DescriptorName? DescriptorName { get; set; }
 }
@@ -475,7 +423,7 @@ public partial class MeshHeading
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class DescriptorName
+public class DescriptorName
 {
     [XmlAttribute()]
     public string UI { get; set; }
@@ -494,20 +442,20 @@ public partial class DescriptorName
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class KeywordList
+public class KeywordList
 {
     [XmlAttribute()]
     public string Owner { get; set; }
 
     [XmlElement("Keyword")]
-    public Keyword[]? Keywords { get; set; }
+    public Keyword[]? Keyword { get; set; }
 }
 
 
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class Keyword
+public class Keyword
 {
     [XmlAttribute()]
     public string MajorTopicYN { get; set; }
@@ -520,7 +468,7 @@ public partial class Keyword
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class PubmedData
+public class PubmedData
 {
     [XmlArrayItem("PubMedPubDate", IsNullable = false)]
     public PubMedPubDate[]? History { get; set; }
@@ -535,7 +483,7 @@ public partial class PubmedData
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class PubMedPubDate
+public class PubMedPubDate
 {
     [XmlAttribute()]
     public string PubStatus { get; set; }
@@ -549,7 +497,7 @@ public partial class PubMedPubDate
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public partial class PubmedDataArticleId
+public class PubmedDataArticleId
 {
     [XmlAttribute()]
     public string IdType { get; set; }
