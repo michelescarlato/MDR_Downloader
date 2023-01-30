@@ -37,8 +37,8 @@ namespace MDR_Downloader.pubmed;
 
 public class PubMed_Controller
 {
-    private readonly LoggingHelper _logging_helper;
-    private readonly MonDataLayer _mon_data_layer;
+    private readonly ILoggingHelper _logging_helper;
+    private readonly IMonDataLayer _mon_data_layer;
     private readonly JsonSerializerOptions? _json_options;
 
     private readonly PubMedDataLayer pubmed_repo;
@@ -48,7 +48,7 @@ public class PubMed_Controller
     private readonly string postBaseURL, searchBaseURL, fetchBaseURL;
 
 
-    public PubMed_Controller(MonDataLayer mon_data_layer, LoggingHelper logging_helper)
+    public PubMed_Controller(IMonDataLayer mon_data_layer, ILoggingHelper logging_helper)
     {
         _logging_helper = logging_helper;
         _mon_data_layer = mon_data_layer;
@@ -61,7 +61,7 @@ public class PubMed_Controller
         };
 
         pubmed_repo = new(_logging_helper);
-        pubmed_processor = new();
+        pubmed_processor = new(pubmed_repo, _logging_helper);
 
         // API key belongs to NCBI user stevecanhamn (steve.canham@ecrin.org,
         // stored in appsettings.json and accessed via the logging repo.
@@ -158,8 +158,6 @@ public class PubMed_Controller
             string search_term = "&term=" + s.nlm_abbrev + "[SI]" + date_string;
             searchUrl = searchBaseURL + search_term + "&usehistory=y";
 
-
-
             // Get the number of total records that have this databank reference
             // and that (usually) have been revised recently 
             // and calculate the loop parameters.
@@ -233,7 +231,7 @@ public class PubMed_Controller
             // Establish tables and support objects to support
             // the PMIDs found in each source database with References.
             // Loop through those databases and deposit pmids in the
-            // pp.pmids_by_source_total table. This is not sensitive to a 
+            // pp.pmids_by_source_total table. This initial stage is not sensitive to a 
             // cutoff date as the last revised date is not known at this time
             // - has to be checked later.
 
@@ -326,7 +324,6 @@ public class PubMed_Controller
             _logging_helper.LogError("In PubMed ProcessPMIDsListfromDBSourcesAsync(): " + e.Message);
             return res;
         }
-
     }
 
 
@@ -336,15 +333,7 @@ public class PubMed_Controller
         string? responseBody = await ch.GetAPIResponseAsync(fetch_URL);
         if (responseBody is not null)
         {
-            responseBody = responseBody.Replace("<i>", "&lt;i&gt;");
-            responseBody = responseBody.Replace("</i>", "&lt;/i&gt;");
-            responseBody = responseBody.Replace("<b>", "&lt;b&gt;");
-            responseBody = responseBody.Replace("</b>", "&lt;/b&gt;");
-            responseBody = responseBody.Replace("<sup>", "&lt;sup&gt;");
-            responseBody = responseBody.Replace("</sup>", "&lt;/sup&gt;");
-            responseBody = responseBody.Replace("<sub>", "&lt;sub&gt;");
-            responseBody = responseBody.Replace("</sub>", "&lt;/sub&gt;");
-
+            responseBody = EscapeHtmlTags(responseBody);
             PubmedArticleSet? search_result = Deserialize<PubmedArticleSet?>(responseBody);
             if (search_result is not null)
             {
@@ -353,18 +342,25 @@ public class PubMed_Controller
                 {
                     foreach (PubmedArticle article in articles)
                     {
+                        // Send each pubmed article object, as deserialised from XML, to the 
+                        // processor for conversion to the Full Object model structure. 
+                        // Assuming successful, returned object is serialised as JSON
+                        // and the monitor table updated acordingly.
+
                         res.num_checked++;
                         FullObject? fob = pubmed_processor.ProcessData(article);
                         if (fob is not null && fob.ipmid.HasValue && !string.IsNullOrEmpty(fob.sd_oid))
                         {
-                            // Obtain last revised date if possible. Write out file
-                            // file and update file_record (by ref).
-
                             ObjectFileRecord? file_record = _mon_data_layer.FetchObjectFileRecord(fob.sd_oid!, source.id);
+
+                            // Here insert a lookup - for PMIDs originating in data sources - 
+                            // that allows us to see the exact type of data object that is being added 
+                            // User that to change the object type in the database record
+
                             string full_path = await WriteOutFile(fob, (int)fob.ipmid!, file_base);
                             if (full_path != "error")
                             {
-                                string remote_url = "" + fob.sd_oid;
+                                string remote_url = "https://pubmed.ncbi.nlm.nih.gov/" + fob.sd_oid;
                                 DateTime? last_revised_datetime = null;
                                 int? year = fob.dateCitationRevised?.Year;
                                 int? month = fob.dateCitationRevised?.Month;
@@ -381,7 +377,10 @@ public class PubMed_Controller
                         }
                     }
 
-                    if (res.num_checked % 100 == 0) _logging_helper.LogLine("Checked so far: " + res.num_checked.ToString());
+                    if (res.num_checked % 100 == 0)
+                    {
+                        _logging_helper.LogLine("Checked so far: " + res.num_checked.ToString());
+                    }
                 }
             }
         }
@@ -393,17 +392,15 @@ public class PubMed_Controller
     // Called from the FetchPubMedRecordsAsync function.
     // Returns the full file path as constructed, or an 'error' string if an exception occurred.
 
-
     private async Task<string> WriteOutFile(FullObject fob, int ipmid, string file_base)
     {
-         string folder_name = Path.Combine(file_base, "PM" + (ipmid / 10000).ToString("00000") + "xxxx");
+        string folder_name = Path.Combine(file_base, "PM" + (ipmid / 10000).ToString("00000") + "xxxx");
         if (!Directory.Exists(folder_name))
         {
             Directory.CreateDirectory(folder_name);
         }
         string file_name = "PM" + ipmid.ToString("000000000") + ".json";
-        //string full_path = Path.Combine(folder_name, file_name!);
-        string full_path = Path.Combine(file_base, file_name!);
+        string full_path = Path.Combine(folder_name, file_name!);
         try
         {
             using FileStream jsonStream = File.Create(full_path);
@@ -423,53 +420,48 @@ public class PubMed_Controller
 
     private T? Deserialize<T>(string? inputString)
     {
-        if (inputString is null)
+        if (string.IsNullOrEmpty(inputString))
         {
             return default;
         }
 
-        T? instance = default;
         try
         {
             var xmlSerializer = new XmlSerializer(typeof(T));
-            //xmlSerializer.UnknownElement += Serializer_UnknownElement;
             using var stringreader = new StringReader(inputString);
-            instance = (T?)xmlSerializer.Deserialize(stringreader);
+            return (T?)xmlSerializer.Deserialize(stringreader);
         }
         catch (Exception e)
         {
             _logging_helper.LogCodeError("Error when deserialising " + inputString[0..1000], e.Message, e.StackTrace);
             return default;
         }
-
-        return instance;
     }
 
-    /*
-    private static void Serializer_UnknownElement(object? sender, XmlElementEventArgs e)
+
+    private string EscapeHtmlTags(string? inputString)
     {
-        if (e.ObjectBeingDeserialized is AbstractText abtext)
+        if (string.IsNullOrEmpty(inputString))
         {
-            if (e.Element.Name == "i" || e.Element.Name == "sup" || e.Element.Name == "sub" )
-            {
-                ((AbstractText)e.ObjectBeingDeserialized).Text = 
-                //string? Text_Detagged = e.Element.OuterXml.Replace("<", "&lt;").Replace(">", "&gt;");
-
-                return;
-            }
+            return null;
         }
-    }
-    
-    
-    public class Article
-    {
-        // include your other fields that are not problematic
-        public string Title_Custom { get; set; }
-    }
- 
-    var myArticles = articlesXmlString.Parse<List<Article>>();
-    Console.Out(myArticles[0].Title_Custom); // "A LMI-Based Algorithm for Designing Subop
-    */
-}
 
+        /*
+        // Required if we add extraction of abstracts - unable to do
+        // so at the moment because of copyright restrictions.
+        // There may be better ways of handling this problem!
+
+        inputString = inputString.Replace("<i>", "&lt;i&gt;");
+        inputString = inputString.Replace("</i>", "&lt;/i&gt;");
+        inputString = inputString.Replace("<b>", "&lt;b&gt;");
+        inputString = inputString.Replace("</b>", "&lt;/b&gt;");
+        inputString = inputString.Replace("<sup>", "&lt;sup&gt;");
+        inputString = inputString.Replace("</sup>", "&lt;/sup&gt;");
+        inputString = inputString.Replace("<sub>", "&lt;sub&gt;");
+        inputString = inputString.Replace("</sub>", "&lt;/sub&gt;");
+        */
+
+        return inputString;
+    }
+}
 

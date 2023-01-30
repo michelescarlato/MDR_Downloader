@@ -10,12 +10,12 @@ namespace MDR_Downloader.biolincc;
 public class BioLINCC_Processor
 {
     private readonly ScrapingHelpers _ch;
-    private readonly LoggingHelper _logging_helper;
+    private readonly ILoggingHelper _logging_helper;
     private readonly BioLinccDataLayer _repo;
 
     string? pubs_link;
 
-    public BioLINCC_Processor(ScrapingHelpers ch, LoggingHelper logging_helper, BioLinccDataLayer repo)
+    public BioLINCC_Processor(ScrapingHelpers ch, ILoggingHelper logging_helper, BioLinccDataLayer repo)
     {
         _ch = ch;
         _logging_helper = logging_helper;

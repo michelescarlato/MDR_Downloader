@@ -101,7 +101,7 @@ namespace MDR_Downloader.who
                 r.study_status = _wh.GetStatus(study_status);
             }
 
-            List<StudyFeature> study_features = new List<StudyFeature>();
+            List<WhoStudyFeature> study_features = new();
 
             string? design_list = sr.study_design.Tidy();
             string? phase_statement= sr.phase.Tidy();

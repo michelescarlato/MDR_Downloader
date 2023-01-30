@@ -3,7 +3,7 @@
 
 namespace MDR_Downloader
 {
-    public class LoggingHelper
+    public class ILoggingHelper : IILoggingHelper
     {
         private string logfile_startofpath;
         private string summary_logfile_startofpath;
@@ -13,7 +13,7 @@ namespace MDR_Downloader
 
         private StreamWriter? sw;
 
-        public LoggingHelper()
+        public ILoggingHelper()
         {
             IConfigurationRoot settings = new ConfigurationBuilder()
                 .SetBasePath(AppContext.BaseDirectory)
@@ -64,7 +64,6 @@ namespace MDR_Downloader
         }
 
 
-
         public void OpenNoSourceLogFile()
         {
             logfile_path += logfile_startofpath + "DL Source not set " + dt_string + ".log";
@@ -72,7 +71,7 @@ namespace MDR_Downloader
         }
 
 
-        internal void LogLine(string message, string identifier = "")
+        public void LogLine(string message, string identifier = "")
         {
             string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
             string feedback = dt_string + message + identifier;
@@ -142,7 +141,7 @@ namespace MDR_Downloader
         }
 
 
-        internal void LogHeader(string message)
+        public void LogHeader(string message)
         {
             string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
             string header = dt_string + "**** " + message + " ****";
@@ -151,7 +150,7 @@ namespace MDR_Downloader
         }
 
 
-        internal void LogError(string message)
+        public void LogError(string message)
         {
             string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
             string error_message = dt_string + "***ERROR*** " + message;
@@ -163,7 +162,7 @@ namespace MDR_Downloader
         }
 
 
-        internal void LogParseError(string header, string errorNum, string errorType)
+        public void LogParseError(string header, string errorNum, string errorType)
         {
             string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
             string error_message = dt_string + "***ERROR*** " + "Error " + errorNum + ": " + header + " " + errorType;
@@ -171,7 +170,7 @@ namespace MDR_Downloader
         }
 
 
-        internal void LogCodeError(string header, string errorMessage, string? stackTrace)
+        public void LogCodeError(string header, string errorMessage, string? stackTrace)
         {
             string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
             string headerMessage = dt_string + "***ERROR*** " + header + "\n";
@@ -185,7 +184,7 @@ namespace MDR_Downloader
         }
 
 
-        internal void CloseLog()
+        public void CloseLog()
         {
             if (sw is not null)
             {

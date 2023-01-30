@@ -4,19 +4,19 @@ using System.Xml.Serialization;
 namespace MDR_Downloader.euctr;
 
 
-public class Study
+public class Euctr_Record
 {
     public string? sd_sid { get; set; }
     public string? sponsor_id { get; set; }
     public string? sponsor_name { get; set; }
     public string? start_date { get; set; }
-    public string? competent_authority { get; set; }
-    public string? trial_type { get; set; }
+    public string? inclusion_criteria { get; set; }
+    public string? exclusion_criteria { get; set; }
     public string? trial_status { get; set; }
     public string? medical_condition { get; set; }
     public string? population_age { get; set; }
     public string? gender { get; set; }
-    public string? details_url { get; set; }
+    public string? details_url { get; set; } 
     public string? results_url { get; set; }
     public string? results_version { get; set; }
     public string? results_first_date { get; set; }
@@ -34,12 +34,12 @@ public class Study
     public List<DetailLine>? population { get; set; }
     public List<Country>? countries { get; set; }
 
-    public Study(string? _sd_sid)
+    public Euctr_Record(string? _sd_sid)
     {
         sd_sid = _sd_sid;
     }
 
-    public Study()
+    public Euctr_Record()
     { }
 }
 

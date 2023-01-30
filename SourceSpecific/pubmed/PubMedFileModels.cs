@@ -1,4 +1,5 @@
 ﻿using PostgreSQLCopyHelper;
+using System.Xml.Serialization;
 
 namespace MDR_Downloader.pubmed;
 
@@ -63,9 +64,6 @@ public class FullObject
     public string? pubMonth { get; set; }
     public int? pubDay { get; set; }
     public string? medlineDate { get; set; }
-    public NumericDate? articleDate { get; set; }
-    public string? articleDateType { get; set; }
-
     public string? pubModel { get; set; }
 
     public string? journalIssnType { get; set; }
@@ -86,7 +84,7 @@ public class FullObject
 
     public List<string>? ArticleLangs { get; set; }
     public List<Creator>? Creators { get; set; }
-
+    public List<ArticleEDate>? ArticleEDates { get; set; }
     public List<ArticleType>? ArticleTypes { get; set; }
     public List<EReference>? EReferences { get; set; }
     public List<Database>? DatabaseList { get; set; }
@@ -102,6 +100,7 @@ public class FullObject
     public List<AdditionalId>? AdditionalIds { get; set; }
     public List<HistoryDate>? History { get; set; }
     public List<ArticleId>? ArticleIds { get; set; }
+    public List<ISSNRecord>? ISSNList { get; set; }
 }
 
 public class NumericDate
@@ -110,26 +109,18 @@ public class NumericDate
     public int? Month { get; set; }
     public int? Day { get; set; }
 
-    public NumericDate()
-    { }
-    
     public NumericDate(int? year, int? month, int? day)
     {
         Year = year;
         Month = month;
         Day = day;
     }
-
-    
 }
 
 public class EReference
 {
     public string? EIdType { get; set; }
     public string? Value { get; set; }
-
-    public EReference()
-    { }
 
     public EReference(string? eIdType, string? value)
     {
@@ -149,9 +140,6 @@ public class Creator
     public string? IdentifierSource { get; set; }
     public string? IdentifierValue { get; set; }
     public List<AffiliationInfo>? AffiliationInfo { get; set; }
-
-    public Creator()
-    { }
 
     public Creator(string? collectiveName, string? familyName, 
                    string? giveneName, string? initials, 
@@ -176,9 +164,6 @@ public class AffiliationInfo
     public string? IdentifierSource { get; set; }
     public string? IdentifierValue { get; set; }
 
-    public AffiliationInfo()
-    { }
-
     public AffiliationInfo(string? affiliation, string? identifierSource, 
                            string? identifierValue)
     {
@@ -194,9 +179,6 @@ public class AdditionalId
     public string? Source { get; set; }
     public string? Value { get; set; }
 
-    public AdditionalId()
-    { }
-
     public AdditionalId(string? source, string? value)
     {
         Source = source;
@@ -204,13 +186,27 @@ public class AdditionalId
     }
 }
 
+
+public class ArticleEDate
+{
+    public string? DateType { get; set; }    
+    public int? Year { get; set; }
+    public int? Month { get; set; }
+    public int? Day { get; set; }
+
+    public ArticleEDate(string? dateType, int? year, int? month, int? day)
+    {
+        DateType = dateType;
+        Year = year;
+        Month = month;
+        Day = day;
+    }
+}
+
 public class Database
 {
     public string? DataBankName { get; set; }
     public List<string>? AccessionNumberList { get; set; }
-
-    public Database()
-    { }
 
     public Database(string? dataBankName, List<string>? accessionNumberList)
     {
@@ -225,9 +221,6 @@ public class Fund
     public string? Acronym { get; set; }
     public string? Agency { get; set; }
     public string? Country { get; set; }
-
-    public Fund()
-    { }
 
     public Fund(string? grantID, string? acronym, 
                 string? agency, string? country)
@@ -244,9 +237,6 @@ public class ArticleType
     public string? UI { get; set; }
     public string? Value { get; set; }
 
-    public ArticleType()
-    { }
-
     public ArticleType(string? uI, string? value)
     {
         UI = uI;
@@ -258,9 +248,6 @@ public class Substance
 {
     public string? UI { get; set; }
     public string? Name { get; set; }
-
-    public Substance()
-    { }
 
     public Substance(string? uI, string? name)
     {
@@ -274,9 +261,6 @@ public class SupplMeshTerm
     public string? Type { get; set; }
     public string? UI { get; set; }
     public string? Value { get; set; }
-
-    public SupplMeshTerm()
-    { }
 
     public SupplMeshTerm(string? type, string? uI, string? value)
     {
@@ -293,9 +277,6 @@ public class MeshTerm
     public string? Type { get; set; }
     public string? Value { get; set; }
 
-    public MeshTerm()
-    { }
-
     public MeshTerm(string? uI, string? majorTopicYN, 
                     string? type, string? value)
     {
@@ -311,9 +292,6 @@ public class KWord
     public string? MajorTopicYN { get; set; }
     public string? Value { get; set; }
 
-    public KWord()
-    { }
-
     public KWord(string? majorTopicYN, string? value)
     {
         MajorTopicYN = majorTopicYN;
@@ -327,9 +305,6 @@ public class Correction
     public int? PMID_Version { get; set; }
     public int? PMID_Value { get; set; }
     public string? RefType { get; set; }
-
-    public Correction()
-    { }
 
     public Correction(string? refSource, int? pMID_Version,
                       int? pMID_Value, string? refType)
@@ -348,9 +323,6 @@ public class HistoryDate
     public int? Month { get; set; }
     public int? Day { get; set; }
 
-    public HistoryDate()
-    { }
-
     public HistoryDate(int? year, int? month, int? day, string pubStatus)
     {
         PubStatus = pubStatus;
@@ -365,14 +337,24 @@ public class ArticleId
     public string? IdType { get; set; }
     public string? Value { get; set; }
 
-    public ArticleId()
-    { }
-
     public ArticleId(string? idType, string? value)
      {
         IdType = idType;
         Value = value;
       }
+}
+
+
+public class ISSNRecord
+{
+    public string? IssnType { get; set; }
+    public string? Value { get; set; }
+
+    public ISSNRecord(string? issnType, string? value)
+    {
+        IssnType = issnType;
+        Value = value;
+    }
 }
 
 

@@ -3,6 +3,7 @@ using MDR_Downloader.euctr;
 using MDR_Downloader.Helpers;
 using MDR_Downloader.isrctn;
 using MDR_Downloader.pubmed;
+using ScrapySharp.Extensions;
 using ScrapySharp.Html;
 using ScrapySharp.Network;
 using System;
@@ -20,7 +21,7 @@ namespace MDR_Downloader.isrctn;
 
 public class ISRCTN_Processor
 {
-    public Study GetFullDetails(FullTrial ft)
+    public async Task<Study> GetFullDetails(FullTrial ft, ILoggingHelper logging_helper)
     {
         Study st = new();
 
@@ -78,6 +79,7 @@ public class ISRCTN_Processor
                 }
             }
 
+
             var g = tr.trialDesign;
             if (g is not null)
             {
@@ -90,6 +92,7 @@ public class ISRCTN_Processor
                 st.overallStartDate = g.overallStartDate;
                 st.overallEndDate = g.overallEndDate;
             }
+
 
             var p = tr.participants;
             if (p is not null)
@@ -164,6 +167,7 @@ public class ISRCTN_Processor
                 }
             }
 
+
             var c = tr.conditions?.condition;
             if (c is not null)
             {
@@ -171,6 +175,7 @@ public class ISRCTN_Processor
                 st.diseaseClass1 = c.diseaseClass1;
                 st.diseaseClass2 = c.diseaseClass2;
             }
+
 
             var i = tr.interventions?.intervention;
             if (i is not null)
@@ -180,6 +185,7 @@ public class ISRCTN_Processor
                 st.phase = i.phase;
                 st.drugNames = i.drugNames;
             }
+
 
             var r = tr.results;
             if (r is not null)
@@ -239,38 +245,28 @@ public class ISRCTN_Processor
                         string[] iditems = eref.Split(";");
                         foreach (string iditem in iditems)
                         {
-                            identifiers.Add(new Identifier(0, "To be determned", iditem.Trim(), 0, "To be determned"));
+                            identifiers.Add(new Identifier(0, "To be determined", iditem.Trim(), 0, "To be determined"));
                         }
                     }
-                    else if (eref.Contains(","))
+                    else if (eref.Contains(",") && (eref.ToLower().Contains("iras") || eref.ToLower().Contains("hta")))
                     {
+                        // Don't split on commas unless these common id types are included.
+
                         string[] iditems = eref.Split(",");
                         foreach (string iditem in iditems)
                         {
-                            identifiers.Add(new Identifier(0, "To be determned", iditem.Trim(), 0, "To be determned"));
+                            identifiers.Add(new Identifier(0, "To be determined", iditem.Trim(), 0, "To be determined"));
                         }
                     }
                     else
                     {
-                        identifiers.Add(new Identifier(0, "To be determned", eref.Trim(), 0, "To be determned"));
+                        identifiers.Add(new Identifier(0, "To be determined", eref.Trim(), 0, "To be determined"));
                     }
                 }
             }
 
-
-            var ops = tr.outputs;
-            if (ops?.Any() == true)
-            {
-                foreach (var v in ops)
-                {
-                    outputs.Add(new StudyOutput(v.description, v.productionNotes, v.outputType,
-                                v.artefactType, v.dateCreated, v.dateUploaded, v.peerReviewed,
-                                v.patientFacing, v.createdBy, v.externalLink?.url, v.localFile?.fileId,
-                                v.localFile?.originalFilename, v.localFile?.downloadFilename,
-                                v.localFile?.version, v.localFile?.mimeType));
-                }
-            }
-
+            // Do aditional files first
+            // so that details can be checked from the outputs data
 
             var afs = tr.attachedFiles;
             if (afs?.Any() == true)
@@ -280,6 +276,146 @@ public class ISRCTN_Processor
                     attachedFiles.Add(new StudyAttachedFile(v.description, v.name, v.id, v.@public));
                 }
             }
+
+            var ops = tr.outputs;
+            if (ops?.Any() == true)
+            {
+                bool local_urls_collected = false;
+                Dictionary<string, string>? output_urls = null;
+
+                foreach (var v in ops)
+                {
+                    StudyOutput sop = new StudyOutput(v.description, v.productionNotes, v.outputType,
+                                v.artefactType, v.dateCreated, v.dateUploaded, v.peerReviewed,
+                                v.patientFacing, v.createdBy, v.externalLink?.url, v.localFile?.fileId,
+                                v.localFile?.originalFilename, v.localFile?.downloadFilename,
+                                v.localFile?.version, v.localFile?.mimeType);
+                    
+                    if (sop.artefactType == "LocalFile")
+                    {
+                        // First check it is in the attached files list and public.
+                        // (Not all listed local outputs are in the attached files
+                        // list - though the great majority are).
+
+                        if (attachedFiles?.Any() == true)
+                        {
+                            foreach (var af in attachedFiles) 
+                            { 
+                                if (sop.fileId == af.id) 
+                                {
+                                    sop.localFilePublic = af.@public;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // need to go to the page and get the url for the local file
+                        // (Not available in the API data)
+                        // May have already been collected from an earlier output. and
+                        // fill it by web scraping.
+
+                        // get the url data for this study if not already collected.
+
+                        if (!local_urls_collected)
+                        {
+                            string details_url = "https://www.isrctn.com/" + st.sd_sid;
+                            ScrapingHelpers ch = new(logging_helper);
+                            Thread.Sleep(500);
+                            WebPage? study_page = await ch.GetPageAsync(details_url);
+                            Thread.Sleep(100); 
+                            study_page = await ch.GetPageAsync(details_url);
+                            if (study_page is not null)
+                            {
+                                output_urls = new();
+                                HtmlNode? section_div = study_page.Find("div", By.Class("l-Main")).FirstOrDefault();
+                                HtmlNode? article = section_div?.SelectSingleNode("article[1]");
+                                IEnumerable<HtmlNode>? publications = article?.SelectNodes("//section/div[1]/h2[text()='Results and Publications']/following-sibling::div[1]/h3");
+                                if (publications?.Any() == true)
+                                {
+                                    foreach (var pub in publications)
+                                    {
+                                        string? pub_name = pub.InnerText.Tidy();
+                                        if (pub_name == "Trial outputs")
+                                        {
+                                            HtmlNode? output_table = pub.SelectSingleNode("following-sibling::div[1]/table[1]/tbody[1]");
+                                            if (output_table is not null)
+                                            {
+                                                var table_rows = output_table.SelectNodes("tr");
+                                                if (table_rows?.Any() == true)
+                                                {
+                                                    foreach (var table_row in table_rows)
+                                                    {
+                                                        var output_attributes = table_row.SelectNodes("td")?.ToArray();
+                                                        if (output_attributes?.Any() == true)
+                                                        {
+                                                            HtmlNode? output_link = output_attributes[0]?.SelectSingleNode("a[1]");
+                                                            if (output_link is not null)
+                                                            {
+                                                                string? output_title = output_link.GetAttributeValue("title").ReplaceUnicodes();
+                                                                string? output_url = output_link.GetAttributeValue("href");
+                                                                if (!string.IsNullOrEmpty(output_url))
+                                                                {
+                                                                    if (!output_url.ToLower().StartsWith("http"))
+                                                                    {
+                                                                        output_url = output_url.StartsWith("/") ? "https://www.isrctn.com" + output_url : "https://www.isrctn.com/" + output_url;
+                                                                    }
+
+                                                                    // Very occasionally the same file and output url is duplicated.
+                                                                    // This must be trapped to avoid an exception.
+
+                                                                    bool add_entry = true;
+                                                                    if(output_urls.Count > 0)
+                                                                    {
+                                                                        foreach(KeyValuePair<string, string> entry in output_urls)
+                                                                        {
+                                                                            if (output_title == entry.Key)
+                                                                            {
+                                                                                add_entry = false;
+                                                                                break;
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    if (add_entry)
+                                                                    {
+                                                                        output_urls.Add(output_title, output_url);
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                local_urls_collected = true;
+                            }
+                        }
+
+                        if (output_urls.Count > 0)
+                        {
+                            // Not clear if the original or download file name shopuld
+                            // be used to try and match the url (normally identical).
+
+                            if (sop.downloadFilename is not null)
+                            {
+                                sop.localFileURL = output_urls[sop.downloadFilename];
+
+                                if (sop.localFileURL is null && sop.originalFilename is not null)
+                                {
+                                    sop.localFileURL = output_urls[sop.originalFilename];
+                                }
+                            }
+                        }
+                    }
+
+                    outputs.Add(sop);
+                }
+            }
+
+
+            
         }
 
         var tr_contacts = ft.contact;

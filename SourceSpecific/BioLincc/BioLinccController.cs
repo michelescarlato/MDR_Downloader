@@ -11,11 +11,11 @@ namespace MDR_Downloader.biolincc
 {
     public class BioLINCC_Controller
     {
-        private readonly LoggingHelper _logging_helper;
-        private readonly MonDataLayer _mon_data_layer;
+        private readonly ILoggingHelper _logging_helper;
+        private readonly IMonDataLayer _mon_data_layer;
         private readonly BioLinccDataLayer _biolincc_repo;
 
-        public BioLINCC_Controller(MonDataLayer mon_data_layer, LoggingHelper logging_helper)
+        public BioLINCC_Controller(IMonDataLayer mon_data_layer, ILoggingHelper logging_helper)
         {
             _logging_helper = logging_helper;
             _mon_data_layer = mon_data_layer;

@@ -8,12 +8,12 @@ namespace MDR_Downloader.isrctn;
 
 class ISRCTN_Controller
 {
-    private readonly LoggingHelper _logging_helper;
-    private readonly MonDataLayer _mon_data_layer;
+    private readonly ILoggingHelper _logging_helper;
+    private readonly IMonDataLayer _mon_data_layer;
     private readonly JsonSerializerOptions? _json_options;
     private readonly string _base_url;
 
-    public ISRCTN_Controller(MonDataLayer mon_data_layer, LoggingHelper logging_helper)
+    public ISRCTN_Controller(IMonDataLayer mon_data_layer, ILoggingHelper logging_helper)
     {
         _logging_helper = logging_helper;
         _mon_data_layer = mon_data_layer;
@@ -56,11 +56,11 @@ class ISRCTN_Controller
 
         if (t == 111 && opts.CutoffDate is not null)
         {
-            return await DownloadRevisedRecords(file_base, (DateTime)opts.CutoffDate, source.id, (int)opts.saf_id);
+            return await DownloadRevisedRecords(file_base, (DateTime)opts.CutoffDate, source.id, (int)opts.saf_id!);
         }
         else if (t == 115 && opts.CutoffDate is not null && opts.EndDate is not null)
         {
-            return await DownloadRecordsBetweenDates(file_base, (DateTime)opts.CutoffDate, (DateTime)opts.EndDate, source.id, (int)opts.saf_id);
+            return await DownloadRecordsBetweenDates(file_base, (DateTime)opts.CutoffDate, (DateTime)opts.EndDate, source.id, (int)opts.saf_id!);
         }
         else
         {
@@ -283,7 +283,7 @@ class ISRCTN_Controller
                 foreach (FullTrial f in result.fullTrials)
                 {
                     res.num_checked++;
-                    Study s = isrctn_processor.GetFullDetails(f);
+                    Study s = await isrctn_processor.GetFullDetails(f, _logging_helper);
                     if (s is not null && s.sd_sid is not null)
                     {
                         string full_path = await WriteOutFile(s, s.sd_sid, file_base);

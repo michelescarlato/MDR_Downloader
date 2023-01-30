@@ -47,9 +47,9 @@ public class Citation
     public MedlineJournalInfo? MedlineJournalInfo { get; set; }
 
     public Chemical[]? ChemicalList { get; set; }
-    public SuppMeshList? SupplMeshList { get; set; }
     public CommentsCorrections[]? CommentsCorrectionsList { get; set; }
     public MeshHeading[]? MeshHeadingList { get; set; }
+    public SupplMeshName[]? SupplMeshList { get; set; }
     public KeywordList? KeywordList { get; set; }
 }
 
@@ -101,7 +101,7 @@ public class CitationArticle
     public PublicationType[]? PublicationTypeList { get; set; }
 
     [XmlElement("ArticleDate")]
-    public ArticleDate? ArticleDate { get; set; }
+    public ArticleDate[]? ArticleDates { get; set; }
 
     [XmlElement("Language")]
     public string[]? Languages { get; set; }
@@ -116,10 +116,12 @@ public class CitationArticle
 [XmlType(AnonymousType = true)]
 public class Journal
 {
-    public JournalISSN? ISSN { get; set; }
-    public JournalIssue? JournalIssue { get; set; }
     public string? Title { get; set; }
-    public string? ISOAbbreviation { get; set; }
+    public string? ISOAbbreviation { get; set; }   
+    public JournalIssue? JournalIssue { get; set; }
+    
+    [XmlElement("JournalISSN", IsNullable = false)]
+    public JournalISSN[]? ISSN { get; set; }
 }
 
 
@@ -129,10 +131,10 @@ public class Journal
 public class JournalISSN
 {
     [XmlAttribute()]
-    public string? IssnType { get; set; }
+    public string IssnType { get; set; }
 
     [XmlText()]
-    public string Value { get; set; }
+    public string? Value { get; set; }
 }
 
 
@@ -363,16 +365,6 @@ public class NameOfSubstance
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public class SuppMeshList
-{
-    [XmlArrayItem("SupplMeshName", IsNullable = false)]
-    public SupplMeshName[]? SupplMeshName { get; set; }
-}
-
-
-[Serializable()]
-[DesignerCategory("code")]
-[XmlType(AnonymousType = true)]
 public class SupplMeshName
 {
     [XmlAttribute()]
@@ -398,6 +390,7 @@ public class CommentsCorrections
     public CCPMID? PMID { get; set; }
     public string? Note { get; set; }
 }
+
 
 [Serializable()]
 [DesignerCategory("code")]
@@ -528,7 +521,7 @@ public class PubmedDataArticleId
 [XmlTypeAttribute(AnonymousType = true)]
 [XmlRootAttribute(Namespace = "", IsNullable = false)]
 
-public partial class eSearchResult
+public class eSearchResult
 {
     public int Count;
     public int RetMax;
@@ -549,7 +542,7 @@ public partial class eSearchResult
 [System.Diagnostics.DebuggerStepThroughAttribute()]
 [DesignerCategoryAttribute("code")]
 [XmlTypeAttribute(AnonymousType = true)]
-public partial class eSearchResultTranslationStack
+public class eSearchResultTranslationStack
 {
     public eSearchResultTranslationStackTermSet TermSet;
     public string OP;
@@ -561,7 +554,7 @@ public partial class eSearchResultTranslationStack
 [System.Diagnostics.DebuggerStepThroughAttribute()]
 [DesignerCategoryAttribute("code")]
 [XmlTypeAttribute(AnonymousType = true)]
-public partial class eSearchResultTranslationStackTermSet
+public class eSearchResultTranslationStackTermSet
 {
     public string Term;
     public string Field;
@@ -569,7 +562,7 @@ public partial class eSearchResultTranslationStackTermSet
     public string Explode;
 }
 
-public partial class ePostResult
+public class ePostResult
 {
     public int QueryKey;
     public string WebEnv;

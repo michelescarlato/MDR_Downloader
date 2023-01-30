@@ -128,6 +128,8 @@ public class StudyOutput
     public string? createdBy { get; set; }
     public string? externalLinkURL { get; set; }
     public string? fileId { get; set; }
+    public string? localFileURL { get; set; }
+    public bool? localFilePublic { get; set; }
     public string? originalFilename { get; set; }
     public string? downloadFilename { get; set; }
     public string? version { get; set; }
@@ -444,7 +446,7 @@ public class Condition
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
-public partial class Interventions
+public class Interventions
 {
     public Intervention? intervention { get; set; }
 }

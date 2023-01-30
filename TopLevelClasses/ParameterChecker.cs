@@ -5,13 +5,13 @@ namespace MDR_Downloader;
 
 internal class ParameterChecker
 {
-    private readonly LoggingHelper _logging_helper;
-    private readonly MonDataLayer _mon_data_layer;
+    private readonly ILoggingHelper _logging_helper;
+    private readonly IMonDataLayer _mon_data_layer;
 
-    internal ParameterChecker(LoggingHelper logging_helper, MonDataLayer data_layer)
+    internal ParameterChecker(ILoggingHelper logging_helper, IMonDataLayer mon_data_layer)
     {
         _logging_helper = logging_helper;
-        _mon_data_layer = data_layer;
+        _mon_data_layer = mon_data_layer;
     }
 
     internal ParamsCheckResult CheckParams(string[]? args)

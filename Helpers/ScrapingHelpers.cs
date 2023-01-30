@@ -11,11 +11,11 @@ namespace MDR_Downloader.Helpers
 
     public class ScrapingHelpers
     {
-        private readonly LoggingHelper _logging_helper;
+        private readonly ILoggingHelper _logging_helper;
         private readonly ScrapingBrowser browser;
         private readonly HttpClient webClient;
 
-        public ScrapingHelpers(LoggingHelper logging_helper)
+        public ScrapingHelpers(ILoggingHelper logging_helper)
         {
             _logging_helper = logging_helper;
             webClient = new HttpClient();

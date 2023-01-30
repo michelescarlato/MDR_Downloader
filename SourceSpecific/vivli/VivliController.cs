@@ -7,13 +7,13 @@ namespace MDR_Downloader.vivli
 {
     public class Vivli_Controller
     {
-        private readonly LoggingHelper _logging_helper;
-        private readonly MonDataLayer _mon_data_layer;
+        private readonly ILoggingHelper _logging_helper;
+        private readonly IMonDataLayer _mon_data_layer;
 
         private readonly VivliDataLayer vivli_repo;
         private readonly Vivli_Processor processor;
 
-        public Vivli_Controller(MonDataLayer mon_data_layer, LoggingHelper logging_helper)
+        public Vivli_Controller(IMonDataLayer mon_data_layer, ILoggingHelper logging_helper)
         {
             _logging_helper = logging_helper;
             _mon_data_layer = mon_data_layer;

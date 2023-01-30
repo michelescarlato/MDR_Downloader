@@ -66,7 +66,7 @@ namespace MDR_Downloader.vivli
             return page_study_list;
         }
 
-        public async Task GetAndStoreStudyDetails(VivliURL s, VivliDataLayer repo, LoggingHelper logging_repo)
+        public async Task GetAndStoreStudyDetails(VivliURL s, VivliDataLayer repo, ILoggingHelper logging_repo)
         {
             VivliCopyHelpers vch = new();
 

@@ -2,12 +2,6 @@
 using Microsoft.Extensions.Configuration;
 using Npgsql;
 using PostgreSQLCopyHelper;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Net.Http;
-using System.Threading.Tasks;
-using System.Xml.Serialization;
 
 namespace MDR_Downloader.pubmed
 {
@@ -18,17 +12,9 @@ namespace MDR_Downloader.pubmed
         private readonly string mon_connString;
         private readonly string context_connString;
         private readonly string folder_base;
-        private readonly LoggingHelper _logging_helper;
+        private readonly ILoggingHelper _logging_helper;
 
-        /// <summary>
-        /// Parameterless constructor is used to automatically build
-        /// the connection string, using an appsettings.json file that 
-        /// has the relevant credentials (but which is not stored in GitHub).
-        /// The json file also includes the root folder path, which is
-        /// stored in the class's folder_base property.
-        /// </summary>
-        /// 
-        public PubMedDataLayer(LoggingHelper logging_helper)
+        public PubMedDataLayer(ILoggingHelper logging_helper)
         {
             IConfigurationRoot settings = new ConfigurationBuilder()
                 .SetBasePath(AppContext.BaseDirectory)
@@ -173,8 +159,17 @@ namespace MDR_Downloader.pubmed
             using NpgsqlConnection Conn = new(context_connString);
             string SQLString = "select id, nlm_abbrev from ctx.nlm_databanks where id not in (100156, 100157, 100158)";
             return Conn.Query<PMSource>(SQLString);
-        }	
+        }
 
+
+        // gets a 2 letter language code rather than thean the original 3
+        public string? lang_3_to_2(string lang_code_3)
+        {
+            using NpgsqlConnection Conn = new(context_connString);
+            string sql_string = "select code from lup.language_codes where ";
+            sql_string += " marc_code = '" + lang_code_3 + "';";
+            return Conn.Query<string>(sql_string).FirstOrDefault();
+        }
     }
 
 }

@@ -23,6 +23,7 @@
     <PackageReference Include="Dapper.Contrib" Version="2.0.78" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.0" />
     <PackageReference Include="Npgsql" Version="7.0.0" />
     <PackageReference Include="PostgreSQLCopyHelper" Version="2.8.0" />
     <PackageReference Include="ScrapySharp" Version="3.0.0" />

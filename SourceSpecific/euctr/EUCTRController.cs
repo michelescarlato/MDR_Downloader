@@ -8,14 +8,14 @@ namespace MDR_Downloader.euctr;
 
 class EUCTR_Controller
 {
-    private readonly LoggingHelper _logging_helper;
-    private readonly MonDataLayer _mon_data_layer;
+    private readonly ILoggingHelper _logging_helper;
+    private readonly IMonDataLayer _mon_data_layer;
     private readonly JsonSerializerOptions? _json_options;
     private readonly EUCTR_Processor _processor;
     private readonly string _baseURL;
     int _access_error_num = 0;
 
-    public EUCTR_Controller(MonDataLayer mon_data_layer, LoggingHelper logging_helper)
+    public EUCTR_Controller(IMonDataLayer mon_data_layer, ILoggingHelper logging_helper)
     {
         _logging_helper = logging_helper;
         _mon_data_layer = mon_data_layer;
@@ -185,7 +185,7 @@ class EUCTR_Controller
                     Study_Summmary s = summaries[j];
                     if ((bool)s.do_download!)
                     {
-                        Study st = _processor.GetInfoFromSummary(s);
+                        Euctr_Record st = _processor.GetInfoFromSummary(s);
                         if (st.details_url is null)
                         {
                             _logging_helper.LogError($"Problem in obtaining protocol details url from summary page, for {s.eudract_id}");
@@ -249,7 +249,7 @@ class EUCTR_Controller
     // Called from the DownloadBatch function.
     // Returns the full file path as constructed, or an 'error' string if an exception occurred.
 
-    private async Task<string> WriteOutFile(Study s, string sd_sid, string file_base)
+    private async Task<string> WriteOutFile(Euctr_Record s, string sd_sid, string file_base)
     {
         string file_name = "EU " + sd_sid + ".json";
         string full_path = Path.Combine(file_base, file_name!);

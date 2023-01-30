@@ -12,10 +12,10 @@ namespace MDR_Downloader.yoda
     public class Yoda_Processor
     {
         private readonly ScrapingHelpers _ch;
-        private readonly LoggingHelper _logging_helper;
+        private readonly ILoggingHelper _logging_helper;
         private readonly YodaDataLayer _repo;
 
-        public Yoda_Processor(ScrapingHelpers ch, LoggingHelper logging_helper, YodaDataLayer repo)
+        public Yoda_Processor(ScrapingHelpers ch, ILoggingHelper logging_helper, YodaDataLayer repo)
         {
             _ch = ch;
             _logging_helper = logging_helper;

@@ -22,6 +22,15 @@ namespace MDR_Downloader.pubmed;
 
 public class PubMed_Processor
 {
+    private readonly PubMedDataLayer _pubmed_repo;
+    private readonly ILoggingHelper _logging_helper;
+
+    public PubMed_Processor(PubMedDataLayer pubmed_repo, ILoggingHelper logging_helper)
+    {
+        _pubmed_repo = pubmed_repo;
+        _logging_helper = logging_helper;
+    }
+
     public FullObject? ProcessData(PubmedArticle art)
     {
         var citation = art.MedlineCitation;
@@ -43,9 +52,10 @@ public class PubMed_Processor
         // Establish main citation object
         // and list structures to receive data
         FullObject b = new();
-
+        List<ArticleEDate>? ArticleEDates = new();
         List<string>? ArticleLangs = new();
         List<Creator>? Creators = new();
+
         List<ArticleType>? ArticleTypes = new();
         List<EReference>? EReferences = new();
         List<Database>? DatabaseList = new();
@@ -58,6 +68,7 @@ public class PubMed_Processor
         List<AdditionalId>? AdditionalIds = new();
         List<HistoryDate>? History = new ();
         List<ArticleId>? ArticleIds = new ();
+        List<ISSNRecord>? ISSNList = new();
 
         b.ipmid = citation.PMID?.Value;
         b.pmid_version = citation.PMID?.Version;
@@ -84,8 +95,13 @@ public class PubMed_Processor
         {
             b.journalTitle = journal.Title;
             b.journalISOAbbreviation = journal.ISOAbbreviation;
-            b.journalIssnType = journal.ISSN?.IssnType;
-            b.journalIssn = journal.ISSN?.Value;
+            if (journal.ISSN is not null && journal.ISSN.Length > 0)
+            {
+                foreach (var i in journal.ISSN)
+                {
+                    ISSNList.Add(new ISSNRecord(i.IssnType, i.Value));
+                }
+            }
 
             var journalIssue = journal.JournalIssue;
             if (journalIssue is not null)
@@ -108,15 +124,9 @@ public class PubMed_Processor
             b.journalNlmUniqueID = journalInfo.NlmUniqueID;
             b.journalISSNLinking = journalInfo.ISSNLinking;
         }
-
-        b.dateCitationRevised = new NumericDate(article.ArticleDate?.Year,
-                                                article.ArticleDate?.Month,
-                                                article.ArticleDate?.Day);
-        b.articleDateType = article.ArticleDate?.DateType;
         b.pubModel = article.PubModel;
-        //b.abstractCopyright = article.Abstract?.CopyrightInformation;
 
-        if (citation.ChemicalList is not null && citation.MeshHeadingList.Length > 0)
+        if (citation.ChemicalList is not null && citation.MeshHeadingList?.Length > 0)
         {
             foreach (var s in citation.ChemicalList)
             {
@@ -134,14 +144,11 @@ public class PubMed_Processor
             }
         }
 
-        if (citation.SupplMeshList is not null)
+        if (citation.SupplMeshList is not null && citation.SupplMeshList.Length > 0)
         {
-            if (citation.SupplMeshList.SupplMeshName?.Any() == true)
+            foreach (var s in citation.SupplMeshList)
             {
-                foreach (var s in citation.SupplMeshList.SupplMeshName)
-                {
-                    SupplMeshList.Add(new SupplMeshTerm(s.Type, s.UI, s.Value));
-                }
+                SupplMeshList.Add(new SupplMeshTerm(s.Type, s.UI, s.Value));
             }
         }
 
@@ -171,9 +178,34 @@ public class PubMed_Processor
         {
             foreach (string lang in article.Languages)
             {
-                ArticleLangs.Add(lang);
+                string? lang_to_add;
+                if (lang == "eng")
+                {
+                    lang_to_add = "en";
+                }
+                else
+                {
+                    lang_to_add = lang.lang_3_to_2();
+                    if (lang_to_add is not null && lang_to_add == "??")
+                    {
+                        // need to use the database
+                        lang_to_add = _pubmed_repo.lang_3_to_2(lang);
+                    }
+                }
+                ArticleLangs.Add(lang_to_add);
             }
         }
+
+
+        if (article.ArticleDates is not null && article.ArticleDates.Length > 0)
+        {
+            foreach (var ad in article.ArticleDates)
+            {
+                ArticleEDates.Add(new ArticleEDate(ad.DateType, ad.Year, 
+                                                   ad.Month, ad.Day));
+            }
+        }
+
 
         if (article.OtherIDs is not null && article.OtherIDs.Length > 0)
         {

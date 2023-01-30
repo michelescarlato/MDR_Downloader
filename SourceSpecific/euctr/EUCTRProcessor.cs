@@ -66,12 +66,12 @@ public class EUCTR_Processor
     }
 
 
-    public Study GetInfoFromSummary(Study_Summmary s)
+    public Euctr_Record GetInfoFromSummary(Study_Summmary s)
     {
         // Study summary contains the html node with the summary details.
 
         string sd_sid = s.eudract_id!;
-        Study st = new(sd_sid);
+        Euctr_Record st = new(sd_sid);
 
         HtmlNode box = s.details_box!;
         HtmlNode[]? studyDetails = box.Elements("tr").ToArray();
@@ -231,7 +231,7 @@ public class EUCTR_Processor
     }
 
 
-    public Study ExtractProtocolDetails(Study st, WebPage detailsPage)
+    public Euctr_Record ExtractProtocolDetails(Euctr_Record st, WebPage detailsPage)
     {
         var summary = detailsPage.Find("table", By.Class("summary")).FirstOrDefault();
 
@@ -281,7 +281,7 @@ public class EUCTR_Processor
         HtmlNode[]? details_rows = study_details?.CssSelect("tbody tr").ToArray();
         if (details_rows is not null)
         {
-            st.features = GetStudyFeatures(details_rows, st.countries);
+            st.features = GetStudyFeatures(details_rows, st, st.countries);
         }
 
         HtmlNode? population = detailsPage.Find("table", By.Id("section-f")).FirstOrDefault();
@@ -295,7 +295,7 @@ public class EUCTR_Processor
     }
 
 
-    public Study ExtractResultDetails(Study st, WebPage resultsPage)
+    public Euctr_Record ExtractResultDetails(Euctr_Record st, WebPage resultsPage)
     {
 
         var pdfLInk = resultsPage.Find("a", By.Id("downloadResultPdf")).FirstOrDefault();
@@ -369,8 +369,11 @@ public class EUCTR_Processor
                             foreach (HtmlNode inner_row in inner_rows)
                             {
                                 var inner_cell = inner_row.CssSelect("td").FirstOrDefault();
-                                string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
-                                if (!string.IsNullOrEmpty(value)) values.Add(new item_value(value));
+                                if (inner_cell is not null)
+                                {
+                                    string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
+                                    if (!string.IsNullOrEmpty(value)) values.Add(new item_value(value));
+                                }
                             }
                         }
                     }
@@ -513,7 +516,7 @@ public class EUCTR_Processor
     }
 
 
-    private List<DetailLine> GetStudyFeatures(HtmlNode[] details_rows, List<Country> summ_countries)
+    private List<DetailLine> GetStudyFeatures(HtmlNode[] details_rows, Euctr_Record st, List<Country> summ_countries)
     {
         List<DetailLine> study_features = new List<DetailLine>();
 
@@ -526,10 +529,8 @@ public class EUCTR_Processor
                 string code = cells[0].InnerText;
 
                 // condition under study and study objectives
-                // E.3 and E.4 are inclusion - exclusion criteria
 
-                if (code.Contains("E.1.1") || code.Contains("E.2")
-                     || code.Contains("E.3") || code.Contains("E.4"))
+                if (code.Contains("E.1.1") || code.Contains("E.2"))
                 {
                     DetailLine line = new DetailLine();
                     List<item_value> values = new List<item_value>();
@@ -557,6 +558,7 @@ public class EUCTR_Processor
                             }
                         }
                     }
+                    
                     else
                     {
                         line.item_number = 1;
@@ -575,7 +577,56 @@ public class EUCTR_Processor
                         study_features.Add(line);
                     }
                 }
+                
+                // E.3 and E.4 are inclusion - exclusion criteria
+                
+                if (code is "E.3" or "E.4")
+                {
+                    DetailLine line = new DetailLine();
+                    line.item_code = code;
+                    string? criteria = null;
+                    line.item_name = HttpUtility.HtmlDecode(cells[1].InnerText);
+                    if (cells[2].CssSelect("table").Any())
+                    {
+                        var inner_table = cells[2].CssSelect("table");
+                        var inner_rows = inner_table.CssSelect("tr").ToArray();
+                        line.item_number = inner_rows.Length;
+                        if (inner_rows?.Any() == true)
+                        {
+                            HtmlNode inner_row = inner_rows[0];     // Just the English one required
+                            {
+                                HtmlNode? inner_cell = inner_row.CssSelect("td").FirstOrDefault();
+                                if (inner_cell is not null)
+                                {
+                                    string? cell_html = inner_cell.InnerHtml.ReplacHtmlTags();
+                                    if (!string.IsNullOrEmpty(cell_html))
+                                    {
+                                        criteria = HttpUtility.HtmlDecode(cell_html).CompressSpaces();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        line.item_number = 1;
+                        string? cell_html = cells[2].InnerHtml.ReplacHtmlTags();
+                        if (!string.IsNullOrEmpty(cell_html))
+                        {
+                            criteria = HttpUtility.HtmlDecode(cell_html).CompressSpaces();
+                        }
+                    }
 
+                    if (code == "E.3")
+                    {
+                        st.inclusion_criteria = criteria;
+                    }
+                    else
+                    {
+                        st.exclusion_criteria = criteria;
+                    }
+
+                }
 
                 // study design features
 

@@ -2,9 +2,7 @@
 using ScrapySharp.Extensions;
 using System.Text.RegularExpressions;
 
-
 namespace MDR_Downloader.Helpers;
-
 
 public static class StringExtensions
 {
@@ -43,8 +41,8 @@ public static class StringExtensions
     public static string? ReplaceUnicodes(this string? instring)
     {
         // Simple extension that returns null for null values and
-        // text based 'NULL equivalents', and otherwise thrims the 
-        // string
+        // text based 'NULL equivalents', and otherwise trims the 
+        // string and replace escaped non-ascii codes.
 
         if (instring is null || instring == "NULL" || instring == "null"
                              || instring == "\"NULL\"" || instring == "\"null\""
@@ -57,6 +55,7 @@ public static class StringExtensions
             instring = instring.Replace("&#32;", " ").Replace("&#37;", "%");
             instring = instring.Replace("&#39;", "’").Replace("&quot;", "'");
             instring = instring.Replace("#gt;", ">").Replace("#lt;", "<");
+            instring = instring.Replace("&amp;", "&");
             return instring;
         }
     }
@@ -65,7 +64,7 @@ public static class StringExtensions
     public static string? ReplacHtmlTags(this string? instring)
     {
         // Simple extension that returns null for null values and
-        // text based 'NULL equivalents', and otherwise thrims the 
+        // text based 'NULL equivalents', and otherwise thims the 
         // string
 
         if (instring is null || instring == "NULL" || instring == "null"
@@ -84,6 +83,7 @@ public static class StringExtensions
             return instring;
         }
     }
+
 
     public static string? CompressSpaces(this string? instring)
     {
@@ -134,6 +134,35 @@ public static class StringExtensions
             return instring;
         }
     }
+
+
+    public static string? lang_3_to_2(this string input_lang_code)
+    {
+        if (string.IsNullOrEmpty(input_lang_code))
+        {
+            return null;
+        }
+        else
+        {
+            return input_lang_code switch
+            {
+                "fre" => "fr",
+                "ger" => "de",
+                "spa" => "es",
+                "ita" => "it",
+                "por" => "pt",
+                "rus" => "ru",
+                "tur" => "tr",
+                "hun" => "hu",
+                "pol" => "pl",
+                "swe" => "sv",
+                "nor" => "no",
+                "dan" => "da",
+                "fin" => "fi",
+                _ => "??"
+            };
+        }
+    }
 }
 
 
@@ -174,11 +203,10 @@ public static class ScrapingExtensions
         // drop carriage returns and trim 
         return attValue.Replace("\n", "").Replace("\r", "").Trim();
     }
-
 }
 
 
-public static partial class DateExtensions
+public static class DateExtensions
 {
     public static int GetMonthAsInt(this string month_name)
     {
@@ -205,17 +233,6 @@ public static partial class DateExtensions
         }
     }
 
-
-    [GeneratedRegex("^(19|20)\\d{2}-(0?[1-9]|1[0-2])-(0?[1-9]|1\\d|2\\d|3[0-1])$")]
-    private static partial Regex yyyymmddRegex();
-    [GeneratedRegex("^(0?[1-9]|1\\d|2\\d|3[0-1])-(0?[1-9]|1[0-2])-(19|20)\\d{2}$")]
-    private static partial Regex ddmmyyyyRegex();
-    [GeneratedRegex("^(0?[1-9]|1\\d|2\\d|3[0-1]) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (19|20)\\d{2}$")]
-    private static partial Regex ddMMMyyyy();
-    [GeneratedRegex("^(0?[1-9]|1\\d|2\\d|3[0-1]) (January|February|March|April|May|June|July|August|September|October|November|December) (19|20)\\d{2}$")]
-    private static partial Regex ddMMMMyyyy();
-
-
     public static string? AsISODate(this string? instring)
     {
         string? interim_string = instring.Tidy();
@@ -231,13 +248,16 @@ public static partial class DateExtensions
 
             string datestring = interim_string.Replace('/', '-').Replace('.', '-').Replace(",", "");
 
-            if (yyyymmddRegex().Match(datestring).Success)
+            // yyyymmdd Regex
+            if (Regex.Match(datestring, @"^(19|20)\d{2}-(0?[1-9]|1[0-2])-(0?[1-9]|1\d|2\d|3[0-1])$").Success)
             {
+                // date in form yyyy-(m)m-(d)d
+
                 if (datestring.Length == 10)
                 {
                     // already OK
                     return datestring;
-                } 
+                }
                 else
                 {
                     int dash1 = datestring.IndexOf('-');
@@ -250,8 +270,12 @@ public static partial class DateExtensions
                     return year_s + "-" + month_s + "-" + day_s;
                 }
             }
-            else if (ddmmyyyyRegex().Match(datestring).Success)
+
+            // ddmmyyyy Regex
+            else if (Regex.Match(datestring, @"^(0?[1-9]|1\d|2\d|3[0-1])-(0?[1-9]|1[0-2])-(19|20)\d{2}$").Success)
             {
+                // date in form (d)d-(m)m-yyyy
+
                 int dash1 = datestring.IndexOf('-');
                 int dash2 = datestring.LastIndexOf('-');
                 string year_s = datestring[^4..];
@@ -261,8 +285,12 @@ public static partial class DateExtensions
                 if (day_s.Length == 1) day_s = "0" + day_s;
                 return year_s + "-" + month_s + "-" + day_s;
             }
-            else if (ddMMMyyyy().Match(datestring).Success)
+
+            // ddMMMyyyy Regex
+            else if (Regex.Match(datestring, @"^(0?[1-9]|1\d|2\d|3[0-1]) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (19|20)\d{2}$").Success)
             {
+                // date in form (d)d MMM yyyy
+
                 int dash1 = datestring.IndexOf(' ');
                 int dash2 = datestring.LastIndexOf(' ');
                 string year_s = datestring[^4..];
@@ -272,8 +300,12 @@ public static partial class DateExtensions
                 if (day_s.Length == 1) day_s = "0" + day_s;
                 return year_s + "-" + month_s + "-" + day_s;
             }
-            else if (ddMMMMyyyy().Match(datestring).Success)
+
+            // ddMMMMyyyy Regex
+            else if (Regex.Match(datestring, @"^(0?[1-9]|1\d|2\d|3[0-1]) (January|February|March|April|May|June|July|August|September|October|November|December) (19|20)\d{2}$").Success)
             {
+                // date in form (d)d MMMM yyyy
+
                 int dash1 = datestring.IndexOf(' ');
                 int dash2 = datestring.LastIndexOf(' ');
                 string year_s = datestring[^4..];
@@ -400,26 +432,27 @@ public static partial class DateExtensions
     }
 
 
-
     public static DateTime? FetchDateTimeFromDateString(this string dateString)
     {
         if (string.IsNullOrEmpty(dateString))
         {
             return null;
         }
-
-        SplitDate? sd = dateString.GetDateParts();
-        if (sd is not null && sd.year is not null
-                           && sd.month is not null && sd.day is not null)
-        {
-            return new DateTime((int)sd.year, (int)sd.month, (int)sd.day);
-        }
         else
         {
-            return null;
+            SplitDate? sd = dateString.GetDateParts();
+            if (sd is not null && sd.year is not null
+                               && sd.month is not null && sd.day is not null)
+            {
+                return new DateTime((int)sd.year, (int)sd.month, (int)sd.day);
+            }
+            else
+            {
+                return null;
+            }
         }
-
     }
+
 }
 
 

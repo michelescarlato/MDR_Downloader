@@ -12,10 +12,10 @@ namespace MDR_Downloader;
 
 public class Downloader
 {
-    private readonly LoggingHelper _logging_helper;
-    private readonly MonDataLayer _mon_data_layer;
+    private readonly ILoggingHelper _logging_helper;
+    private readonly IMonDataLayer _mon_data_layer;
 
-    public Downloader(MonDataLayer mon_data_layer, LoggingHelper logging_repo)
+    public Downloader(IMonDataLayer mon_data_layer, ILoggingHelper logging_repo)
     {
         _logging_helper = logging_repo;
         _mon_data_layer = mon_data_layer;
@@ -29,6 +29,7 @@ public class Downloader
 
         opts.saf_id = _mon_data_layer.GetNextSearchFetchId();
         SAFEvent saf = new(opts, source.id);
+        _logging_helper.OpenLogFile(opts.FileName, source.database_name!);
         _logging_helper.LogCommandLineParameters(opts);
         DownloadResult res = new();
 
@@ -78,26 +79,22 @@ public class Downloader
                 }
             case 101940:
                 {
-                    // vivli
                     Vivli_Controller vivli_controller = new(_mon_data_layer, _logging_helper);
                     res = await vivli_controller.ObtainDatafromSourceAsync(opts, source);
                     break;
                 }
         }
 
-        // tidy up and ensure logging up to date
-
+        // Tidy up and ensure logging up to date.
+        // Store the saf log record (unless specifically requested not to).
+        
         saf.time_ended = DateTime.Now;
-        if (res is not null)
-        {
-            saf.num_records_checked = res.num_checked;
-            saf.num_records_downloaded = res.num_downloaded;
-            saf.num_records_added = res.num_added;
-            _logging_helper.LogRes(res);
-        }
+        saf.num_records_checked = res.num_checked;
+        saf.num_records_downloaded = res.num_downloaded;
+        saf.num_records_added = res.num_added;
+        _logging_helper.LogRes(res);
         if (opts.NoLogging is null || opts.NoLogging == false)
         {
-            // Store the saf log record.
             _mon_data_layer.InsertSAFEventRecord(saf);
         }
         _logging_helper.CloseLog();
