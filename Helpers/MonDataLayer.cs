@@ -9,24 +9,22 @@ public class IMonDataLayer : IIMonDataLayer
     private readonly IILoggingHelper _logging_helper;
     private readonly string connString;
     private readonly string sql_file_select_string;
-    private readonly string? pubmed_api_key;
+    private readonly string pubmedAPIKey;
     private Source? source;
 
     public IMonDataLayer(IILoggingHelper logging_helper, ICredentials credentials)
     {
         _logging_helper = logging_helper;
-        var credentials1 = credentials;
-        
-        connString = credentials1.GetConnectionString("mon");
-        pubmed_api_key = credentials1.PubmedAPIKey;
+        connString = credentials.GetConnectionString("mon");
+        pubmedAPIKey = credentials.PubmedAPIKey;
  
         sql_file_select_string = "select id, source_id, sd_id, remote_url, last_revised, ";
         sql_file_select_string += " assume_complete, download_status, local_path, last_saf_id, last_downloaded, ";
         sql_file_select_string += " last_harvest_id, last_harvested, last_import_id, last_imported ";
     }
 
-    public string? PubmedAPIKey => pubmed_api_key;
-    
+    public string PubmedAPIKey => pubmedAPIKey;
+
     public Source? FetchSourceParameters(int source_id)
     {
         using NpgsqlConnection Conn = new(connString);
@@ -37,42 +35,25 @@ public class IMonDataLayer : IIMonDataLayer
     public DateTime? ObtainLastDownloadDate(int source_id)
     {
         using NpgsqlConnection Conn = new(connString);
-        string sql_string = "select max(time_ended) from sf.saf_events ";
-        sql_string += " where source_id = " + source_id.ToString();
-        DateTime? last_download_dt = Conn.ExecuteScalar<DateTime>(sql_string);
-        if (last_download_dt is not null)
-        {
-            return last_download_dt.Value;
-        }
-        else
-        {
-            return null;
-        }
+        string sql_string = $@"select max(time_ended) from sf.saf_events 
+                               where source_id = {source_id}";
+        return Conn.QuerySingleOrDefault(sql_string);
     }
 
 
     public DateTime? ObtainLastDownloadDateWithFilter(int source_id, int filter_id)
     {
         using NpgsqlConnection Conn = new(connString);
-        string sql_string = "select max(time_ended) from sf.saf_events ";
-        sql_string += " where source_id = " + source_id.ToString();
-        sql_string += " and filter_id = " + filter_id.ToString();
-        DateTime? last_download_dt = Conn.ExecuteScalar<DateTime>(sql_string);
-        if (last_download_dt is not null)
-        {
-            return last_download_dt.Value;
-        }
-        else
-        {
-            return null;
-        }
+        string sql_string = $@"select max(time_ended) from sf.saf_events 
+                               where source_id = {source_id} and filter_id = {filter_id}";
+        return Conn.QuerySingleOrDefault(sql_string);
     }
 
 
-    public SFType FetchTypeParameters(int sftype_id)
+    public SFType FetchTypeParameters(int sf_type_id)
     {
         using NpgsqlConnection Conn = new(connString);
-        return Conn.Get<SFType>(sftype_id);
+        return Conn.Get<SFType>(sf_type_id);
     }
 
 
@@ -120,31 +101,31 @@ public class IMonDataLayer : IIMonDataLayer
     public int InsertSAFEventRecord(SAFEvent saf)
     {
         using NpgsqlConnection Conn = new(connString);
-        return (int)Conn.Insert<SAFEvent>(saf);
+        return (int)Conn.Insert(saf);
     }
 
     public bool StoreStudyFileRec(StudyFileRecord file_record)
     {
         using NpgsqlConnection conn = new(connString);
-        return conn.Update<StudyFileRecord>(file_record);
+        return conn.Update(file_record);
     }
 
     public bool StoreObjectFileRec(ObjectFileRecord file_record)
     {
         using NpgsqlConnection conn = new(connString);
-        return conn.Update<ObjectFileRecord>(file_record);
+        return conn.Update(file_record);
     }
 
     public int InsertStudyFileRec(StudyFileRecord file_record)
     {
         using NpgsqlConnection conn = new(connString);
-        return (int)conn.Insert<StudyFileRecord>(file_record);
+        return (int)conn.Insert(file_record);
     }
 
     public int InsertObjectFileRec(ObjectFileRecord file_record)
     {
         using NpgsqlConnection conn = new(connString);
-        return (int)conn.Insert<ObjectFileRecord>(file_record);
+        return (int)conn.Insert(file_record);
     }
             
 
@@ -153,16 +134,13 @@ public class IMonDataLayer : IIMonDataLayer
     {
         bool added = false; // indicates if a new record or update of an existing one
 
-        // Get the source data record and modify it
-        // or add a new one...
+        // Get the source data record and modify it or add a new one.
+        
         StudyFileRecord? file_record = FetchStudyFileRecord(sd_id, source_id);
         try
         {
             if (file_record is null)
             {
-                // this neeeds to have a new record
-                // check last revised date....???
-                // new record
                 file_record = new StudyFileRecord(source_id, sd_id, remote_url, saf_id,
                                                 last_revised_date, full_path);
                 InsertStudyFileRec(file_record);
@@ -170,7 +148,6 @@ public class IMonDataLayer : IIMonDataLayer
             }
             else
             {
-                // update record
                 file_record.remote_url = remote_url;
                 file_record.last_saf_id = saf_id;
                 file_record.last_revised = last_revised_date;
@@ -178,7 +155,6 @@ public class IMonDataLayer : IIMonDataLayer
                 file_record.last_downloaded = DateTime.Now;
                 file_record.local_path = full_path;
 
-                // Update file record
                 StoreStudyFileRec(file_record);
             }
 
@@ -197,15 +173,11 @@ public class IMonDataLayer : IIMonDataLayer
     {
         bool added = false; // indicates if a new record or update of an existing one
 
-        // Get the source data record and modify it
-        // or add a new one...
+        // Get the source data record and modify it or add a new one...
         ObjectFileRecord? file_record = FetchObjectFileRecord(sd_id, source_id);
 
         if (file_record is null)
         {
-            // this neeeds to have a new record
-            // check last revised date....???
-            // new record
             file_record = new ObjectFileRecord(source_id, sd_id, remote_url, saf_id,
                                             last_revised_date, full_path);
             InsertObjectFileRec(file_record);
@@ -213,15 +185,12 @@ public class IMonDataLayer : IIMonDataLayer
         }
         else
         {
-            // update record
             file_record.remote_url = remote_url;
             file_record.last_saf_id = saf_id;
             file_record.last_revised = last_revised_date;
             file_record.download_status = 2;
             file_record.last_downloaded = DateTime.Now;
             file_record.local_path = full_path;
-
-            // Update file record
             StoreObjectFileRec(file_record);
         }
 
@@ -237,22 +206,5 @@ public class IMonDataLayer : IIMonDataLayer
         return conn.Query<int>(sql_string).FirstOrDefault() > 0;
     }
 
-/*
-    public ulong StoreStudyRecs(PostgreSQLCopyHelper<StudyFileRecord> copyHelper, IEnumerable<StudyFileRecord> entities)
-    {
-        using NpgsqlConnection conn = new(connString);
-        conn.Open();
-        return copyHelper.SaveAll(conn, entities);  // Returns count of rows written 
-    }
-
-
-    public ulong StoreObjectRecs(PostgreSQLCopyHelper<ObjectFileRecord> copyHelper, IEnumerable<ObjectFileRecord> entities)
-    {
-        using NpgsqlConnection conn = new(connString);
-        conn.Open();
-        return copyHelper.SaveAll(conn, entities);  // Returns count of rows written 
-    }
-
-*/
 }
 

@@ -48,8 +48,4 @@ public class Credentials : ICredentials
         builder.Database = database_name;
         return builder.ConnectionString;
     }
-    
-    
-    
-    
 }

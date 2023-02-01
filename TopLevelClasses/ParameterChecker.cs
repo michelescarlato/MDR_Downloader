@@ -317,14 +317,14 @@ internal class ParamsCheckResult
     internal bool ParseError { get; set; }
     internal bool ValidityError { get; set; }
     internal Options? Pars { get; set; }
-    internal Source? Srce { get; set; }
+    internal Source? Source { get; set; }
 
-    internal ParamsCheckResult(bool _ParseError, bool _ValidityError, Options? _Pars, Source? _Srce)
+    internal ParamsCheckResult(bool _ParseError, bool _ValidityError, Options? _Pars, Source? _Source)
     {
         ParseError = _ParseError;
         ValidityError = _ValidityError;
         Pars = _Pars;
-        Srce = _Srce;
+        Source = _Source;
     }
 }
 

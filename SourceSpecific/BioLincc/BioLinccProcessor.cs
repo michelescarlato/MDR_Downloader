@@ -12,8 +12,6 @@ public class BioLINCC_Processor
     private readonly ILoggingHelper _logging_helper;
     private readonly BioLinccDataLayer _repo;
 
-    string? pubs_link;
-
     public BioLINCC_Processor(ScrapingHelpers ch, ILoggingHelper logging_helper, BioLinccDataLayer repo)
     {
         _ch = ch;
@@ -77,9 +75,9 @@ public class BioLINCC_Processor
         }
 
         HtmlNode[] tables = main.CssSelect("div.study-box").ToArray();
-        if (tables.Length == 0)
+        if (tables.Length < 2)
         {
-            _logging_helper.LogError("Could not find 'div.study-box' class on page for " + bb.acronym + " at " + bb.remote_url + ".");
+            _logging_helper.LogError("Could not find first two 'div.study-box' class on page for " + bb.acronym + " at " + bb.remote_url + ".");
             return null;
         }
               
@@ -91,79 +89,67 @@ public class BioLINCC_Processor
         List<Resource> study_resources = new();
         List<AssocDoc> assoc_docs = new();
         List<RelatedStudy> related_studies = new();
- 
-        HtmlNode BasicDetails = tables[0];
-        HtmlNode? ConsentDetails = tables[1];
-        HtmlNode? DescriptiveParas = studyPage.Find("div", By.Id("study-info")).FirstOrDefault();
-        IEnumerable<HtmlNode>? SideBar = main.CssSelect("div.col-md-3");
+        string publications_link = "";
 
-        List<HtmlNode>? basic_details = BasicDetails.CssSelect("p").ToList();
-        if (basic_details.Count > 0)
+        HtmlNode BasicDetails = tables[0];
+        IEnumerable<HtmlNode>? basic_details = BasicDetails.CssSelect("p");
+        if (basic_details is not null)
         {
             await ProcessBasicDetails(st, basic_details, primary_docs, registry_ids, related_studies);
         }
 
-
-        if (DescriptiveParas is not null)
+        
+        HtmlNode? DescriptiveParas = studyPage.Find("div", By.Id("study-info")).FirstOrDefault();
+        HtmlNode? description = DescriptiveParas?.CssSelect("div.col-sm-12").FirstOrDefault();
+        IEnumerable<HtmlNode>? desc_headings = description?.CssSelect("h2");
+        if (desc_headings != null)
         {
-            HtmlNode? description = DescriptiveParas.CssSelect("div.col-sm-12").FirstOrDefault();
-            if (description is not null)
-            {
-                IEnumerable<HtmlNode>? desc_headings = description.CssSelect("h2");
-
-                if (desc_headings?.Any() is true)
-                {
-                    ProcessDescriptiveParas(st, description, desc_headings);
-                }
-            }
+            ProcessDescriptiveParas(st, description!, desc_headings);
+        }
+        
+        
+        IEnumerable<HtmlNode>? SideBar = main.CssSelect("div.col-md-3");
+        IEnumerable<HtmlNode>? sections = SideBar?.CssSelect("div.detail-aside-row");
+        if (sections != null)
+        {
+            publications_link = ProcessSideBar(st, sections, study_resources) ?? "";
         }
 
-
-        if (SideBar is not null)
+        
+        // Consent data has to be processed after the side bar processing has indicated whether
+        // datasets are included in the available objects.
+        
+        HtmlNode ConsentDetails = tables[1];
+        if (st.resources_available is not null && st.resources_available.ToLower().Contains("study datasets"))
         {
-            IEnumerable<HtmlNode>? sections = SideBar.CssSelect("div.detail-aside-row");
-
-            if (sections?.Any() is true)
-            {
-                pubs_link = ProcessSideBar(st, sections, study_resources);
-            }
-        }
-
-
-        if (st.resources_available is not null &&
-            st.resources_available.ToLower().Contains("study datasets") && ConsentDetails is not null)
-        {
-            var entries = ConsentDetails.CssSelect("p");
-            if (entries?.Any() is true)
+            IEnumerable<HtmlNode>? entries = ConsentDetails.CssSelect("p");
+            if (entries is not null)
             {
                 ProcessConsents(st, entries);
             }
         }
 
-
-        if (pubs_link is not null)
+        
+        if (publications_link != "")
         {
-            string pubURL = "https://biolincc.nhlbi.nih.gov" + pubs_link + "&page_size=200";
-            WebPage? pubsPage = await _ch.GetPageAsync(pubURL);
-            if (pubsPage is null)
+            string linksPageURL = "https://biolincc.nhlbi.nih.gov" + publications_link + "&page_size=200";
+            WebPage? linksPage = await _ch.GetPageAsync(linksPageURL);
+            if (linksPage is null)
             {
                 _logging_helper.LogError("Attempt to access study links page for " + bb.sd_sid + " failed");
             }
             else
             {
-                HtmlNode? pubTable = pubsPage.Find("div", By.Class("table-responsive")).FirstOrDefault();
-                if (pubTable is not null)
+                HtmlNode? linksTable = linksPage.Find("div", By.Class("table-responsive")).FirstOrDefault();
+                IEnumerable<HtmlNode>? articleLinks = linksTable?.CssSelect("td a").ToList();
+                if (articleLinks is not null)
                 {
-                    List<HtmlNode>? pubLinks = pubTable.CssSelect("td a").ToList();
-                    if (pubLinks?.Any() is true)
-                    {
-                        st.num_associated_papers = pubLinks.Count;
-                        await ProcessPublicationData(st, pubLinks, assoc_docs);
-                    }
+                    st.num_associated_papers = await ProcessPublicationData(st, articleLinks, assoc_docs);
                 }
             }
         }
 
+        
         // get sponsor details from linked NCT record
         // (or first one listed if multiple).
 
@@ -194,10 +180,9 @@ public class BioLINCC_Processor
     }
 
 
-
-    async Task ProcessBasicDetails(BioLincc_Record st, List<HtmlNode> entries, 
-                                            List<PrimaryDoc> primary_docs, List<RegistryId> registry_ids, 
-                                            List<RelatedStudy> related_studies)
+    async Task ProcessBasicDetails(BioLincc_Record st, IEnumerable<HtmlNode> entries, 
+                 List<PrimaryDoc> primary_docs, List<RegistryId> registry_ids, 
+                 List<RelatedStudy> related_studies)
     {
         // Scan top table with main details and parameters
 
@@ -217,8 +202,8 @@ public class BioLINCC_Processor
 
                 if (attribute_name == "Study Type")
                 {
-                    string study_type = attribute_value.RemoveLabelAndSupp(attribute_name, supp_text);
-                    if (study_type.Contains("Clinical Trial"))
+                    string? study_type = attribute_value.RemoveLabelAndSupp(attribute_name, supp_text);
+                    if (study_type?.Contains("Clinical Trial") is true)
                     {
                         st.study_type_id = 11;
                         st.study_type = "Interventional";
@@ -488,15 +473,15 @@ public class BioLINCC_Processor
 
                 if (headerText == "Study Documents")
                 {
-                    HtmlNode[] documents = section.CssSelect("ul a").ToArray();
-                    if (documents?.Any() is true)
+                    List<HtmlNode> documents = section.CssSelect("ul a").ToList();
+                    if (documents.Any())
                     {
                         foreach (HtmlNode node in documents)
                         {
                             // Get the url for the document. Add site prefix and
                             // chop off query string, if one has been added. 
                             
-                            string url = "https://biolincc.nhlbi.nih.gov" + node.Attributes["href"].Value; ;
+                            string url = "https://biolincc.nhlbi.nih.gov" + node.Attributes["href"].Value;
                             if (url.IndexOf("?", StringComparison.Ordinal) > 0)
                             {
                                 url = url[..url.IndexOf("?", StringComparison.Ordinal)];
@@ -527,7 +512,7 @@ public class BioLINCC_Processor
                             else
                             {
                                 // in case there is bracketed text in the name - assumed not more than one such - 
-                                // recombine first and second subparts for the doc name, with the bracket.
+                                // recombine first and second sub-parts for the doc name, with the bracket.
                                 // drop rightmost bracket and split doc info using the hyphen
 
                                 string? docInfo;
@@ -604,7 +589,7 @@ public class BioLINCC_Processor
                                     object_type = "Study Protocol";
                                     object_type_id = 11;
                                 }
-                                else if (doc.Contains("data dictionar"))
+                                else if (doc.Contains("data dictionary") || doc.Contains("data dictionaries"))
                                 {
                                     object_type = "Data Dictionary";
                                     object_type_id = 31;
@@ -659,9 +644,9 @@ public class BioLINCC_Processor
     void ProcessConsents(BioLincc_Record st, IEnumerable<HtmlNode> entries)
     {
         // Scan second table with any consent restriction details
-        bool comm_use_data_restrics = false;
-        bool data_restrics_based_on_aor = false;
-        string specific_consent_restrics = "";
+        bool comm_use_data_restrictions = false;
+        bool data_restrictions_based_on_aor = false;
+        string? specific_consent_restrictions = "";
 
         foreach (HtmlNode ent_node in entries)
         {
@@ -680,7 +665,7 @@ public class BioLINCC_Processor
                     string? comm_use_restrictions = attribute_value.RemoveLabelAndSupp(attribute_name, supp_text);
                     if (comm_use_restrictions is not null)
                     {
-                        comm_use_data_restrics = (comm_use_restrictions.ToLower() == "yes");
+                        comm_use_data_restrictions = (comm_use_restrictions.ToLower() == "yes");
                     }
                 }
 
@@ -689,34 +674,34 @@ public class BioLINCC_Processor
                     string? aor_use_restrictions = attribute_value.RemoveLabelAndSupp(attribute_name, supp_text);
                     if (aor_use_restrictions is not null)
                     {
-                        data_restrics_based_on_aor = (aor_use_restrictions.ToLower() == "yes");
+                        data_restrictions_based_on_aor = (aor_use_restrictions.ToLower() == "yes");
                     }
                 }
 
                 if (attribute_name == "Specific Consent Restrictions")
                 {
-                    specific_consent_restrics = attribute_value.RemoveLabelAndSupp(attribute_name, supp_text);
+                    specific_consent_restrictions = attribute_value.RemoveLabelAndSupp(attribute_name, supp_text);
                 }
 
                 // for the datasets, construct any consent constraints
                 string restrictions = "";
 
-                if (comm_use_data_restrics && data_restrics_based_on_aor)
+                if (comm_use_data_restrictions && data_restrictions_based_on_aor)
                 {
                     restrictions += "Restrictions reported on use of data for commercial purposes, and depending on the area of research. ";
                 }
-                else if (data_restrics_based_on_aor)
+                else if (data_restrictions_based_on_aor)
                 {
                     restrictions += "Restrictions reported on the use of data depending on the area of research. ";
                 }
-                else if (comm_use_data_restrics)
+                else if (comm_use_data_restrictions)
                 {
                     restrictions += "Restrictions reported on use of data for commercial purposes. ";
                 }
 
-                if (!string.IsNullOrEmpty(specific_consent_restrics))
+                if (!string.IsNullOrEmpty(specific_consent_restrictions))
                 {
-                    restrictions += specific_consent_restrics;
+                    restrictions += specific_consent_restrictions;
                 }
 
                 if (restrictions != "")
@@ -736,79 +721,82 @@ public class BioLINCC_Processor
     }
 
 
-    async Task ProcessPublicationData(BioLincc_Record st, IEnumerable<HtmlNode> publinks, List<AssocDoc> assoc_docs)
+    async Task<int> ProcessPublicationData(BioLincc_Record st, IEnumerable<HtmlNode> articleLinks, List<AssocDoc> assoc_docs)
     {
-        string? pubNodeId, link_url;
-        foreach (HtmlNode pubnode in publinks)
+        int n = 0;
+        foreach (HtmlNode article in articleLinks)
         {
-            pubNodeId = pubnode.Attributes["href"].Value;
-            link_url = "https://biolincc.nhlbi.nih.gov/publications/" + pubNodeId;
+            string? articleNodeId = article.Attributes["href"].Value;
+            if (articleNodeId is null)
+            {
+                continue;
+            }
+
+            n++;
+            string link_url = "https://biolincc.nhlbi.nih.gov/publications/" + articleNodeId;
 
             Thread.Sleep(500);
-            WebPage? pubsDetailsPage = await _ch.GetPageAsync(link_url);
-            if (pubsDetailsPage is null)
+            WebPage? articleDetailsPage = await _ch.GetPageAsync(link_url);
+            if (articleDetailsPage is null)
             {
                 _logging_helper.LogError("Attempt to access specific study link details at " + link_url + " for " + st.sd_sid + " failed");
             }
             else
             {
-                // set up publication record
+                // set up publication record.
 
-                AssocDoc pubdets = new(link_url);
-                var mainData = pubsDetailsPage.Find("div", By.Class("main"));
-                HtmlNode? pubTitle = mainData.CssSelect("h1 b").FirstOrDefault();
-                if (pubTitle is not null)
+                AssocDoc articleDetails = new(link_url);
+                HtmlNode? mainArticleData = articleDetailsPage.Find("div", By.Class("main")).FirstOrDefault();
+                HtmlNode? articleTitle = mainArticleData?.CssSelect("h1 b")?.FirstOrDefault();
+                if (articleTitle is not null)
                 {
-                    pubdets.title = pubTitle.InnerText.Trim();
+                    articleDetails.title = articleTitle.InnerText.Trim();
                 }
 
-                // Other available details
-                IEnumerable<HtmlNode>? pubData = mainData.CssSelect("p");
-                if (pubData?.Any() is true)
+                // Other available details.
+                
+                List<HtmlNode>? articleData = mainArticleData?.CssSelect("p").ToList();
+                if (articleData?.Any() is true)
                 {
-                    foreach (HtmlNode node in pubData)
+                    foreach (HtmlNode node in articleData)
                     {
                         HtmlNode? inBold = node.CssSelect("b").FirstOrDefault();
                         if (inBold is not null)
                         {
                             string attType = inBold.InnerText.Trim();
                             string att_value = node.InnerText.Replace(attType, "").Replace("\n", "").Replace("\r", "").Trim();
-
                             if (attType.EndsWith(":")) attType = attType[..^1];
 
                             switch (attType)
                             {
                                 case "Pubmed ID":
                                     {
-                                        pubdets.pubmed_id = att_value;
-                                        break;
+                                        articleDetails.pubmed_id = att_value; break;
                                     }
                                 case "Pubmed Central ID":
                                     {
-                                        pubdets.pmc_id = att_value;
-                                        break;
+                                        articleDetails.pmc_id = att_value; break;
                                     }
                                 case "Cite As":
                                     {
-                                        pubdets.display_title = att_value;
-                                        break;
+                                        articleDetails.display_title = att_value; break;
                                     }
                                 case "Journal":
                                     {
-                                        pubdets.journal = att_value;
-                                        break;
+                                        articleDetails.journal = att_value; break;
                                     }
                                 case "Publication Date":
                                     {
-                                        pubdets.pub_date = att_value;
-                                        break;
+                                        articleDetails.pub_date = att_value; break;
                                     }
                             }
                         }
                     }
                 }
-                assoc_docs.Add(pubdets);
+                assoc_docs.Add(articleDetails);
             }
         }
+
+        return n;
     }
 }

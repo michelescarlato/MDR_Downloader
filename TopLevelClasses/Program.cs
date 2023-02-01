@@ -65,7 +65,7 @@ try
     // Open log file, create Downloader class and call the main downloader function
 
     var opts = paramsCheck.Pars!;     
-    var source = paramsCheck.Srce!;
+    var source = paramsCheck.Source!;
     Downloader dl = new(mon_data_layer, logging_helper);
     await dl.RunDownloaderAsync(opts, source);
     return 0;
