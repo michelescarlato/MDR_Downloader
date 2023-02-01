@@ -6,7 +6,7 @@ namespace MDR_Downloader.euctr;
 
 public class Euctr_Record
 {
-    public string? sd_sid { get; set; }
+    public string sd_sid { get; set; } = null!;
     public string? sponsor_id { get; set; }
     public string? sponsor_name { get; set; }
     public string? start_date { get; set; }
@@ -34,7 +34,7 @@ public class Euctr_Record
     public List<DetailLine>? population { get; set; }
     public List<Country>? countries { get; set; }
 
-    public Euctr_Record(string? _sd_sid)
+    public Euctr_Record(string _sd_sid)
     {
         sd_sid = _sd_sid;
     }
@@ -43,13 +43,13 @@ public class Euctr_Record
     { }
 }
 
-public class Study_Summmary
+public class Study_Summary
 {
-    public string? eudract_id { get; set; }
+    public string eudract_id { get; set; }
     public bool? do_download { get; set; }
     public HtmlNode? details_box { get; set; }
 
-    public Study_Summmary(string? _eudract_id, HtmlNode? _details_box)
+    public Study_Summary(string _eudract_id, HtmlNode? _details_box)
     {
         eudract_id = _eudract_id;
         details_box = _details_box;
@@ -72,6 +72,15 @@ public class DetailLine
     public string? item_code { get; set; }
     public string? item_name { get; set; }
     public int? item_number { get; set; }
+    
+    public DetailLine(string? _item_code, string? _item_name)
+    {
+        item_code = _item_code;
+        item_name = _item_name;
+    }
+
+    public DetailLine()
+    { }
 
     [XmlArray("values")]
     [XmlArrayItem("value")]
@@ -84,10 +93,21 @@ public class ImpLine
     public string? item_code { get; set; }
     public string? item_name { get; set; }
     public int? item_number { get; set; }
-
+    
     [XmlArray("values")]
     [XmlArrayItem("value")]
     public List<item_value>? item_values { get; set; }
+    
+    public ImpLine(int? _imp_number, string? _item_code, 
+                   string? _item_name)
+    {
+        imp_number = _imp_number;
+        item_code = _item_code;
+        item_name = _item_name;
+    }
+
+    public ImpLine()
+    { }
 }
 
 public class item_value
@@ -103,14 +123,6 @@ public class item_value
     public item_value()
     { }
 }
-
-
-public class file_record
-{
-    public int? id { get; set; }
-    public string? local_path { get; set; }
-}
-
 
 public class Country
 {

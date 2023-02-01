@@ -24,12 +24,4 @@ public interface IIMonDataLayer
         int saf_id, DateTime? last_revised_date, string full_path);
 
     public bool Downloaded_recently(int source_id, string sd_sid, int days_ago);
-
-    /*
-    public ulong StoreStudyRecs(PostgreSQLCopyHelper<StudyFileRecord> copyHelper,
-        IEnumerable<StudyFileRecord> entities);
-
-    public ulong StoreObjectRecs(PostgreSQLCopyHelper<ObjectFileRecord> copyHelper,
-        IEnumerable<ObjectFileRecord> entities);
-   */
 }

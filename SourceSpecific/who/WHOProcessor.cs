@@ -210,7 +210,7 @@ namespace MDR_Downloader.who
             {
                 inc_crit = inc_crit[18..].Trim(trim_chars);
             }
-            inc_crit = inc_crit.ReplaceUnicodes().ReplacHtmlTags();
+            inc_crit = inc_crit.ReplaceUnicodes().ReplaceHtmlTags();
             r.inclusion_criteria = inc_crit;
 
             string? exc_crit = sr.Exclusion_Criteria.Tidy();
@@ -218,11 +218,11 @@ namespace MDR_Downloader.who
             {
                 exc_crit = exc_crit[18..].Trim(trim_chars);
             }               
-            exc_crit = exc_crit.ReplaceUnicodes().ReplacHtmlTags();
+            exc_crit = exc_crit.ReplaceUnicodes().ReplaceHtmlTags();
             r.exclusion_criteria = exc_crit;
 
-            r.primary_outcome = sr.Primary_Outcome.Tidy().ReplaceUnicodes().ReplacHtmlTags(); ;
-            r.secondary_outcomes = sr.Secondary_Outcomes.Tidy().ReplaceUnicodes().ReplacHtmlTags();
+            r.primary_outcome = sr.Primary_Outcome.Tidy().ReplaceUnicodes().ReplaceHtmlTags(); ;
+            r.secondary_outcomes = sr.Secondary_Outcomes.Tidy().ReplaceUnicodes().ReplaceHtmlTags();
 
             r.bridging_flag = sr.Bridging_flag.Tidy();
             if (!string.IsNullOrEmpty(r.bridging_flag) && r.bridging_flag != r.sd_sid)
@@ -257,7 +257,7 @@ namespace MDR_Downloader.who
                 if (ipd_plan.ToLower() != "not available" && ipd_plan.ToLower() != "not avavilable"
                 && ipd_plan.ToLower() != "not applicable" && !ipd_plan.ToLower().StartsWith("justification or reason for"))
                 {
-                    r.ipd_plan = ipd_plan.ReplaceUnicodes().ReplacHtmlTags();
+                    r.ipd_plan = ipd_plan.ReplaceUnicodes().ReplaceHtmlTags();
                 }
             }
 
@@ -267,7 +267,7 @@ namespace MDR_Downloader.who
                 if (ipd_description.ToLower() != "not available" && ipd_description.ToLower() != "not avavilable"
                 && ipd_description.ToLower() != "not applicable" && !ipd_description.ToLower().StartsWith("justification or reason for"))
                 {
-                    r.ipd_description = ipd_description.ReplaceUnicodes().ReplacHtmlTags();
+                    r.ipd_description = ipd_description.ReplaceUnicodes().ReplaceHtmlTags();
                 }
             }
 

@@ -1,17 +1,9 @@
-﻿using System.Data;
-using System.Reflection.Metadata;
-using System.Text.Encodings.Web;
+﻿using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Xml;
 using System.Xml.Serialization;
-using System.Xml.Xsl;
-using MDR_Downloader.biolincc;
 using MDR_Downloader.Helpers;
-using MDR_Downloader.isrctn;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MDR_Downloader.pubmed;
-
 
 // Pubmed searches and file downloads are often associated with filters...
 // 10001	"PubMed CTG"	"PubMed abstracts with references to ClinicalTrials.gov entries"
@@ -35,7 +27,7 @@ namespace MDR_Downloader.pubmed;
 // A variant allows all pmids derived from study references, irrespective of revision date, to be downloaded.
 // This strategy is represented by saf_type 121 Filtered records (download) (with filter 10004)
 
-public class PubMed_Controller
+public class PubMed_Controller : ISourceController
 {
     private readonly ILoggingHelper _logging_helper;
     private readonly IMonDataLayer _mon_data_layer;
@@ -44,7 +36,6 @@ public class PubMed_Controller
     private readonly PubMedDataLayer pubmed_repo;
     private readonly PubMed_Processor pubmed_processor;
 
-    private readonly string api_key;
     private readonly string postBaseURL, searchBaseURL, fetchBaseURL;
 
 
@@ -63,18 +54,18 @@ public class PubMed_Controller
         pubmed_repo = new(_logging_helper);
         pubmed_processor = new(pubmed_repo, _logging_helper);
 
-        // API key belongs to NCBI user stevecanhamn (steve.canham@ecrin.org,
+        // API key belongs to NCBI user 'ECRINarthur' 
         // stored in appsettings.json and accessed via the logging repo.
+        
+        var apiKey = "&api_key=" + _mon_data_layer.PubmedAPIKey;
 
-        api_key = "&api_key=" + _mon_data_layer.PubmedAPIKey;
-
-        postBaseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/epost.fcgi?db=pubmed" + api_key;
-        searchBaseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed" + api_key;
-        fetchBaseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed" + api_key;
+        postBaseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/epost.fcgi?db=pubmed" + apiKey;
+        searchBaseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed" + apiKey;
+        fetchBaseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed" + apiKey;
     }
 
 
-    public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, Source source)
+    public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
     {
         DownloadResult res = new();
         string date_string = "";
@@ -103,7 +94,7 @@ public class PubMed_Controller
             // Download articles with references to trial registries, that
             // have been revised since the cutoff date.
 
-            res = await ProcessPMIDsListfromBanksAsync(opts, source, date_string);
+            res = await ProcessPMIDsListFromBanksAsync(opts, source, date_string);
         }
 
         if (opts.FocusedSearchId == 10004)
@@ -111,7 +102,7 @@ public class PubMed_Controller
             // Download pmids listed as references in other sources,
             // that have been revised since the cutoff date.
 
-            res = await ProcessPMIDsListfromDBSourcesAsync(opts, source, date_string);
+            res = await ProcessPMIDsListFromDBSourcesAsync(opts, source, date_string);
         }
 
         return res;
@@ -133,7 +124,7 @@ public class PubMed_Controller
     // A variant allows all pmids with bank records to bne downloaded, irrespective of date, but otherwise 
     // the process is the same. This strategy is represented by saf_type 121 Filtered records (download) (with filter 10003)
 
-    public async Task<DownloadResult> ProcessPMIDsListfromBanksAsync(Options opts, Source source, string date_string)
+    public async Task<DownloadResult> ProcessPMIDsListFromBanksAsync(Options opts, Source source, string date_string)
     {
         DownloadResult res = new();
         ScrapingHelpers ch = new(_logging_helper);
@@ -141,7 +132,7 @@ public class PubMed_Controller
         // Get list of potential linked data banks (includes trial registries).
 
         IEnumerable<PMSource> banks = pubmed_repo.FetchDatabanks();
-        string web_env = "";
+        string? web_env = "";
         int query_key = 0;
         string searchUrl, fetchUrl;
 
@@ -152,7 +143,7 @@ public class PubMed_Controller
 
             if (s.nlm_abbrev != "PACTR")
             {
-                continue;
+                continue; // temp for testing
             }
 
             string search_term = "&term=" + s.nlm_abbrev + "[SI]" + date_string;
@@ -178,10 +169,10 @@ public class PubMed_Controller
             // loop through the records and obtain and store relevant
             // records, of PubMed Ids, retmax (= 100) at a time     
 
-            if (totalRecords > 0)
+            if (totalRecords > 0 && web_env is not null)
             {
                 int retmax = 100;
-                int numCallsNeeded = (int)(totalRecords / retmax) + 1;
+                int numCallsNeeded = totalRecords / retmax + 1;
                 for (int i = 0; i < numCallsNeeded; i++)
                 {
                     try
@@ -195,12 +186,16 @@ public class PubMed_Controller
                     }
                     catch (HttpRequestException e)
                     {
-                        _logging_helper.LogError("In PubMed ProcessPMIDsListfromBanksAsync(): " + e.Message);
+                        _logging_helper.LogError("In PubMed ProcessPMIDsListFromBanksAsync(): " + e.Message);
+                    }
+
+                    if ((i + 1) * retmax < totalRecords)
+                    {
+                        _logging_helper.LogLine($"Processed {(i + 1) * retmax} records from {s.nlm_abbrev}");
                     }
                 }
             }
-
-            _logging_helper.LogLine("Processed " + totalRecords.ToString() + " from " + s.nlm_abbrev);
+            _logging_helper.LogLine($"Processed {totalRecords} from {s.nlm_abbrev}");
             Thread.Sleep(800);
         }
 
@@ -218,11 +213,9 @@ public class PubMed_Controller
     // A variant allows all pmids derived from study references, irrespective of revision date, to be downloaded.
     // This strategy is represented by saf_type 121 Filtered records (download) (with filter 10004)
 
-    public async Task<DownloadResult> ProcessPMIDsListfromDBSourcesAsync(Options opts, Source source, string date_string)
+    public async Task<DownloadResult> ProcessPMIDsListFromDBSourcesAsync(Options opts, Source source, string date_string)
     {
         DownloadResult res = new();
-        string web_env = "";
-        int query_key = 0;
         ScrapingHelpers ch = new(_logging_helper);
         CopyHelpers helper = new();
 
@@ -235,7 +228,6 @@ public class PubMed_Controller
             // cutoff date as the last revised date is not known at this time
             // - has to be checked later.
 
-            string postUrl, searchUrl, fetchUrl;
             pubmed_repo.SetUpTempPMIDsBySourceTables();
             IEnumerable<Source> sources = pubmed_repo.FetchSourcesWithReferences();
             foreach (Source s in sources)
@@ -254,58 +246,71 @@ public class PubMed_Controller
             // getting back the web environment and query key parameters
 
             int string_num = 0;
-            IEnumerable<string> idstrings = pubmed_repo.FetchSourcePMIDStrings();
-            foreach (string idstring in idstrings)
+            IEnumerable<string> id_strings = pubmed_repo.FetchSourcePMIDStrings();
+            foreach (string id_string in id_strings)
             {
                 string_num++;
-                postUrl = postBaseURL + "&id=" + idstring;
+                string postUrl = postBaseURL + "&id=" + id_string;
                 Thread.Sleep(300);
 
                 string? post_responseBody = await ch.GetAPIResponseAsync(postUrl);
-                if (post_responseBody is not null)
+                if (post_responseBody is null)
+                {
+                    _logging_helper.LogError($"Null post result received, with {postUrl}");
+                }
+                else
                 {
                     ePostResult? post_result = Deserialize<ePostResult?>(post_responseBody);
                     {
                         if (post_result is not null)
                         {
-                            query_key = post_result.QueryKey;
-                            web_env = post_result.WebEnv;
-
-                            if (date_string == "")
+                            int query_key = post_result.QueryKey;
+                            string? web_env = post_result.WebEnv;
+                            if (web_env is not null)
                             {
-                                // (t = 121) No need to search - fetch all 100 pubmed records immediately.
-
-                                fetchUrl = fetchBaseURL + "&WebEnv=" + web_env + "&query_key=" + query_key.ToString();
-                                fetchUrl += "&retmax=100&retmode=xml";
-                                Thread.Sleep(200);
-                                await FetchPubMedRecordsAsync(fetchUrl, res, source, (int)opts.saf_id!, source.local_folder!);
-                            }
-                            else
-                            {
-                                // (t = 114) Search for those that have been revised on or since the cutoff date.
-
-                                searchUrl = searchBaseURL + "&term=%23" + query_key.ToString() + "+AND+" + date_string;
-                                searchUrl += "&WebEnv=" + web_env + "&usehistory=y";
-
-                                Thread.Sleep(200);
-                                int totalRecords = 0;
-                                string? search_responseBody = await ch.GetAPIResponseAsync(searchUrl);
-                                eSearchResult? search_result = Deserialize<eSearchResult?>(search_responseBody);
-
-                                // The eSearchResult class corresponds to the returned data.
-
-                                if (search_result is not null)
+                                string fetchUrl;
+                                if (date_string == "")
                                 {
-                                    totalRecords = search_result.Count;
-                                    query_key = search_result.QueryKey;
-                                    web_env = search_result.WebEnv;
+                                    // (t = 121) No need to search - fetch all 100 pubmed records immediately.
 
-                                    if (totalRecords > 0)
+                                    fetchUrl = fetchBaseURL + "&WebEnv=" + web_env + "&query_key=" +
+                                               query_key.ToString();
+                                    fetchUrl += "&retmax=100&retmode=xml";
+                                    
+                                    _logging_helper.LogLine(fetchUrl);
+                                    
+                                    Thread.Sleep(200);
+                                    await FetchPubMedRecordsAsync(fetchUrl, res, source, (int)opts.saf_id!,
+                                        source.local_folder!);
+                                }
+                                else
+                                {
+                                    // (t = 114) Search for those that have been revised on or since the cutoff date.
+
+                                    string searchUrl = searchBaseURL + "&term=%23" + query_key.ToString() + "+AND+" +
+                                                       date_string;
+                                    searchUrl += "&WebEnv=" + web_env + "&usehistory=y";
+
+                                    Thread.Sleep(200);
+                                    string? search_responseBody = await ch.GetAPIResponseAsync(searchUrl);
+                                    eSearchResult? search_result = Deserialize<eSearchResult?>(search_responseBody);
+
+                                    // The eSearchResult class corresponds to the returned data.
+
+                                    if (search_result is not null)
                                     {
-                                        fetchUrl = fetchBaseURL + "&WebEnv=" + web_env + "&query_key=" + query_key.ToString();
-                                        fetchUrl += "&retmax=100&retmode=xml";
-                                        Thread.Sleep(200);
-                                        await FetchPubMedRecordsAsync(fetchUrl, res, source, (int)opts.saf_id!, source.local_folder!);
+                                        int totalRecords = search_result.Count;
+                                        query_key = search_result.QueryKey;
+                                        web_env = search_result.WebEnv;
+
+                                        if (totalRecords > 0 && web_env is not null)
+                                        {
+                                            fetchUrl = fetchBaseURL + "&WebEnv=" + web_env + "&query_key=" + query_key;
+                                            fetchUrl += "&retmax=100&retmode=xml";
+                                            Thread.Sleep(200);
+                                            await FetchPubMedRecordsAsync(fetchUrl, res, source, (int)opts.saf_id!,
+                                                source.local_folder!);
+                                        }
                                     }
                                 }
                             }
@@ -313,7 +318,7 @@ public class PubMed_Controller
                     }
                 }
 
-                if (string_num % 10 == 0) _logging_helper.LogLine(string_num.ToString() + " lines checked");
+                if (string_num % 10 == 0) _logging_helper.LogLine($"{string_num} lines of (up to 100) Ids processed");
             }
 
             return res;
@@ -321,7 +326,7 @@ public class PubMed_Controller
 
         catch (HttpRequestException e)
         {
-            _logging_helper.LogError("In PubMed ProcessPMIDsListfromDBSourcesAsync(): " + e.Message);
+            _logging_helper.LogError("In PubMed ProcessPMIDsListFromDBSourcesAsync(): " + e.Message);
             return res;
         }
     }
@@ -331,33 +336,40 @@ public class PubMed_Controller
     {
         ScrapingHelpers ch = new(_logging_helper);
         string? responseBody = await ch.GetAPIResponseAsync(fetch_URL);
-        if (responseBody is not null)
+        if (responseBody is null)
+        {
+            _logging_helper.LogError($"Null fetch result received, with {fetch_URL}");
+        }
+        else
         {
             responseBody = EscapeHtmlTags(responseBody);
             PubmedArticleSet? search_result = Deserialize<PubmedArticleSet?>(responseBody);
             if (search_result is not null)
             {
                 var articles = search_result.PubmedArticles;
-                if (articles?.Any() == true)
+                if (articles?.Any() is true)
                 {
                     foreach (PubmedArticle article in articles)
                     {
-                        // Send each pubmed article object, as deserialised from XML, to the 
+                        // Send each pubmed article object, as obtained from the XML, to the 
                         // processor for conversion to the Full Object model structure. 
                         // Assuming successful, returned object is serialised as JSON
-                        // and the monitor table updated acordingly.
+                        // and the monitor table updated accordingly.
 
                         res.num_checked++;
                         FullObject? fob = pubmed_processor.ProcessData(article);
-                        if (fob is not null && fob.ipmid.HasValue && !string.IsNullOrEmpty(fob.sd_oid))
+                        if (fob is not null && !string.IsNullOrEmpty(fob.sd_oid))
                         {
-                            ObjectFileRecord? file_record = _mon_data_layer.FetchObjectFileRecord(fob.sd_oid!, source.id);
+                            // Not clear at the moment why this line was originally here - to investigate!
+                            
+                            // ObjectFileRecord? file_record = _mon_data_layer.FetchObjectFileRecord(fob.sd_oid!, source.id);
 
-                            // Here insert a lookup - for PMIDs originating in data sources - 
+                            // ?? Here insert a lookup - for PMIDs originating in data sources - 
+                            // always do after the ones originating from data banks - 
                             // that allows us to see the exact type of data object that is being added 
-                            // User that to change the object type in the database record
+                            // Use that to change the object type in the database record before writing it out ??
 
-                            string full_path = await WriteOutFile(fob, (int)fob.ipmid!, file_base);
+                            string full_path = await WriteOutFile(fob, fob.ipmid, file_base);
                             if (full_path != "error")
                             {
                                 string remote_url = "https://pubmed.ncbi.nlm.nih.gov/" + fob.sd_oid;
@@ -376,11 +388,7 @@ public class PubMed_Controller
                             }
                         }
                     }
-
-                    if (res.num_checked % 100 == 0)
-                    {
-                        _logging_helper.LogLine("Checked so far: " + res.num_checked.ToString());
-                    }
+                    _logging_helper.LogLine("Checked so far: " + res.num_checked.ToString());
                 }
             }
         }
@@ -400,10 +408,10 @@ public class PubMed_Controller
             Directory.CreateDirectory(folder_name);
         }
         string file_name = "PM" + ipmid.ToString("000000000") + ".json";
-        string full_path = Path.Combine(folder_name, file_name!);
+        string full_path = Path.Combine(folder_name, file_name);
         try
         {
-            using FileStream jsonStream = File.Create(full_path);
+            await using FileStream jsonStream = File.Create(full_path);
             await JsonSerializer.SerializeAsync(jsonStream, fob, _json_options);
             await jsonStream.DisposeAsync();
             return full_path;
@@ -428,8 +436,8 @@ public class PubMed_Controller
         try
         {
             var xmlSerializer = new XmlSerializer(typeof(T));
-            using var stringreader = new StringReader(inputString);
-            return (T?)xmlSerializer.Deserialize(stringreader);
+            using var string_reader = new StringReader(inputString);
+            return (T?)xmlSerializer.Deserialize(string_reader);
         }
         catch (Exception e)
         {
@@ -439,27 +447,34 @@ public class PubMed_Controller
     }
 
 
-    private string EscapeHtmlTags(string? inputString)
+    private string? EscapeHtmlTags(string? inputString)
     {
         if (string.IsNullOrEmpty(inputString))
         {
             return null;
         }
-
-        /*
-        // Required if we add extraction of abstracts - unable to do
+        
+        // Temp to help with debugging
+        inputString = inputString.Replace("<PubmedArticle", "\n\n<PubmedArticle");
+        inputString = inputString.Replace("<AuthorList", "\n<AuthorList");
+        inputString = inputString.Replace("<ReferenceList", "\n<ReferenceList");
+        
+        // Mainly Required if we add extraction of abstracts - unable to do
         // so at the moment because of copyright restrictions.
         // There may be better ways of handling this problem!
+        // But also need for a few titles
 
         inputString = inputString.Replace("<i>", "&lt;i&gt;");
         inputString = inputString.Replace("</i>", "&lt;/i&gt;");
         inputString = inputString.Replace("<b>", "&lt;b&gt;");
         inputString = inputString.Replace("</b>", "&lt;/b&gt;");
+        inputString = inputString.Replace("<u>", "&lt;u&gt;");
+        inputString = inputString.Replace("</u>", "&lt;/u&gt;");
+        
         inputString = inputString.Replace("<sup>", "&lt;sup&gt;");
         inputString = inputString.Replace("</sup>", "&lt;/sup&gt;");
         inputString = inputString.Replace("<sub>", "&lt;sub&gt;");
         inputString = inputString.Replace("</sub>", "&lt;/sub&gt;");
-        */
 
         return inputString;
     }

@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace MDR_Downloader.biolincc;
+﻿namespace MDR_Downloader.biolincc;
 
 public class BioLincc_Record
 {
-    public string? sd_sid { get; set; }
+    public string sd_sid { get; set; } = null!;
     public string? remote_url { get; set; }
     public string? title { get; set; }
     public string? acronym { get; set; }
@@ -58,31 +55,12 @@ public class BioLincc_Record
 
 public class BioLincc_Basics
 {
-    public string? sd_sid { get; set; }
+    public string sd_sid { get; set; } = null!;
     public string? remote_url { get; set; }
     public string? title { get; set; }
     public string? acronym { get; set; }
     public string? collection_type { get; set; }
     public string? resources_available { get; set; }
-}
-
-
-public class Link
-{
-    public string? attribute { get; set; }
-    public string? url { get; set; }
-
-    public Link(string? _attribute, string? _url)
-    {
-        attribute = _attribute;
-        url = _url;
-    }
-}
-
-public class DataRestrictDetails
-{
-    public int? org_id { get; set; }
-    public string? org_name { get; set; }
 }
 
 public class ObjectTypeDetails

@@ -4,11 +4,10 @@ using MDR_Downloader.Helpers;
 using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Xml.Serialization;
 
 namespace MDR_Downloader.who
 {
-    class WHO_Controller
+    class WHO_Controller : ISourceController
     {
         private readonly ILoggingHelper _logging_helper;
         private readonly IMonDataLayer _mon_data_layer;
@@ -19,7 +18,7 @@ namespace MDR_Downloader.who
             _mon_data_layer = mon_data_layer;
         }
 
-        public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, Source source)
+        public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
         {
             // WHO processing unusual in that it is from a csv file
             // The program loops through the file and creates an XML file from each row
@@ -28,7 +27,7 @@ namespace MDR_Downloader.who
 
             // In some cases the file will be one of a set created from a large
             // 'all data' download, in other cases it will be a weekly update file
-            // In both cases any existing XML files of the same name shoud be overwritten.
+            // In both cases any existing XML files of the same name should be overwritten.
 
             DownloadResult res = new();
             string? file_base = source.local_folder;
@@ -40,7 +39,7 @@ namespace MDR_Downloader.who
             }
 
             WHO_Processor who_processor = new();
-            string sourcefile = opts.FileName!;     // already checked as non-null
+            string source_file = opts.FileName!;     // already checked as non-null
 
             var csv_reader_config = new CsvConfiguration(CultureInfo.InvariantCulture)
             {
@@ -53,7 +52,7 @@ namespace MDR_Downloader.who
                 WriteIndented = true
             };
 
-            using (var reader = new StreamReader(sourcefile, true))
+            using (var reader = new StreamReader(source_file, true))
             {
                 using var csv = new CsvReader(reader, csv_reader_config);
                 var records = csv.GetRecords<WHO_SourceRecord>();
@@ -80,7 +79,7 @@ namespace MDR_Downloader.who
                             string full_path = Path.Combine(r.folder_name, file_name);
                             try
                             {
-                                using FileStream jsonStream = File.Create(full_path);
+                                await using FileStream jsonStream = File.Create(full_path);
                                 await JsonSerializer.SerializeAsync(jsonStream, r, json_options);
                                 await jsonStream.DisposeAsync();
                             }

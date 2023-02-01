@@ -2,18 +2,12 @@
 using MDR_Downloader.Helpers;
 using ScrapySharp.Html;
 using ScrapySharp.Network;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Xml.Serialization;
 
 namespace MDR_Downloader.yoda
 {
-    class Yoda_Controller
+    class Yoda_Controller : ISourceController
     {
         private readonly ILoggingHelper _logging_helper;
         private readonly IMonDataLayer _mon_data_layer;
@@ -24,7 +18,7 @@ namespace MDR_Downloader.yoda
             _mon_data_layer = mon_data_layer;
         }
 
-        public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, Source source)
+        public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
         {
             // For Yoda, all data is downloaded each time during a download (t = 102), as it takes a relatively 
             // short time and the files are simply replaced or - if new - added to the folder. There is therefore 
@@ -177,8 +171,8 @@ namespace MDR_Downloader.yoda
                                         _logging_helper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
                                     }
 
-                                    bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, st.sd_sid!, st.remote_url, (int)opts.saf_id,
-                                                                      null, full_path);
+                                    bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, st.sd_sid!, 
+                                                  st.remote_url, (int)opts.saf_id!, null, full_path);
                                     res.num_downloaded++;
                                     if (added) res.num_added++;
 

@@ -6,7 +6,7 @@ using System.Xml.Serialization;
 
 namespace MDR_Downloader.isrctn;
 
-class ISRCTN_Controller
+class ISRCTN_Controller : ISourceController
 {
     private readonly ILoggingHelper _logging_helper;
     private readonly IMonDataLayer _mon_data_layer;
@@ -42,7 +42,7 @@ class ISRCTN_Controller
     // in a batch download process (unless the system switches to
     // downloading one study at a time).
 
-    public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, Source source)
+    public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
     {
         DownloadResult res = new();
 
@@ -278,7 +278,7 @@ class ISRCTN_Controller
         {
             ISRCTN_Processor isrctn_processor = new();
             int number_returned = result.totalCount;
-            if (number_returned > 0 && result.fullTrials?.Any() == true) 
+            if (number_returned > 0 && result.fullTrials?.Any() is true) 
             { 
                 foreach (FullTrial f in result.fullTrials)
                 {

@@ -31,67 +31,57 @@ public class Downloader
         SAFEvent saf = new(opts, source.id);
         _logging_helper.OpenLogFile(opts.FileName, source.database_name!);
         _logging_helper.LogCommandLineParameters(opts);
+        
         DownloadResult res = new();
-
+        ISourceController? dl_controller = null;
         switch (source.id)
         {
             case 101900:
                 {
-                    BioLINCC_Controller biolincc_controller = new(_mon_data_layer, _logging_helper);
-                    res = await biolincc_controller.ObtainDatafromSourceAsync(opts, source);
-                    break;
+                    dl_controller = new BioLINCC_Controller(_mon_data_layer, _logging_helper); break;
                 }
             case 101901:
                 {
-                    Yoda_Controller yoda_controller = new(_mon_data_layer, _logging_helper);
-                    res = await yoda_controller.ObtainDatafromSourceAsync(opts, source);
-                    break;
+                    dl_controller = new Yoda_Controller(_mon_data_layer, _logging_helper); break;
                 }
             case 100120:
                 {
-                    CTG_Controller ctg_controller = new(_mon_data_layer, _logging_helper);
-                    res = await ctg_controller.ObtainDatafromSourceAsync(opts, source);
-                    break;
+                    dl_controller = new CTG_Controller(_mon_data_layer, _logging_helper); break;
                 }
             case 100126:
                 {
-                    ISRCTN_Controller isrctn_controller = new(_mon_data_layer, _logging_helper);
-                    res = await isrctn_controller.ObtainDatafromSourceAsync(opts, source); 
-                    break;
+                    dl_controller = new ISRCTN_Controller(_mon_data_layer, _logging_helper); break;
                 }
             case 100123:
                 {
-                    EUCTR_Controller euctr_controller = new(_mon_data_layer, _logging_helper);
-                    res = await euctr_controller.ObtainDatafromSourceAsync(opts, source); 
-                    break;
+                    dl_controller = new EUCTR_Controller(_mon_data_layer, _logging_helper); break;
                 }
             case 100115:
                 {
-                    WHO_Controller who_controller = new(_mon_data_layer, _logging_helper);
-                    res = await who_controller.ObtainDatafromSourceAsync(opts, source);
-                    break;
+                    dl_controller = new WHO_Controller(_mon_data_layer, _logging_helper); break;
                 }
             case 100135:
                 {
-                    PubMed_Controller pubmed_controller = new(_mon_data_layer, _logging_helper);
-                    res = await pubmed_controller.ObtainDatafromSourceAsync(opts, source);
-                    break;
+                    dl_controller = new PubMed_Controller(_mon_data_layer, _logging_helper); break;
                 }
             case 101940:
                 {
-                    Vivli_Controller vivli_controller = new(_mon_data_layer, _logging_helper);
-                    res = await vivli_controller.ObtainDatafromSourceAsync(opts, source);
-                    break;
+                    dl_controller = new Vivli_Controller(_mon_data_layer, _logging_helper); break;
                 }
         }
 
+        if (dl_controller is not null)
+        {
+            res = await dl_controller.ObtainDataFromSourceAsync(opts, source);
+            saf.time_ended = DateTime.Now;
+            saf.num_records_checked = res.num_checked;
+            saf.num_records_downloaded = res.num_downloaded;
+            saf.num_records_added = res.num_added;
+        }
+        
         // Tidy up and ensure logging up to date.
         // Store the saf log record (unless specifically requested not to).
         
-        saf.time_ended = DateTime.Now;
-        saf.num_records_checked = res.num_checked;
-        saf.num_records_downloaded = res.num_downloaded;
-        saf.num_records_added = res.num_added;
         _logging_helper.LogRes(res);
         if (opts.NoLogging is null || opts.NoLogging == false)
         {

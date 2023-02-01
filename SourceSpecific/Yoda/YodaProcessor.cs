@@ -113,7 +113,7 @@ namespace MDR_Downloader.yoda
                         }
                         else
                         {
-                            sm.sd_sid = sm.study_name;  // should be extremely rare if it ever happens
+                            sm.sd_sid = sm.study_name ?? "No study identifier - ????";  // should never happen, but...
                         }
                     }
                 }
@@ -146,21 +146,19 @@ namespace MDR_Downloader.yoda
             List<Title> study_titles = new();
             List<Reference> study_references = new();
 
-            string? label = "", value = "";
             foreach (HtmlNode fieldNode in props)
             {
                 // get label
                 var labelNode = fieldNode.CssSelect(".views-label").FirstOrDefault();
                 if (labelNode is not null)
                 {
-                    label = labelNode.InnerText.Trim();
-
-                    value = HttpUtility.UrlDecode(fieldNode.InnerText) ?? "";
-                    value = value?.Replace("\n", "")?.Replace("\r", "")?.Trim();
-                    value = value?.Replace("&amp;", "&")?.Replace("&nbsp;", " ")?.Trim();
-                    value = value?.Replace("&#039;", "'");
-                    value = value?.ReplacNBSpaces();
-                    value = value?[label.Length..].Trim();
+                    string label = labelNode.InnerText.Trim();
+                    string? value = HttpUtility.UrlDecode(fieldNode.InnerText);
+                    value = value.Replace("\n", "").Replace("\r", "").Trim();
+                    value = value.Replace("&amp;", "&").Replace("&nbsp;", " ").Trim();
+                    value = value.Replace("&#039;", "'");
+                    value = value.ReplaceNBSpaces();
+                    value = value?[label.Length..]?.Trim();
 
                     switch (label)
                     {
@@ -174,11 +172,6 @@ namespace MDR_Downloader.yoda
                         case "Sponsor Protocol Number": st.sponsor_protocol_id = value; break;
                         case "Data Partner": st.data_partner = value; break;
                         case "Condition Studied": st.conditions_studied = value; break;
-                        default:
-                        {
-                            //logging_repo.LogLine(label);
-                            break;
-                        }
                     }
                 }
             }
@@ -296,7 +289,7 @@ namespace MDR_Downloader.yoda
             HtmlNode? docsBlock = page.CssSelect("#block-views-trial-details-block-1").FirstOrDefault();
             IEnumerable<HtmlNode>? docs = docsBlock.CssSelect(".views-field");
 
-            if (docs?.Any() == true)
+            if (docs?.Any() is true)
             {
                 foreach (HtmlNode docType in docs)
                 {
@@ -492,7 +485,7 @@ namespace MDR_Downloader.yoda
 
             // for the study, add the yoda title (seems to be the full scientific title)
 
-            study_titles.Add(new Title(sid, st.yoda_title!, 18, "Other scientific title", true, "From YODA web page"));
+            study_titles.Add(new Title(st.yoda_title!, 18, "Other scientific title", true, "From YODA web page"));
 
             // create study references (pmids)
             if (st.primary_citation_link is not null && st.primary_citation_link.Contains("http"))

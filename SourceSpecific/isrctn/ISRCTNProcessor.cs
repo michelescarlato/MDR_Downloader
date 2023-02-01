@@ -1,21 +1,8 @@
 ﻿using HtmlAgilityPack;
-using MDR_Downloader.euctr;
 using MDR_Downloader.Helpers;
-using MDR_Downloader.isrctn;
-using MDR_Downloader.pubmed;
 using ScrapySharp.Extensions;
 using ScrapySharp.Html;
 using ScrapySharp.Network;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Globalization;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Security.Cryptography;
-using System.Text.RegularExpressions;
-using System.Web;
-using System.Xml.Serialization;
 
 namespace MDR_Downloader.isrctn;
 
@@ -25,15 +12,15 @@ public class ISRCTN_Processor
     {
         Study st = new();
 
-        List<Identifier>? identifiers = new();
-        List<string>? recruitmentCountries = new();
-        List<StudyCentre>? centres = new();
-        List<StudyOutput>? outputs = new();
-        List<StudyAttachedFile>? attachedFiles = new();
-        List<StudyContact>? contacts = new();
-        List<StudySponsor>? sponsors = new();
-        List<StudyFunder>? funders = new();
-        List<string>? dataPolicies = new();
+        List<Identifier> identifiers = new();
+        List<string> recruitmentCountries = new();
+        List<StudyCentre> centres = new();
+        List<StudyOutput> outputs = new();
+        List<StudyAttachedFile> attachedFiles = new();
+        List<StudyContact> contacts = new();
+        List<StudySponsor> sponsors = new();
+        List<StudyFunder> funders = new();
+        List<string> dataPolicies = new();
 
         var tr = ft.trial;
         if (tr is not null)
@@ -57,13 +44,13 @@ public class ISRCTN_Processor
                 string? pes = d.plainEnglishSummary;
                 if (pes is not null)
                 {
-                    // Attempt to find the beginningof the 'discarded' sections.
+                    // Attempt to find the beginning of the 'discarded' sections.
                     // If found discard those sections.
 
-                    int endpos = pes.IndexOf("What are the possible benefits and risks");
+                    int endpos = pes.IndexOf("What are the possible benefits and risks", StringComparison.Ordinal);
                     if (endpos == -1)
                     {
-                        endpos = pes.IndexOf("What are the potential benefits and risks");
+                        endpos = pes.IndexOf("What are the potential benefits and risks", StringComparison.Ordinal);
                     }
                     if (endpos != -1)
                     {
@@ -110,20 +97,20 @@ public class ISRCTN_Processor
                 st.recruitmentEnd = p.recruitmentEnd;
                 st.recruitmentStatusOverride = p.recruitmentStatusOverride;
 
-                var tcentres = p.trialCentres;
-                if (tcentres?.Any() == true)
+                var trial_centres = p.trialCentres;
+                if (trial_centres?.Any() is true)
                 {
-                    foreach (var cr in tcentres)
+                    foreach (var cr in trial_centres)
                     {
                         centres.Add(new StudyCentre(cr.name, cr.address, cr.city, 
                                                     cr.state, cr.country));
                     }
                 }
 
-                string[]? reccountries = p.recruitmentCountries;
-                if (reccountries?.Any() == true)
+                string[]? recruitment_countries = p.recruitmentCountries;
+                if (recruitment_countries?.Any() is true)
                 {
-                    foreach(string s in reccountries)
+                    foreach(string s in recruitment_countries)
                     {
                         // regularise these common alternative spellings
                         var t = s.Replace("Korea, South", "South Korea");
@@ -200,7 +187,7 @@ public class ISRCTN_Processor
                 st.plainEnglishReport = r.plainEnglishReport;
 
                 var dps = r.dataPolicies;
-                if (dps?.Any() == true)
+                if (dps?.Any() is true)
                 {
                     foreach (string s in dps)
                     {
@@ -213,63 +200,68 @@ public class ISRCTN_Processor
             var er = tr.externalRefs;
             if (er is not null)
             {
-                string? eref = er.doi;
-                if (!string.IsNullOrEmpty(eref) && eref != "N/A" && eref != "Not Applicable" && eref != "Nil known")
+                string? ext_ref = er.doi;
+                if (!string.IsNullOrEmpty(ext_ref) && ext_ref != "N/A" 
+                                                   && ext_ref != "Not Applicable" && ext_ref != "Nil known")
                 {
-                    st.doi = eref;
+                    st.doi = ext_ref;
                 }
 
-                eref = er.eudraCTNumber;
-                if (!string.IsNullOrEmpty(eref) && eref != "N/A" && eref != "Not Applicable" && eref != "Nil known")
+                ext_ref = er.eudraCTNumber;
+                if (!string.IsNullOrEmpty(ext_ref) && ext_ref != "N/A" 
+                                                   && ext_ref != "Not Applicable" && ext_ref != "Nil known")
                 {
-                    identifiers.Add(new Identifier(11, "Trial Registry ID", eref, 100123, "EU Clinical Trials Register"));
+                    identifiers.Add(new Identifier(11, "Trial Registry ID", ext_ref, 100123, "EU Clinical Trials Register"));
                 }
 
-                eref = er.irasNumber;
-                if (!string.IsNullOrEmpty(eref) && eref != "N/A" && eref != "Not Applicable" && eref != "Nil known")
+                ext_ref = er.irasNumber;
+                if (!string.IsNullOrEmpty(ext_ref) && ext_ref != "N/A" 
+                                                   && ext_ref != "Not Applicable" && ext_ref != "Nil known")
                 {
-                    identifiers.Add(new Identifier(41, "Regulatory Body ID", eref, 101409, "Health Research Authority"));
+                    identifiers.Add(new Identifier(41, "Regulatory Body ID", ext_ref, 101409, "Health Research Authority"));
                 }
 
-                eref = er.clinicalTrialsGovNumber;
-                if (!string.IsNullOrEmpty(eref) && eref != "N/A" && eref != "Not Applicable" && eref != "Nil known")
+                ext_ref = er.clinicalTrialsGovNumber;
+                if (!string.IsNullOrEmpty(ext_ref) && ext_ref != "N/A" 
+                                                   && ext_ref != "Not Applicable" && ext_ref != "Nil known")
                 {
-                    identifiers.Add(new Identifier(11, "Trial Registry ID", eref, 100120, "Clinicaltrials.gov"));
+                    identifiers.Add(new Identifier(11, "Trial Registry ID", ext_ref, 100120, "Clinicaltrials.gov"));
                 }
 
-                eref = er.protocolSerialNumber;
-                if (!string.IsNullOrEmpty(eref) && eref != "N/A" && eref != "Not Applicable" && eref != "Nil known")
+                ext_ref = er.protocolSerialNumber;
+                if (!string.IsNullOrEmpty(ext_ref) && ext_ref != "N/A" 
+                                                   && ext_ref != "Not Applicable" && ext_ref != "Nil known")
                 {
-                    if (eref.Contains(";"))
+                    if (ext_ref.Contains(';'))
                     {
-                        string[] iditems = eref.Split(";");
-                        foreach (string iditem in iditems)
+                        string[] id_items = ext_ref.Split(";");
+                        foreach (string id_item in id_items)
                         {
-                            identifiers.Add(new Identifier(0, "To be determined", iditem.Trim(), 0, "To be determined"));
+                            identifiers.Add(new Identifier(0, "To be determined", id_item.Trim(), 0, "To be determined"));
                         }
                     }
-                    else if (eref.Contains(",") && (eref.ToLower().Contains("iras") || eref.ToLower().Contains("hta")))
+                    else if (ext_ref.Contains(',') && (ext_ref.ToLower().Contains("iras") || ext_ref.ToLower().Contains("hta")))
                     {
                         // Don't split on commas unless these common id types are included.
 
-                        string[] iditems = eref.Split(",");
-                        foreach (string iditem in iditems)
+                        string[] id_items = ext_ref.Split(",");
+                        foreach (string id_item in id_items)
                         {
-                            identifiers.Add(new Identifier(0, "To be determined", iditem.Trim(), 0, "To be determined"));
+                            identifiers.Add(new Identifier(0, "To be determined", id_item.Trim(), 0, "To be determined"));
                         }
                     }
                     else
                     {
-                        identifiers.Add(new Identifier(0, "To be determined", eref.Trim(), 0, "To be determined"));
+                        identifiers.Add(new Identifier(0, "To be determined", ext_ref.Trim(), 0, "To be determined"));
                     }
                 }
             }
 
-            // Do aditional files first
+            // Do additional files first
             // so that details can be checked from the outputs data
 
             var afs = tr.attachedFiles;
-            if (afs?.Any() == true)
+            if (afs?.Any() is true)
             {
                 foreach (var v in afs)
                 {
@@ -278,7 +270,7 @@ public class ISRCTN_Processor
             }
 
             var ops = tr.outputs;
-            if (ops?.Any() == true)
+            if (ops?.Any() is true)
             {
                 bool local_urls_collected = false;
                 Dictionary<string, string>? output_urls = null;
@@ -297,7 +289,7 @@ public class ISRCTN_Processor
                         // (Not all listed local outputs are in the attached files
                         // list - though the great majority are).
 
-                        if (attachedFiles?.Any() == true)
+                        if (attachedFiles?.Any() is true)
                         {
                             foreach (var af in attachedFiles) 
                             { 
@@ -309,18 +301,22 @@ public class ISRCTN_Processor
                             }
                         }
 
-                        // need to go to the page and get the url for the local file
+                        // need to go to the page to get the url for any local file
                         // (Not available in the API data)
-                        // May have already been collected from an earlier output. and
-                        // fill it by web scraping.
-
-                        // get the url data for this study if not already collected.
+                        // May have already been collected from an earlier output
+                        // in the 'ops' collection (i.e. if a study hgs 2 or more
+                        // local files). If not fill the url collection by web scraping.
 
                         if (!local_urls_collected)
                         {
                             string details_url = "https://www.isrctn.com/" + st.sd_sid;
                             ScrapingHelpers ch = new(logging_helper);
                             Thread.Sleep(500);
+                            
+                            // ReSharper disable once RedundantAssignment (to study_page)
+                            // The initial web page access results in a blocking page
+                            // The second access is required to actually access the page.
+                            
                             WebPage? study_page = await ch.GetPageAsync(details_url);
                             Thread.Sleep(100); 
                             study_page = await ch.GetPageAsync(details_url);
@@ -330,7 +326,7 @@ public class ISRCTN_Processor
                                 HtmlNode? section_div = study_page.Find("div", By.Class("l-Main")).FirstOrDefault();
                                 HtmlNode? article = section_div?.SelectSingleNode("article[1]");
                                 IEnumerable<HtmlNode>? publications = article?.SelectNodes("//section/div[1]/h2[text()='Results and Publications']/following-sibling::div[1]/h3");
-                                if (publications?.Any() == true)
+                                if (publications?.Any() is true)
                                 {
                                     foreach (var pub in publications)
                                     {
@@ -341,23 +337,25 @@ public class ISRCTN_Processor
                                             if (output_table is not null)
                                             {
                                                 var table_rows = output_table.SelectNodes("tr");
-                                                if (table_rows?.Any() == true)
+                                                if (table_rows?.Any() is true)
                                                 {
                                                     foreach (var table_row in table_rows)
                                                     {
                                                         var output_attributes = table_row.SelectNodes("td")?.ToArray();
-                                                        if (output_attributes?.Any() == true)
+                                                        if (output_attributes?.Any() is true)
                                                         {
                                                             HtmlNode? output_link = output_attributes[0]?.SelectSingleNode("a[1]");
                                                             if (output_link is not null)
                                                             {
                                                                 string? output_title = output_link.GetAttributeValue("title").ReplaceUnicodes();
                                                                 string? output_url = output_link.GetAttributeValue("href");
-                                                                if (!string.IsNullOrEmpty(output_url))
+                                                                if (!string.IsNullOrEmpty(output_title) && !string.IsNullOrEmpty(output_url))
                                                                 {
                                                                     if (!output_url.ToLower().StartsWith("http"))
                                                                     {
-                                                                        output_url = output_url.StartsWith("/") ? "https://www.isrctn.com" + output_url : "https://www.isrctn.com/" + output_url;
+                                                                        output_url = output_url.StartsWith("/") 
+                                                                            ? "https://www.isrctn.com" + output_url 
+                                                                            : "https://www.isrctn.com/" + output_url;
                                                                     }
 
                                                                     // Very occasionally the same file and output url is duplicated.
@@ -375,6 +373,7 @@ public class ISRCTN_Processor
                                                                             }
                                                                         }
                                                                     }
+                                                                    
                                                                     if (add_entry)
                                                                     {
                                                                         output_urls.Add(output_title, output_url);
@@ -393,9 +392,9 @@ public class ISRCTN_Processor
                             }
                         }
 
-                        if (output_urls.Count > 0)
+                        if (output_urls?.Any() is true)
                         {
-                            // Not clear if the original or download file name shopuld
+                            // Not clear if the original or download file name should
                             // be used to try and match the url (normally identical).
 
                             if (sop.downloadFilename is not null)
@@ -419,7 +418,7 @@ public class ISRCTN_Processor
         }
 
         var tr_contacts = ft.contact;
-        if(tr_contacts?.Any() == true)
+        if(tr_contacts?.Any() is true)
         {
             foreach(var v in tr_contacts)
             {
@@ -431,7 +430,7 @@ public class ISRCTN_Processor
 
 
         var tr_sponsors = ft.sponsor;
-        if (tr_sponsors?.Any() == true)
+        if (tr_sponsors?.Any() is true)
         {
             foreach (var v in tr_sponsors)
             {
@@ -441,7 +440,7 @@ public class ISRCTN_Processor
 
 
         var tr_funders = ft.funder;
-        if (tr_funders?.Any() == true)
+        if (tr_funders?.Any() is true)
         {
             foreach (var v in tr_funders)
             {

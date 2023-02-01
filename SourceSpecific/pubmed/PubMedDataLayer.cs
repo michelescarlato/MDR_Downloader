@@ -7,7 +7,7 @@ namespace MDR_Downloader.pubmed
 {
     public class PubMedDataLayer
     {
-        NpgsqlConnectionStringBuilder builder;
+        private readonly NpgsqlConnectionStringBuilder builder;
         private readonly string connString;
         private readonly string mon_connString;
         private readonly string context_connString;
@@ -21,10 +21,12 @@ namespace MDR_Downloader.pubmed
                 .AddJsonFile("appsettings.json")
                 .Build();
 
-            builder = new NpgsqlConnectionStringBuilder();
-            builder.Host = settings["host"];
-            builder.Username = settings["user"];
-            builder.Password = settings["password"];
+            builder = new()
+            {
+                Host = settings["host"],
+                Username = settings["user"],
+                Password = settings["password"]
+            };
             string? PortAsString = settings["port"];
             if (string.IsNullOrWhiteSpace(PortAsString))
             {
@@ -32,8 +34,7 @@ namespace MDR_Downloader.pubmed
             }
             else
             {
-                int port_num;
-                if (Int32.TryParse(PortAsString, out port_num))
+                if (Int32.TryParse(PortAsString, out int port_num))
                 {
                     builder.Port = port_num;
                 }
@@ -44,7 +45,6 @@ namespace MDR_Downloader.pubmed
             }
 
             builder.Database = "pubmed";
-
             connString = builder.ConnectionString;
 
             builder.Database = "mon";
@@ -68,14 +68,14 @@ namespace MDR_Downloader.pubmed
                        CREATE TABLE IF NOT EXISTS pp.pmids_by_source_total(
                         source_id int
                       , sd_sid varchar
-                      , pmid varchar)";
+                      , pmid int)";
             conn.Execute(sql_string);
 
             sql_string = @"DROP TABLE IF EXISTS pp.distinct_pmids;
                        CREATE TABLE IF NOT EXISTS pp.distinct_pmids(
                          identity int GENERATED ALWAYS AS IDENTITY
                        , group_id int
-                       , pmid varchar)";
+                       , pmid int)";
             conn.Execute(sql_string);
 
             sql_string = @"DROP TABLE IF EXISTS pp.pmid_id_strings;
@@ -101,7 +101,7 @@ namespace MDR_Downloader.pubmed
 
             using NpgsqlConnection conn = new(db_conn_string);
             string sql_string = @"SELECT DISTINCT 
-                        sd_sid, pmid from ad.study_references 
+                        sd_sid, pmid::int from ad.study_references 
                         where pmid is not null and pmid <> ''";
             return conn.Query<PMIDBySource>(sql_string);
         }
@@ -132,7 +132,7 @@ namespace MDR_Downloader.pubmed
 
             sql_string = @"INSERT INTO pp.pmid_id_strings(
                         id_string)
-                        SELECT DISTINCT string_agg(pmid, ', ') 
+                        SELECT DISTINCT string_agg(pmid::varchar, ', ') 
                         OVER (PARTITION BY group_id) 
                         from pp.distinct_pmids;";
             conn.Execute(sql_string);

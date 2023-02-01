@@ -182,9 +182,9 @@ namespace MDR_Downloader
 
     public class DownloadResult
     {
-        public int? num_checked { get; set; }
-        public int? num_added { get; set; }
-        public int? num_downloaded { get; set; }
+        public int num_checked { get; set; }
+        public int num_added { get; set; }
+        public int num_downloaded { get; set; }
         public string? error_message { get; set; }
 
         public DownloadResult()

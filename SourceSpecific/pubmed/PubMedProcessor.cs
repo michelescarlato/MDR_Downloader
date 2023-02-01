@@ -1,22 +1,4 @@
-﻿using HtmlAgilityPack;
-using MDR_Downloader.Helpers;
-using MDR_Downloader.pubmed;
-using ScrapySharp.Html;
-using ScrapySharp.Network;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Globalization;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Security.AccessControl;
-using System.Security.Cryptography;
-using System.Text.RegularExpressions;
-using System.Web;
-using System.Xml.Linq;
-using System.Xml;
-using System.Xml.Serialization;
-using MDR_Downloader.yoda;
+﻿using MDR_Downloader.Helpers;
 
 namespace MDR_Downloader.pubmed;
 
@@ -37,7 +19,7 @@ public class PubMed_Processor
 
         if (citation is null)
         {
-            // big problems!
+            _logging_helper.LogError("No 'Medline Citation' component of PubMed article class found"); 
             return null;
         }
 
@@ -45,34 +27,33 @@ public class PubMed_Processor
 
         if (article is null)
         {
-            // big problems!
+            _logging_helper.LogError("No 'article' component of PubMed article / citation class found"); 
             return null;
         }
 
         // Establish main citation object
         // and list structures to receive data
         FullObject b = new();
-        List<ArticleEDate>? ArticleEDates = new();
-        List<string>? ArticleLangs = new();
-        List<Creator>? Creators = new();
+        List<ArticleEDate> ArticleEDates = new();
+        List<string> ArticleLangs = new();
+        List<Creator> Creators = new();
+        List<ArticleType> ArticleTypes = new();
+        List<EReference> EReferences = new();
+        List<Database> DatabaseList = new();
+        List<Fund> FundingList = new();
+        List<Substance> SubstanceList = new();
+        List<MeshTerm> MeshList = new();
+        List<SupplMeshTerm> SupplMeshList = new();
+        List<KWord> KeywordList = new();
+        List<Correction> CorrectionsList = new();
+        List<AdditionalId> AdditionalIds = new();
+        List<HistoryDate> History = new ();
+        List<ArticleId> ArticleIds = new ();
+        List<ISSNRecord> ISSNList = new();
 
-        List<ArticleType>? ArticleTypes = new();
-        List<EReference>? EReferences = new();
-        List<Database>? DatabaseList = new();
-        List<Fund>? FundingList = new();
-        List<Substance>? SubstanceList = new();
-        List<MeshTerm>? MeshList = new();
-        List<SupplMeshTerm>? SupplMeshList = new();
-        List<KWord>? KeywordList = new();
-        List<Correction>? CorrectionsList = new();
-        List<AdditionalId>? AdditionalIds = new();
-        List<HistoryDate>? History = new ();
-        List<ArticleId>? ArticleIds = new ();
-        List<ISSNRecord>? ISSNList = new();
-
-        b.ipmid = citation.PMID?.Value;
-        b.pmid_version = citation.PMID?.Version;
-        string? pmid = b.ipmid.ToString();
+        b.ipmid = citation.PMID.Value;
+        b.pmid_version = citation.PMID.Version;
+        string pmid = b.ipmid.ToString();
         b.sd_oid = pmid;
 
         b.status = citation.Status;
@@ -155,7 +136,7 @@ public class PubMed_Processor
         if (citation.KeywordList is not null)
         {
             b.keywordOwner = citation.KeywordList.Owner;
-            if (citation.KeywordList.Keyword?.Any() == true)
+            if (citation.KeywordList.Keyword?.Any() is true)
             {
                 foreach (var k in citation.KeywordList.Keyword)
                 {
@@ -186,52 +167,45 @@ public class PubMed_Processor
                 else
                 {
                     lang_to_add = lang.lang_3_to_2();
-                    if (lang_to_add is not null && lang_to_add == "??")
+                    if (lang_to_add == "??")
                     {
                         // need to use the database
                         lang_to_add = _pubmed_repo.lang_3_to_2(lang);
                     }
                 }
-                ArticleLangs.Add(lang_to_add);
+                if (lang_to_add is not null)
+                {
+                    ArticleLangs.Add(lang_to_add);
+                }
             }
         }
 
 
         if (article.ArticleDates is not null && article.ArticleDates.Length > 0)
         {
-            foreach (var ad in article.ArticleDates)
-            {
-                ArticleEDates.Add(new ArticleEDate(ad.DateType, ad.Year, 
-                                                   ad.Month, ad.Day));
-            }
+            ArticleEDates.AddRange(article.ArticleDates.Select(ad => new ArticleEDate(ad.DateType, 
+                                                                      ad.Year, ad.Month, ad.Day)));
         }
-
 
         if (article.OtherIDs is not null && article.OtherIDs.Length > 0)
         {
-            foreach (var t in article.OtherIDs)
-            {
-                AdditionalIds.Add(new AdditionalId(t.Source, t.Value));
-            }
+            AdditionalIds.AddRange(article.OtherIDs.Select(t => new AdditionalId(t.Source, t.Value)));
         }
 
         if (article.ELocationIDs is not null && article.ELocationIDs.Length > 0)
         {
-            foreach (var e in article.ELocationIDs)
-            {
-                EReferences.Add(new EReference(e.EIdType, e.Value));
-            }
+            EReferences.AddRange(article.ELocationIDs.Select(e => new EReference(e.EIdType, e.Value)));
         }
 
  
         if (article.AuthorList is not null)
         {
-            if (article.AuthorList.Author?.Any() == true)
+            if (article.AuthorList.Author?.Any() is true)
             {
                 foreach (var a in article.AuthorList.Author)
                 {
                     List<AffiliationInfo>? affiliations = null;
-                    if (a.Affiliations?.Any() == true)
+                    if (a.Affiliations?.Any() is true)
                     {
                         affiliations = new();
                         foreach (var aff in a.Affiliations)
@@ -260,7 +234,7 @@ public class PubMed_Processor
 
         if (article.DataBankList is not null)
         {
-            if (article.DataBankList.DataBanks?.Any() == true)
+            if (article.DataBankList.DataBanks?.Any() is true)
             {
                 foreach (var d in article.DataBankList.DataBanks)
                 {
@@ -281,7 +255,7 @@ public class PubMed_Processor
 
         if (article.GrantList is not null)
         {
-            if (article.GrantList.Grant?.Any() == true)
+            if (article.GrantList.Grant?.Any() is true)
             {
                 foreach (var g in article.GrantList.Grant)
                 {
@@ -296,7 +270,7 @@ public class PubMed_Processor
         {
             b.PublicationStatus = pubmedData.PublicationStatus;
 
-            if (pubmedData.History?.Any() == true)
+            if (pubmedData.History?.Any() is true)
             {
                 foreach(var hd in pubmedData.History)
                 {
@@ -313,6 +287,7 @@ public class PubMed_Processor
             }
         }
 
+        b.ArticleEDates = ArticleEDates;
         b.ArticleLangs = ArticleLangs;
         b.Creators = Creators;
         b.ArticleTypes = ArticleTypes;
@@ -327,6 +302,7 @@ public class PubMed_Processor
         b.History = History;
         b.ArticleIds = ArticleIds;
         b.AdditionalIds = AdditionalIds;
+        b.ISSNList = ISSNList;
 
         return b;
     }

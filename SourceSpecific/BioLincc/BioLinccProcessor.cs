@@ -3,7 +3,6 @@ using MDR_Downloader.Helpers;
 using ScrapySharp.Extensions;
 using ScrapySharp.Html;
 using ScrapySharp.Network;
-using System.Collections.Generic;
 
 namespace MDR_Downloader.biolincc;
 
@@ -31,28 +30,25 @@ public class BioLINCC_Processor
         // the fourth the collection type
         // Note, for BioLINCC,the use of the acronym as the sd_sid 
 
-        HtmlNode[]? cols = row.CssSelect("td").ToArray();
-        if (cols is not null)
-        {
-            BioLincc_Basics bb = new();
-            HtmlNode? link = cols[0]?.CssSelect("a").FirstOrDefault();
-            if (link is not null)
-            {
-                bb.title = link.InnerText.Trim();
-                bb.remote_url = "https://biolincc.nhlbi.nih.gov" + link.Attributes["href"].Value;
-            }
-            bb.acronym = cols[1].InnerText.Replace("\n", "").Replace("\r", "").Trim();
-            bb.resources_available = cols[2].InnerText.Replace("\n", "").Replace("\r", "").Trim();
-            bb.collection_type = cols[3].InnerText.Replace("\n", "").Replace("\r", "").Trim();
-            bb.sd_sid = bb.acronym.Replace("\\", "-").Replace("/", "-").Replace(".", "-");
-
-            return bb;
-        }
-        else
+        HtmlNode[] cols = row.CssSelect("td").ToArray();
+        if (cols.Length < 4)
         {
             return null;
         }
 
+        BioLincc_Basics bb = new();
+        HtmlNode? link = cols[0].CssSelect("a").FirstOrDefault();
+        if (link is not null)
+        {
+            bb.title = link.InnerText.Trim();
+            bb.remote_url = "https://biolincc.nhlbi.nih.gov" + link.Attributes["href"].Value;
+        }
+        bb.acronym = cols[1].InnerText.Replace("\n", "").Replace("\r", "").Trim();
+        bb.resources_available = cols[2].InnerText.Replace("\n", "").Replace("\r", "").Trim();
+        bb.collection_type = cols[3].InnerText.Replace("\n", "").Replace("\r", "").Trim();
+        bb.sd_sid = bb.acronym.Replace("\\", "-").Replace("/", "-").Replace(".", "-");
+
+        return bb;
     }
 
 
@@ -62,26 +58,26 @@ public class BioLINCC_Processor
 
         if (bb.remote_url is null)
         {
-            _logging_helper.LogError("No remote url for BioLInnc study page for " + bb.acronym + ", access sttempt failed");
+            _logging_helper.LogError("No remote url for Biolincc study page for " + bb.acronym + ", access attempt failed");
             return null;
         }
 
         WebPage? studyPage = await _ch.GetPageAsync(bb.remote_url);
         if (studyPage is null)
         {
-            _logging_helper.LogError("Attempt to access main BioLInnc study page for " + bb.acronym + " at " + bb.remote_url + " failed");
+            _logging_helper.LogError("Attempt to access main Biolincc study page for " + bb.acronym + " at " + bb.remote_url + " failed");
             return null;
         }
 
-        var main = studyPage.Find("div", By.Class("main"));
+        HtmlNode? main = studyPage.Find("div", By.Class("main")).FirstOrDefault();
         if (main is null)
         {
             _logging_helper.LogError("Could not find 'main' class on page for " + bb.acronym + " at " + bb.remote_url + ".");
             return null;
         }
 
-        HtmlNode[]? tables = main.CssSelect("div.study-box").ToArray();
-        if (tables is null)
+        HtmlNode[] tables = main.CssSelect("div.study-box").ToArray();
+        if (tables.Length == 0)
         {
             _logging_helper.LogError("Could not find 'div.study-box' class on page for " + bb.acronym + " at " + bb.remote_url + ".");
             return null;
@@ -96,18 +92,15 @@ public class BioLINCC_Processor
         List<AssocDoc> assoc_docs = new();
         List<RelatedStudy> related_studies = new();
  
-        HtmlNode? BasicDetails = tables[0];
+        HtmlNode BasicDetails = tables[0];
         HtmlNode? ConsentDetails = tables[1];
         HtmlNode? DescriptiveParas = studyPage.Find("div", By.Id("study-info")).FirstOrDefault();
         IEnumerable<HtmlNode>? SideBar = main.CssSelect("div.col-md-3");
 
-        if (BasicDetails is not null)
+        List<HtmlNode>? basic_details = BasicDetails.CssSelect("p").ToList();
+        if (basic_details.Count > 0)
         {
-            var entries = BasicDetails.CssSelect("p");
-            if (entries?.Any() == true)
-            {
-                await ProcessBasicDetails(st, entries, primary_docs, registry_ids, related_studies);
-            }
+            await ProcessBasicDetails(st, basic_details, primary_docs, registry_ids, related_studies);
         }
 
 
@@ -118,7 +111,7 @@ public class BioLINCC_Processor
             {
                 IEnumerable<HtmlNode>? desc_headings = description.CssSelect("h2");
 
-                if (desc_headings?.Any() == true)
+                if (desc_headings?.Any() is true)
                 {
                     ProcessDescriptiveParas(st, description, desc_headings);
                 }
@@ -130,7 +123,7 @@ public class BioLINCC_Processor
         {
             IEnumerable<HtmlNode>? sections = SideBar.CssSelect("div.detail-aside-row");
 
-            if (sections?.Any() == true)
+            if (sections?.Any() is true)
             {
                 pubs_link = ProcessSideBar(st, sections, study_resources);
             }
@@ -141,7 +134,7 @@ public class BioLINCC_Processor
             st.resources_available.ToLower().Contains("study datasets") && ConsentDetails is not null)
         {
             var entries = ConsentDetails.CssSelect("p");
-            if (entries?.Any() == true)
+            if (entries?.Any() is true)
             {
                 ProcessConsents(st, entries);
             }
@@ -161,10 +154,10 @@ public class BioLINCC_Processor
                 HtmlNode? pubTable = pubsPage.Find("div", By.Class("table-responsive")).FirstOrDefault();
                 if (pubTable is not null)
                 {
-                    IEnumerable<HtmlNode>? pubLinks = pubTable.CssSelect("td a");
-                    if (pubLinks?.Any() == true)
+                    List<HtmlNode>? pubLinks = pubTable.CssSelect("td a").ToList();
+                    if (pubLinks?.Any() is true)
                     {
-                        st.num_associated_papers = pubLinks.Count();
+                        st.num_associated_papers = pubLinks.Count;
                         await ProcessPublicationData(st, pubLinks, assoc_docs);
                     }
                 }
@@ -202,7 +195,7 @@ public class BioLINCC_Processor
 
 
 
-    async Task ProcessBasicDetails(BioLincc_Record st, IEnumerable<HtmlNode> entries, 
+    async Task ProcessBasicDetails(BioLincc_Record st, List<HtmlNode> entries, 
                                             List<PrimaryDoc> primary_docs, List<RegistryId> registry_ids, 
                                             List<RelatedStudy> related_studies)
     {
@@ -253,13 +246,14 @@ public class BioLINCC_Processor
                     }
                     else
                     {
-                        // date is in the foem of MMMM d, yyyy, and needs to be split accordingly
+                        // Date is in the form of MMMM d, yyyy, and needs to be split accordingly.
+                        
                         string date_prepared_string = st.date_prepared.Replace(", ", "|").Replace(",", "|").Replace(" ", "|");
                         string[] updated_parts = date_prepared_string.Split("|");
                         int month = updated_parts[0].GetMonthAsInt();
                         if (month > 0
-                            && Int32.TryParse(updated_parts[1], out int day)
-                            && Int32.TryParse(updated_parts[2], out int year))
+                            && int.TryParse(updated_parts[1], out int day)
+                            && int.TryParse(updated_parts[2], out int year))
                         {
                             st.page_prepared_date = new DateTime(year, month, day);
                         }
@@ -275,13 +269,14 @@ public class BioLINCC_Processor
                     }
                     else
                     {
-                        // date is in the forem of MMMM d, yyyy, and needs to be split accordingly
+                        // Date is in the form of MMMM d, yyyy, and needs to be split accordingly.
+                        
                         string last_updated_string = st.datasets_updated.Replace(", ", "|").Replace(",", "|").Replace(" ", "|");
                         string[] updated_parts = last_updated_string.Split("|");
                         int month = updated_parts[0].GetMonthAsInt();
                         if (month > 0
-                            && Int32.TryParse(updated_parts[1], out int day)
-                            && Int32.TryParse(updated_parts[2], out int year))
+                            && int.TryParse(updated_parts[1], out int day)
+                            && int.TryParse(updated_parts[2], out int year))
                         {
                             st.datasets_updated_date = new DateTime(year, month, day);
                         }
@@ -299,23 +294,26 @@ public class BioLINCC_Processor
 
                 if (attribute_name == "Clinical Trial URLs")
                 {
-                    var entryRefs = ent_node.CssSelect("a");
-                    int n = 0; string link_value; string link_text = "";
-                    if (entryRefs?.Any() == true)
+                    List<HtmlNode> entryRefs = ent_node.CssSelect("a").ToList();
+                    if (entryRefs.Any())
                     {
-                        string nct_id;
+                        int n = 0;
+                        string link_text = "";
                         foreach (var er in entryRefs)
                         {
-                            n++;
-                            // get the url and any link text if different
-                            link_value = er.Attributes["href"].Value.Trim();
+                            // Get the url and any link text if different.
+                            
+                            n++;                           
+                            string link_value = er.Attributes["href"].Value.Trim();
                             if (er.InnerText.Trim() != link_value)
                             {
                                 link_text = er.InnerText.Trim();
                             }
 
-                            // derive NCT number
-                            int NCTPos = link_value.ToUpper().IndexOf("NCT");
+                            // Derive NCT number.
+                            
+                            int NCTPos = link_value.ToUpper().IndexOf("NCT", StringComparison.Ordinal);
+                            string nct_id;
                             if (NCTPos > -1 && NCTPos <= link_value.Length - 11)
                             {
                                 nct_id = link_value.Substring(NCTPos, 11).ToUpper();
@@ -326,21 +324,22 @@ public class BioLINCC_Processor
                             }
                             registry_ids.Add(new RegistryId(link_value, nct_id, link_text));
                         }
+                        st.num_clinical_trial_urls = n;
                     }
-                    st.num_clinical_trial_urls = n;
                 }
 
                 if (attribute_name == "Primary Publication URLs")
                 {
-                    var entryRefs = ent_node.CssSelect("a");
-                    int n = 0; string link_value; string link_text = "";
-                    if (entryRefs?.Any() == true)
+                    List<HtmlNode> entry_refs = ent_node.CssSelect("a").ToList();
+                    if (entry_refs.Any())
                     {
-                        string? pubmed_id = ""; int pubmed_pos;
-                        foreach (var er in entryRefs)
+                        string link_text = "";
+                        string? pubmed_id = "";
+                        int n = 0;
+                        foreach (var er in entry_refs)
                         {
                             n++;
-                            link_value = er.Attributes["href"].Value.Trim();
+                            string link_value = er.Attributes["href"].Value.Trim();
                             if (er.InnerText.Trim() != link_value)
                             {
                                 link_text = er.InnerText.Trim();
@@ -348,7 +347,7 @@ public class BioLINCC_Processor
 
                             // get pubmed id
 
-                            pubmed_pos = link_value.IndexOf("/pubmed/");
+                            int pubmed_pos = link_value.IndexOf("/pubmed/", StringComparison.Ordinal);
                             if (pubmed_pos != -1)
                             {
                                 pubmed_id = link_value[(pubmed_pos + 8)..];
@@ -356,7 +355,7 @@ public class BioLINCC_Processor
                             else
                             {
                                 // may need to interrogate NLM API 
-                                int pmc_pos = link_value.IndexOf("/pmc/articles/");
+                                int pmc_pos = link_value.IndexOf("/pmc/articles/", StringComparison.Ordinal);
                                 if (pmc_pos != -1)
                                 {
                                     string pmc_id = link_value[(pmc_pos + 14)..];
@@ -371,31 +370,29 @@ public class BioLINCC_Processor
                                 primary_docs.Add(primaryDoc);
                             }
                         }
+                        st.num_primary_pub_urls = n;
                     }
-                    st.num_primary_pub_urls = n;
                 }
 
                 if (attribute_name == "Study Website")
                 {
-                    var entryRefs = ent_node.CssSelect("a");
-                    if (entryRefs?.Any() == true)
+                    List<HtmlNode> entryRefs = ent_node.CssSelect("a").ToList();
+                    if (entryRefs.Any())
                     {
-                        st.study_website = (entryRefs.ToArray())[0].Attributes["href"].Value;
+                        st.study_website = entryRefs.ToArray()[0].Attributes["href"].Value;
                     }
                 }
 
                 if (attribute_name == "Related Studies")
                 {
-                    var entryRefs = ent_node.CssSelect("a");
+                    List<HtmlNode> entryRefs = ent_node.CssSelect("a").ToList();
 
-                    if (entryRefs?.Any() == true)
+                    if (entryRefs.Any())
                     {
-                        string link_value; string link_text;
                         foreach (var er in entryRefs)
                         {
-                            link_value = "https://biolincc.nhlbi.nih.gov" + er.Attributes["href"].Value.Trim();
-                            link_text = er.InnerText.Trim();
-
+                            string link_value = "https://biolincc.nhlbi.nih.gov" + er.Attributes["href"].Value.Trim();
+                            string link_text = er.InnerText.Trim();
                             related_studies.Add(new RelatedStudy(link_value, link_text));
                         }
                     }
@@ -408,42 +405,42 @@ public class BioLINCC_Processor
     void ProcessDescriptiveParas(BioLincc_Record st, HtmlNode description, IEnumerable<HtmlNode> section_headings)
     {
         string descriptive_text = description.InnerHtml;
-        int section_start_pos, section_end_pos;
-        string desc_header, check_text;
         string? descriptive_paras = "";
 
         foreach (HtmlNode section in section_headings)
         {
-            desc_header = section.InnerText.Trim();
+            string desc_header = section.InnerText.Trim();
+            int sec_start_pos, sec_end_pos;
+            string check_text;
             if (desc_header == "Objectives")
             {
                 check_text = "Objectives</h2>";
-                section_start_pos = descriptive_text.IndexOf(check_text) + check_text.Length;
-                section_end_pos = descriptive_text.IndexOf("<h2", section_start_pos);
+                sec_start_pos = descriptive_text.IndexOf(check_text, StringComparison.Ordinal) + check_text.Length;
+                sec_end_pos = descriptive_text.IndexOf("<h2", sec_start_pos, StringComparison.Ordinal);
                 descriptive_paras += desc_header + ": ";
-                if (section_end_pos != -1)
+                if (sec_end_pos != -1)
                 {
-                    descriptive_paras += descriptive_text[section_start_pos..section_end_pos];
+                    descriptive_paras += descriptive_text[sec_start_pos..sec_end_pos];
                 }
             }
             if (desc_header == "Background")
             {
                 check_text = "Background</h2>";
-                section_start_pos = descriptive_text.IndexOf(check_text) + check_text.Length;
-                section_end_pos = descriptive_text.IndexOf("<h2", section_start_pos);
-                if (section_end_pos != -1)
+                sec_start_pos = descriptive_text.IndexOf(check_text, StringComparison.Ordinal) + check_text.Length;
+                sec_end_pos = descriptive_text.IndexOf("<h2", sec_start_pos, StringComparison.Ordinal);
+                if (sec_end_pos != -1)
                 {
-                    descriptive_paras += desc_header + ": " + descriptive_text[section_start_pos..section_end_pos];
+                    descriptive_paras += desc_header + ": " + descriptive_text[sec_start_pos..sec_end_pos];
                 }
             }
             if (desc_header == "Subjects")
             {
                 check_text = "Subjects</h2>";
-                section_start_pos = descriptive_text.IndexOf(check_text) + check_text.Length;
-                section_end_pos = descriptive_text.IndexOf("<h2", section_start_pos);
-                if (section_end_pos != -1)
+                sec_start_pos = descriptive_text.IndexOf(check_text, StringComparison.Ordinal) + check_text.Length;
+                sec_end_pos = descriptive_text.IndexOf("<h2", sec_start_pos, StringComparison.Ordinal);
+                if (sec_end_pos != -1)
                 {
-                    descriptive_paras += desc_header + ": " + descriptive_text[section_start_pos..section_end_pos];
+                    descriptive_paras += desc_header + ": " + descriptive_text[sec_start_pos..sec_end_pos];
                 }
             }
         }            
@@ -492,30 +489,29 @@ public class BioLINCC_Processor
                 if (headerText == "Study Documents")
                 {
                     HtmlNode[] documents = section.CssSelect("ul a").ToArray();
-                    if (documents?.Any() == true)
+                    if (documents?.Any() is true)
                     {
-                        string? doc_name, doc_type, docInfo, object_type, url, size, sizeUnits;
-                        int? object_type_id, doc_type_id, access_type_id;
-
                         foreach (HtmlNode node in documents)
                         {
-                            // re-initialise.
+                            // Get the url for the document. Add site prefix and
+                            // chop off query string, if one has been added. 
+                            
+                            string url = "https://biolincc.nhlbi.nih.gov" + node.Attributes["href"].Value; ;
+                            if (url.IndexOf("?", StringComparison.Ordinal) > 0)
+                            {
+                                url = url[..url.IndexOf("?", StringComparison.Ordinal)];
+                            }
 
-                            doc_name = ""; doc_type = ""; docInfo = ""; object_type = ""; url = ""; size = ""; sizeUnits = "";
-                            object_type_id = 0; doc_type_id = 0; access_type_id = 0;
-
-                            // get the url for the document. Add site prefix and
-                            // chop off time stamp parameter, if one has been added.
-
-                            url = "https://biolincc.nhlbi.nih.gov" + node.Attributes["href"].Value; ;
-                            if (url.IndexOf("?") > 0) url = url[..(url.IndexOf("?"))];
-
+                            // Define and re-initialise variables and then
                             // get the text and split off the bracketed data on type and size.
-
+                            
+                            int object_type_id = 0; int doc_type_id = 0; int access_type_id = 0;
+                            string object_type = "";
+                            string? doc_name, doc_type, size, sizeUnits;
+                            
                             string docString = node.InnerText.Trim();
-                            string[] subparts = docString.Split('(');
-
-                            if (subparts.Length == 1)
+                            string[] sub_parts = docString.Split('(');
+                            if (sub_parts.Length == 1)
                             {
                                 // if no brackets - seems to indicate a linked list of web links (usually of forms)
 
@@ -534,20 +530,21 @@ public class BioLINCC_Processor
                                 // recombine first and second subparts for the doc name, with the bracket.
                                 // drop rightmost bracket and split doc info using the hyphen
 
-                                if (subparts.Length == 2)
+                                string? docInfo;
+                                if (sub_parts.Length == 2)
                                 {
-                                    doc_name = subparts[0].Trim();
-                                    docInfo = subparts[1].Trim();
+                                    doc_name = sub_parts[0].Trim();
+                                    docInfo = sub_parts[1].Trim();
                                 }
                                 else
                                 {
-                                    doc_name = subparts[0];
-                                    for (int k = 1; k < subparts.Length - 1; k++)
+                                    doc_name = sub_parts[0];
+                                    for (int k = 1; k < sub_parts.Length - 1; k++)
                                     {
-                                        doc_name += "(" + subparts[k];
+                                        doc_name += "(" + sub_parts[k];
                                     }
                                     doc_name = doc_name.Trim();
-                                    docInfo = subparts[subparts.Length - 1].Trim();  // last of the array
+                                    docInfo = sub_parts[^1].Trim();  // last of the array
                                 }
                                 docInfo = docInfo[..^1];
                                 string[] parameters = docInfo.Split('-');
@@ -634,8 +631,8 @@ public class BioLINCC_Processor
                                     ObjectTypeDetails? object_type_details = _repo.FetchDocTypeDetails(doc_name);
                                     if (object_type_details?.type_id is not null)
                                     {
-                                        object_type_id = object_type_details.type_id;
-                                        object_type = object_type_details.type_name;
+                                        object_type_id = object_type_details.type_id ?? 0;
+                                        object_type = object_type_details.type_name ?? "";
                                     }
                                     else
                                     {
@@ -645,8 +642,11 @@ public class BioLINCC_Processor
                                 }
                             }
 
-                            study_resources.Add(new Resource(doc_name, object_type_id, object_type, doc_type_id, doc_type,
-                                                                    access_type_id, url, size, sizeUnits));
+                            if (object_type_id != 0)
+                            {
+                                study_resources.Add(new Resource(doc_name, object_type_id, object_type, doc_type_id,
+                                                                 doc_type, access_type_id, url, size, sizeUnits));
+                            }
                         }
                     }
                 }
@@ -764,7 +764,7 @@ public class BioLINCC_Processor
 
                 // Other available details
                 IEnumerable<HtmlNode>? pubData = mainData.CssSelect("p");
-                if (pubData?.Any() == true)
+                if (pubData?.Any() is true)
                 {
                     foreach (HtmlNode node in pubData)
                     {

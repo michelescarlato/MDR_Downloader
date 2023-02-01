@@ -6,16 +6,15 @@ using ScrapySharp.Network;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
-
 namespace MDR_Downloader.biolincc
 {
-    public class BioLINCC_Controller
+    public class BioLINCC_Controller : ISourceController
     {
         private readonly ILoggingHelper _logging_helper;
         private readonly IMonDataLayer _mon_data_layer;
         private readonly BioLinccDataLayer _biolincc_repo;
 
-        public BioLINCC_Controller(IMonDataLayer mon_data_layer, ILoggingHelper logging_helper)
+        public BioLINCC_Controller(IMonDataLayer mon_data_layer, ILoggingHelper logging_helper) 
         {
             _logging_helper = logging_helper;
             _mon_data_layer = mon_data_layer;
@@ -23,7 +22,7 @@ namespace MDR_Downloader.biolincc
         }
 
 
-        public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, Source source)
+        public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
         {
             // For BioLincc, all data is downloaded each time during a download, 
             // (t= 102) as it takes a relatively short time to run through about 300 studies.
@@ -31,10 +30,10 @@ namespace MDR_Downloader.biolincc
             // Obtaining the data has two stages.
             // The first gets the web page list and then loops through it to fetch details
             // of each study, which are then stored as local files in the usual fashion.
-            // Noter that id a n object cannot be classified it is filed, for later 
+            // Note that id a n object cannot be classified it is filed, for later 
             // inspection, and the study id is not stored.
             // 
-            // The second uses the data collected about which BIOLINCC stuydies linke to 
+            // The second uses the data collected about which BIOLINCC studies link to 
             // which NCT studies (it is always not 1-to-1) to update the 'in multi-BioLINCC
             // group' field, when multiple BioLINCC studies correspond to a single NCT study,
             // for those records that require it.
@@ -76,17 +75,17 @@ namespace MDR_Downloader.biolincc
             WebPage? homePage = await ch.GetPageAsync("https://biolincc.nhlbi.nih.gov/studies/");
             if (homePage is null)
             {
-                _logging_helper.LogError("Initial attempt to access BioLInnc studies list page failed");
+                _logging_helper.LogError("Initial attempt to access biolincc studies list page failed");
                 return res; // return zero result
             }
 
             HtmlNode? study_list_table = homePage.Find("div", By.Class("table-responsive")).FirstOrDefault();
-            IEnumerable<HtmlNode>? studyRows = study_list_table.CssSelect("tbody tr");
+            List<HtmlNode>? studyRows = study_list_table?.CssSelect("tbody tr").ToList();
 
-            if (studyRows?.Any() == true)
+            if (studyRows?.Any() is true)
             {
                 _logging_helper.LogHeader("Processing Data");
-                _logging_helper.LogLine($"File list obtained, of {studyRows.Count()} rows");
+                _logging_helper.LogLine($"File list obtained, of {studyRows.Count} rows");
 
                 BioLINCC_Processor biolincc_processor = new (ch, _logging_helper, _biolincc_repo);
 
@@ -95,12 +94,8 @@ namespace MDR_Downloader.biolincc
                 foreach (HtmlNode row in studyRows)
                 {
                     res.num_checked++;
-
-                    //if (res.num_checked == 3) continue;
-                    //if (res.num_checked > 5) break;
-
                     BioLincc_Basics? bb = biolincc_processor.GetStudyBasics(row);
-                    if (bb is not null && bb.sd_sid is not null)
+                    if (bb is not null)
                     {
                         if (bb.collection_type == "Non-BioLINCC Resource")
                         {
@@ -122,15 +117,15 @@ namespace MDR_Downloader.biolincc
                                 {
                                     // Store the links between Biolincc and NCT records.
 
-                                    if (st.sd_sid is not null && st.registry_ids is not null)
+                                    if (st.registry_ids is not null)
                                     {
                                         _biolincc_repo.StoreLinks(st.sd_sid, st.registry_ids);
                                     }
 
-                                    // store any nonmatched documents in the table
+                                    // store any non-matched documents in the table
                                     // and if any exist abort the download for that record
 
-                                    if (st.UnmatchedDocTypes?.Any() == true)
+                                    if (st.UnmatchedDocTypes.Any())
                                     {
                                         foreach (string s in st.UnmatchedDocTypes)
                                         {
@@ -146,7 +141,7 @@ namespace MDR_Downloader.biolincc
                                         string assoc_docs_num = (st.assoc_docs is null) ? "0" : st.assoc_docs.Count.ToString();
                                         try
                                         {
-                                            using FileStream jsonStream = File.Create(full_path);
+                                            await using FileStream jsonStream = File.Create(full_path);
                                             await JsonSerializer.SerializeAsync(jsonStream, st, json_options);
                                             await jsonStream.DisposeAsync();
                                             _logging_helper.LogLine($"{res.num_checked}: {bb.sd_sid} downloaded, with {assoc_docs_num} linked publications");
@@ -156,7 +151,7 @@ namespace MDR_Downloader.biolincc
                                             _logging_helper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
                                         }
 
-                                        bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, st.sd_sid!, st.remote_url, opts.saf_id,
+                                        bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, st.sd_sid, st.remote_url, opts.saf_id,
                                                                           st.datasets_updated_date, full_path);
                                         res.num_downloaded++;
                                         if (added) res.num_added++;
@@ -173,12 +168,12 @@ namespace MDR_Downloader.biolincc
                     
                     if (res.num_checked % 10 == 0)
                     {
-                        _logging_helper.LogLine("files checked: " + res.num_checked.ToString());
-                        _logging_helper.LogLine("files downloaded: " + res.num_downloaded.ToString());
+                        _logging_helper.LogLine("files checked: " + res.num_checked);
+                        _logging_helper.LogLine("files downloaded: " + res.num_downloaded);
                     }
                 }
 
-                _biolincc_repo.UpdateLinkStatus();  // identifies the multi-link studies inthe DB
+                _biolincc_repo.UpdateLinkStatus();  // identifies the multi-link studies in the DB
             }
             return res;
         }
@@ -186,7 +181,7 @@ namespace MDR_Downloader.biolincc
 
         public async Task PostProcessDataAsync(Source source, int? saf_id)
         {
-            // Allows groups of Biolinnc trials that equate to a single NCT registry to be identified.
+            // Allows groups of Biolincc trials that equate to a single NCT registry to be identified.
 
             var json_options = new JsonSerializerOptions()
             {
@@ -202,8 +197,6 @@ namespace MDR_Downloader.biolincc
             foreach (StudyFileRecord rec in file_list)
             {
                 n++;
-                //if (n == 3) continue;
-                //if (n > 5) break;
                 bool in_multiple_biolincc_group = _biolincc_repo.GetMultiLinkStatus(rec.sd_id!);
                 if (in_multiple_biolincc_group)
                 { 
@@ -213,7 +206,7 @@ namespace MDR_Downloader.biolincc
                         // update the linkage data 
                         // read the file into the json object.
 
-                        string jsonString = File.ReadAllText(filePath);
+                        string jsonString = await File.ReadAllTextAsync(filePath);
                         BioLincc_Record? biolincc_study = JsonSerializer.Deserialize<BioLincc_Record?>(jsonString, json_options);
 
                         if (biolincc_study is not null)
@@ -222,7 +215,7 @@ namespace MDR_Downloader.biolincc
                             r++;
                             try
                             {
-                                using FileStream jsonStream = File.Create(filePath);
+                                await using FileStream jsonStream = File.Create(filePath);
                                 await JsonSerializer.SerializeAsync(jsonStream, biolincc_study, json_options);
                                 await jsonStream.DisposeAsync();
                             }

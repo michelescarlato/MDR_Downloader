@@ -2,36 +2,33 @@
 using ScrapySharp.Network;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace MDR_Downloader.euctr;
 
-class EUCTR_Controller
+class EUCTR_Controller : ISourceController
 {
     private readonly ILoggingHelper _logging_helper;
     private readonly IMonDataLayer _mon_data_layer;
-    private readonly JsonSerializerOptions? _json_options;
-    private readonly EUCTR_Processor _processor;
     private readonly string _baseURL;
-    int _access_error_num = 0;
-
+    private readonly JsonSerializerOptions? _json_options;
+    private readonly EUCTR_Processor _processor = new();
+    private int _access_error_num;
+    
     public EUCTR_Controller(IMonDataLayer mon_data_layer, ILoggingHelper logging_helper)
     {
         _logging_helper = logging_helper;
         _mon_data_layer = mon_data_layer;
+        
+        _baseURL = "https://www.clinicaltrialsregister.eu/ctr-search/search?page=";
         _json_options = new()
         {
             AllowTrailingCommas = true,
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             WriteIndented = true
         };
-        _processor = new();
-        _baseURL = "https://www.clinicaltrialsregister.eu/ctr-search/search?page=";
     }
 
-    // 
-
-    public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, Source source)
+    public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
     {
         DownloadResult res = new();
         ScrapingHelpers ch = new(_logging_helper);
@@ -60,7 +57,7 @@ class EUCTR_Controller
         int rec_num = _processor.GetListLength(initialPage);
         if (rec_num == 0)
         {
-            _logging_helper.LogError("Unable to capture total record numbers in preliminaryu set up, so unable to proceed");
+            _logging_helper.LogError("Unable to capture total record numbers in preliminary set up, so unable to proceed");
             return res;  // return zero result
         }
 
@@ -99,13 +96,15 @@ class EUCTR_Controller
             return res;  // return zero result
         }
 
-        res = await LoopThroughDesignatedPagesAsync(opts.FetchTypeId, start_page, end_page, opts.SkipRecentDays, source.id, saf_id, file_base);
+        res = await LoopThroughDesignatedPagesAsync(opts.FetchTypeId, start_page, end_page, opts.SkipRecentDays, 
+                                                    source.id, saf_id, file_base);
 
         return res;
     }
 
 
-    async Task<DownloadResult> LoopThroughDesignatedPagesAsync(int type_id, int start_page, int end_page, int? days_ago, int source_id, int saf_id, string filebase)
+    async Task<DownloadResult> LoopThroughDesignatedPagesAsync(int type_id, int start_page, int end_page, 
+                                                          int? days_ago, int source_id, int saf_id, string file_base)
     {
         DownloadResult res = new DownloadResult();
         ScrapingHelpers ch = new(_logging_helper);
@@ -123,7 +122,7 @@ class EUCTR_Controller
                 break;
             }
 
-            List<Study_Summmary>? summaries = _processor.GetStudyList(summaryPage);
+            List<Study_Summary>? summaries = _processor.GetStudyList(summaryPage);
             if (summaries?.Any() != true)
             {
                 _logging_helper.LogError($"Problem in collecting summary data on page {i} - skipping this page");
@@ -134,41 +133,39 @@ class EUCTR_Controller
             // No 'last updated' field to check, so have to be selected using much cruder techniques
 
             int num_to_download = 0;
-            foreach (Study_Summmary s in summaries)
+            foreach (Study_Summary s in summaries)
             {
                 bool do_download = false;
                 res.num_checked++;
-                if (s.eudract_id is not null)
+                StudyFileRecord? file_record = _mon_data_layer.FetchStudyFileRecord(s.eudract_id, source_id);
+                if (file_record is null)
                 {
-                    StudyFileRecord? file_record = _mon_data_layer.FetchStudyFileRecord(s.eudract_id, source_id);
-                    if (file_record is null)
+                    // a new record not yet existing in study sourece table - must be downloaded.
+
+                    do_download = true;
+                }
+                else
+                {
+                    if (type_id == 146 || (type_id == 145 && file_record.download_status == 0))
                     {
-                        // a new record not yet existing in study sourece table - must be downloaded.
+                        // download all records for download type 146 (in the designated pages),
+                        // but only those with download status 0 for type 145.
 
                         do_download = true;
-                    }
-                    else
-                    {
-                        if (type_id == 146 || (type_id == 145 && file_record.download_status == 0))
+
+                        // However, in either case may have been downloaded in designated recent days,
+                        // in which case do not need to download again.
+
+                        if (days_ago is not null)
                         {
-                            // download all records for download type 146 (in the designated pages),
-                            // but only those with download status 0 for type 145.
-
-                            do_download = true;
-
-                            // However, in either case may have been downloaded in designated recent days,
-                            // in which case do not need to download again.
-
-                            if (days_ago is not null)
+                            if (_mon_data_layer.Downloaded_recently(source_id, s.eudract_id, (int)days_ago))
                             {
-                                if (_mon_data_layer.Downloaded_recently(source_id, s.eudract_id, (int)days_ago))
-                                {
-                                    do_download = false;
-                                }
+                                do_download = false;
                             }
                         }
                     }
                 }
+                
                 s.do_download = do_download;
                 if (do_download) num_to_download++;
             }
@@ -182,7 +179,7 @@ class EUCTR_Controller
             {
                 for (int j = 0; j < summaries.Count; j++)
                 {
-                    Study_Summmary s = summaries[j];
+                    Study_Summary s = summaries[j];
                     if ((bool)s.do_download!)
                     {
                         Euctr_Record st = _processor.GetInfoFromSummary(s);
@@ -224,12 +221,12 @@ class EUCTR_Controller
                                 // Write out study record as json.
                                 // Update the source data record, modifying it or adding a new one.
 
-                                string full_path = await WriteOutFile(st, st.sd_sid!, filebase);
+                                string full_path = await WriteOutFile(st, st.sd_sid, file_base);
                                 if (full_path != "error")
                                 {
                                     string? remote_url = st.details_url;
-                                    bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, s.eudract_id, remote_url, saf_id,
-                                                            null, full_path);
+                                    bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, s.eudract_id, 
+                                                      remote_url, saf_id, null, full_path);
                                     res.num_downloaded++;
                                     if (added) res.num_added++;
                                 }
@@ -252,10 +249,10 @@ class EUCTR_Controller
     private async Task<string> WriteOutFile(Euctr_Record s, string sd_sid, string file_base)
     {
         string file_name = "EU " + sd_sid + ".json";
-        string full_path = Path.Combine(file_base, file_name!);
+        string full_path = Path.Combine(file_base, file_name);
         try
         {
-            using FileStream jsonStream = File.Create(full_path);
+            await using FileStream jsonStream = File.Create(full_path);
             await JsonSerializer.SerializeAsync(jsonStream, s, _json_options);
             await jsonStream.DisposeAsync();
             return full_path;

@@ -14,6 +14,8 @@
     <Compile Remove="SourceSpecific\ctg\CTGProcessor.cs" />
     <Compile Remove="SourceSpecific\isrctn\isctrn web model.cs" />
     <Compile Remove="SourceSpecific\pubmed\PubMedSearchResult.cs" />
+    <Compile Remove="SourceSpecific\download_controller.cs" />
+    <Compile Remove="SourceSpecific\pubmed\PubMedOriginalSourceModels.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -13,5 +13,4 @@ public interface IILoggingHelper
         public void LogCodeError(string header, string errorMessage, string? stackTrace);
         public void CloseLog();
         public void LogRes(DownloadResult res);
-
 }

@@ -32,25 +32,24 @@ IHost host = Host.CreateDefaultBuilder()
         services.AddSingleton<ICredentials, Credentials>();
         services.AddSingleton<IILoggingHelper, ILoggingHelper>();
         services.AddSingleton<IIMonDataLayer, IMonDataLayer>();
-        //services.AddSingleton<IDownloader, Downloader>();
     })
     .Build();
 
 // Establish logger, at this stage as an object reference
-// because the log file(s) are yet to be opened.
-// Establish a reference to a Monitor repository and pass  
-// both references to a new parameter checker class.
+// because the log file(s) are yet to be opened, and 
+// establish a reference to a Monitor repository.
 
 ILoggingHelper logging_helper = ActivatorUtilities.CreateInstance<ILoggingHelper>(host.Services);
 IMonDataLayer mon_data_layer = ActivatorUtilities.CreateInstance<IMonDataLayer>(host.Services);
-ParameterChecker _param_checker = new(logging_helper, mon_data_layer);
 
-// The parameter checker first checks if the program's arguments 
-// can be parsed and if they can then checks if they are valid.
+// Create a new parameter checker class, which first checks
+// if the program's arguments can be parsed and, if they can,
+// then checks if they are valid.
 // If both tests are passed the object returned includes both the
 // original arguments and the 'source' object with details of the
 // single data source being downloaded. 
 
+ParameterChecker _param_checker = new(logging_helper, mon_data_layer);
 ParamsCheckResult paramsCheck = _param_checker.CheckParams(args);
 if (paramsCheck.ParseError || paramsCheck.ValidityError)
 {
@@ -62,7 +61,7 @@ if (paramsCheck.ParseError || paramsCheck.ValidityError)
 
 try
 {
-    // Should be able to proceed - (opts and srce are known to be non-null).
+    // Should be able to proceed - (opts and source are known to be non-null).
     // Open log file, create Downloader class and call the main downloader function
 
     var opts = paramsCheck.Pars!;     
@@ -73,8 +72,6 @@ try
 }
 catch (Exception e)
 {
-    // If an error bubbles up to here there is an issue with the code.
-
     // If an error bubbles up to here there is an issue with the code.
     // A file should normally have been created.
 

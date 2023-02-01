@@ -63,7 +63,7 @@ internal class ParameterChecker
             // Examine the focused search type, if any, before the date
             // as search type may be required in the fetch last date function.
                                 
-            if (sf_type.requires_search_id == true)
+            if (sf_type.requires_search_id is true)
             {
                 if (opts.FocusedSearchId == 0 || opts.FocusedSearchId is null)
                 {
@@ -76,7 +76,7 @@ internal class ParameterChecker
             // If a date is required check one is present and is valid. 
             // It should be in the ISO YYYY-MM-DD format.
 
-            if (sf_type.requires_cutoff_date == true)
+            if (sf_type.requires_cutoff_date is true)
             {
                 if (!string.IsNullOrEmpty(opts.CutoffDateAsString))
                 {
@@ -92,7 +92,7 @@ internal class ParameterChecker
                 else
                 {
                     // Try and find the last download date and use that
-                    if (sf_type.requires_search_id == true && opts.FocusedSearchId is not null)
+                    if (sf_type.requires_search_id is true && opts.FocusedSearchId is not null)
                     {
                         opts.CutoffDate = _mon_data_layer.ObtainLastDownloadDateWithFilter(source.id, (int)opts.FocusedSearchId);
                     }
@@ -110,7 +110,7 @@ internal class ParameterChecker
                 }
             }
 
-            if (sf_type.requires_end_date == true)
+            if (sf_type.requires_end_date is true)
             {
                 if (!string.IsNullOrEmpty(opts.EndDateAsString))
                 {
@@ -136,7 +136,7 @@ internal class ParameterChecker
             // If a file (or for some download types a folder path) is required check a name is 
             // supplied and that it corresponds to an existing file or folder.
 
-            if (sf_type.requires_file == true)
+            if (sf_type.requires_file is true)
             {
                 if (string.IsNullOrEmpty(opts.FileName) || !File.Exists(opts.FileName))
                 {
@@ -146,7 +146,7 @@ internal class ParameterChecker
                 }
             }
 
-            if (sf_type.requires_folder == true)
+            if (sf_type.requires_folder is true)
             {
                 if (string.IsNullOrEmpty(opts.FileName) || !Directory.Exists(opts.FileName))
                 {
@@ -157,7 +157,7 @@ internal class ParameterChecker
             }
 
 
-            if (sf_type.requires_startandendnumbers == true)
+            if (sf_type.requires_startandendnumbers is true)
             {
                 if (!opts.StartPage.HasValue || opts.StartPage == 0)
                 {
@@ -174,7 +174,7 @@ internal class ParameterChecker
 
             }
 
-            if (sf_type.requires_offsetandamountids == true)
+            if (sf_type.requires_offsetandamountids is true)
             {
                 if (!opts.OffsetIds.HasValue)
                 {
@@ -192,9 +192,9 @@ internal class ParameterChecker
                 }
             }
 
-            if (sf_type.requires_prev_saf_ids == true)
+            if (sf_type.requires_prev_saf_ids is true)
             {
-                if (opts.PreviousSearches?.Any() == true)
+                if (opts.PreviousSearches?.Any() is true)
                 {
                     foreach (int i in opts.PreviousSearches)
                     {

@@ -4,7 +4,7 @@ using MDR_Downloader.Helpers;
 
 namespace MDR_Downloader.ctg;
 
-class CTG_Controller
+class CTG_Controller : ISourceController
 {
     private readonly ILoggingHelper _logging_helper;
     private readonly IMonDataLayer _mon_data_layer;
@@ -16,7 +16,7 @@ class CTG_Controller
     }
 
 
-    public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, Source source)
+    public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
     {
         // Data retrieval is normally via an API call to revised files using a cut off revision date, 
         // that date being normally the date of the most recent dowenload.
@@ -235,7 +235,7 @@ class CTG_Controller
         // integers to establish the outer loop of folders.
 
         string[]? folder_list = Directory.GetDirectories(source_parent_folder).OrderBy(f => f).ToArray();
-        if (folder_list?.Any() == true)
+        if (folder_list?.Any() is true)
         {
             int start_index = offset < folder_list.Length ? offset : folder_list.Length;
             int end_check = (amount == 0 || offset + amount > folder_list.Length) ? folder_list.Length : offset + amount;
@@ -301,8 +301,6 @@ class CTG_Controller
             _logging_helper.LogLine($"No folders in provided parent source dirtectory {source_parent_folder}. Download process aborted");
             return res;   // return zero result
         }
-
-
     }
 
     // The batch processor function - called by both DownloadRevisedRecords and DownloadRecordsById
@@ -330,7 +328,7 @@ class CTG_Controller
         if (json_resp is not null)
         {
             Fullstudy[]? full_studies = json_resp.FullStudiesResponse?.FullStudies;
-            if (full_studies?.Any() == true)
+            if (full_studies?.Any() is true)
             {
                 foreach (Fullstudy f in full_studies)
                 {

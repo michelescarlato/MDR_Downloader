@@ -1,5 +1,4 @@
 ﻿using PostgreSQLCopyHelper;
-using System.Xml.Serialization;
 
 namespace MDR_Downloader.pubmed;
 
@@ -22,7 +21,7 @@ public class PMSource
 public class PMIDBySource
 {
     public string? sd_sid { get; set; }
-    public string? pmid { get; set; }
+    public int? pmid { get; set; }
 }
 
 public class CopyHelpers
@@ -33,11 +32,7 @@ public class CopyHelpers
     public PostgreSQLCopyHelper<PMIDBySource> source_ids_helper =
             new PostgreSQLCopyHelper<PMIDBySource>("pp", "pmids_by_source_total")
                 .MapVarchar("sd_sid", x => x.sd_sid)
-                .MapVarchar("pmid", x => x.pmid);
-
-   // public PostgreSQLCopyHelper<PMIDByBank> bank_ids_helper =
-   //     new PostgreSQLCopyHelper<PMIDByBank>("pp", "temp_pmids_by_bank")
-     //           .MapVarchar("pmid", x => x.pmid);
+                .MapInteger("pmid", x => x.pmid);
 }
 
 
@@ -47,8 +42,8 @@ public class CopyHelpers
 
 public class FullObject
 {
-    public string? sd_oid { get; set; }
-    public int? ipmid { get; set; }
+    public string sd_oid { get; set; } = null!;
+    public int ipmid { get; set; }
     public int? pmid_version { get; set; }
 
     public NumericDate? dateCitationCompleted { get; set; }

@@ -6,133 +6,120 @@ namespace MDR_Downloader.Helpers;
 
 public static class StringExtensions
 {
-    public static string? Tidy(this string? instring)
+    public static string? Tidy(this string? input_string)
     {
         // Simple extension that returns null for null values and
-        // text based 'NULL equivalents', and otherwise trims the 
-        // string
+        // text based 'NULL equivalents', and otherwise trims the string
 
-        if (instring is null || instring == "NULL" || instring == "null"
-                             || instring == "\"NULL\"" || instring == "\"null\"")
+        if (input_string is null or "NULL" or "null" or "\"NULL\"" or "\"null\""
+            || input_string.Trim() == "")
         {
             return null;
         }
+
+        if (!input_string.StartsWith('"'))
+        {
+            // some strings will have start and end quotes
+            // a start quote should indicate leaving both 
+
+            char[] chars1 = { ' ', ';' };
+            input_string = input_string.Trim(chars1);
+        }
         else
         {
-            if (!instring.StartsWith('"'))
-            {
-                // some strings will have start and end quotes
-                // a start quote should indicate leaving both
-
-                char[] chars1 = { ' ', ';' };
-                instring = instring.Trim(chars1);
-            }
-            else
-            {
-                char[] chars2 = { '"', ' ', ';' };
-                instring = instring.Trim(chars2);
-            }
-
-            return instring == "" ? null : instring;
+            char[] chars2 = { '"', ' ', ';' };
+            input_string = input_string.Trim(chars2);
         }
+
+        return input_string == "" ? null : input_string;
+
     }
 
 
-    public static string? ReplaceUnicodes(this string? instring)
+    public static string? ReplaceUnicodes(this string? input_string)
     {
         // Simple extension that returns null for null values and
         // text based 'NULL equivalents', and otherwise trims the 
         // string and replace escaped non-ascii codes.
 
-        if (instring is null || instring == "NULL" || instring == "null"
-                             || instring == "\"NULL\"" || instring == "\"null\""
-                             || instring.Trim() == "")
+        if (input_string is null or "NULL" or "null" or "\"NULL\"" or "\"null\"" 
+            || input_string.Trim() == "")
         {
             return null;
         }
-        else
-        {
-            instring = instring.Replace("&#32;", " ").Replace("&#37;", "%");
-            instring = instring.Replace("&#39;", "’").Replace("&quot;", "'");
-            instring = instring.Replace("#gt;", ">").Replace("#lt;", "<");
-            instring = instring.Replace("&amp;", "&");
-            return instring;
-        }
+        
+        string output_string = input_string.Replace("&#32;", " ").Replace("&#37;", "%");
+        output_string = output_string.Replace("&#39;", "’").Replace("&quot;", "'");
+        output_string = output_string.Replace("#gt;", ">").Replace("#lt;", "<");
+        output_string = output_string.Replace("&amp;", "&");
+        return output_string;
+
     }
 
 
-    public static string? ReplacHtmlTags(this string? instring)
+    public static string? ReplaceHtmlTags(this string? input_string)
     {
         // Simple extension that returns null for null values and
-        // text based 'NULL equivalents', and otherwise thims the 
+        // text based 'NULL equivalents', and otherwise trims the 
         // string
 
-        if (instring is null || instring == "NULL" || instring == "null"
-                             || instring == "\"NULL\"" || instring == "\"null\""
-                             || instring.Trim() == "")
+        if (input_string is null or "NULL" or "null" or "\"NULL\"" or "\"null\"" 
+            || input_string.Trim() == "")
         {
             return null;
         }
-        else
-        {
-            instring = instring.Replace("<br>", "\n");
-            instring = instring.Replace("<br/>", "\n");
-            instring = instring.Replace("<br />", "\n");
-            instring = instring.Replace("\n\n", "\n").Replace("\n \n", "\n");
 
-            return instring;
-        }
+        string output_string = input_string.Replace("<br>", "\n");
+        output_string = output_string.Replace("<br/>", "\n");
+        output_string = output_string.Replace("<br />", "\n");
+        output_string = output_string.Replace("\n\n", "\n").Replace("\n \n", "\n");
+
+        return output_string;
     }
 
 
-    public static string? CompressSpaces(this string? instring)
+    public static string? CompressSpaces(this string? input_string)
     {
-        if (string.IsNullOrEmpty(instring))
+        if (string.IsNullOrEmpty(input_string))
         {
             return null;
         }
-        else
+
+        string output_string = input_string.Trim();
+
+        output_string = output_string.Replace("\r\n", "\n");    // regularise endings
+        output_string = output_string.Replace("\r", "\n");
+
+        while (output_string.Contains("  "))
         {
-            string outstring = instring.Trim();
-
-            outstring = outstring.Replace("\r\n", "\n");    // regularise endings
-            outstring = outstring.Replace("\r", "\n");
-
-            while (outstring.Contains("  "))
-            {
-                outstring = outstring.Replace("  ", " ");
-            }
-            outstring = outstring.Replace("\n:\n", ":\n");
-            outstring = outstring.Replace("\n ", "\n");
-            while (outstring.Contains("\n\n"))
-            {
-                outstring = outstring.Replace("\n\n", "\n");
-            }
-            outstring = outstring.TrimEnd('\n');
-            return outstring;
+            output_string = output_string.Replace("  ", " ");
         }
+        output_string = output_string.Replace("\n:\n", ":\n");
+        output_string = output_string.Replace("\n ", "\n");
+        while (output_string.Contains("\n\n"))
+        {
+            output_string = output_string.Replace("\n\n", "\n");
+        }
+        output_string = output_string.TrimEnd('\n');
+        return output_string;
+
     }
 
 
-    public static string? ReplacNBSpaces(this string? instring)
+    public static string? ReplaceNBSpaces(this string? input_string)
     {
-        // Simple extension that returns null for null values and
-        // text based 'NULL equivalents', and otherwise thrims the 
-        // string
-        if (string.IsNullOrEmpty(instring))
+        if (string.IsNullOrEmpty(input_string))
         {
             return null;
         }
-        else
-        {
-            instring = instring.Replace('\u00A0', ' ');
-            instring = instring.Replace('\u2000', ' ').Replace('\u2001', ' ');
-            instring = instring.Replace('\u2002', ' ').Replace('\u2003', ' ');
-            instring = instring.Replace('\u2007', ' ').Replace('\u2008', ' ');
-            instring = instring.Replace('\u2009', ' ').Replace('\u200A', ' ');
 
-            return instring;
-        }
+        string output_string = input_string.Replace('\u00A0', ' ');
+        output_string = output_string.Replace('\u2000', ' ').Replace('\u2001', ' ');
+        output_string = output_string.Replace('\u2002', ' ').Replace('\u2003', ' ');
+        output_string = output_string.Replace('\u2007', ' ').Replace('\u2008', ' ');
+        output_string = output_string.Replace('\u2009', ' ').Replace('\u200A', ' ');
+
+        return output_string;
     }
 
 
@@ -142,55 +129,65 @@ public static class StringExtensions
         {
             return null;
         }
-        else
+        
+        return input_lang_code switch
         {
-            return input_lang_code switch
-            {
-                "fre" => "fr",
-                "ger" => "de",
-                "spa" => "es",
-                "ita" => "it",
-                "por" => "pt",
-                "rus" => "ru",
-                "tur" => "tr",
-                "hun" => "hu",
-                "pol" => "pl",
-                "swe" => "sv",
-                "nor" => "no",
-                "dan" => "da",
-                "fin" => "fi",
-                _ => "??"
-            };
-        }
+            "fre" => "fr",
+            "ger" => "de",
+            "spa" => "es",
+            "ita" => "it",
+            "por" => "pt",
+            "rus" => "ru",
+            "tur" => "tr",
+            "hun" => "hu",
+            "pol" => "pl",
+            "swe" => "sv",
+            "nor" => "no",
+            "dan" => "da",
+            "fin" => "fi",
+            _ => "??"
+        };
     }
 }
 
 
 public static class ScrapingExtensions
 {
-    public static string InnerValue(this HtmlNode node)
+    public static string? InnerValue(this HtmlNode node)
     {
-        string allInner = node.InnerText?.Replace("\n", "")?.Replace("\r", "")?.Trim() ?? "";
-        string label = node.CssSelect(".label").FirstOrDefault()?.InnerText?.Trim() ?? "";
-        return allInner[(label.Length)..]?.Trim() ?? "";
+        if (string.IsNullOrEmpty(node.InnerText))
+        {
+            return null;
+        }
+
+        string output_string = node.InnerText.Replace("\n", "").Replace("\r", "").Trim();
+        string? label = node.CssSelect(".label").FirstOrDefault()?.InnerText?.Trim();
+        if (!string.IsNullOrEmpty(label))
+        {
+            output_string = output_string[(label.Length)..].Trim();
+        }
+        return output_string;
     }
 
 
-    public static string TrimmedContents(this HtmlNode node)
+    public static string? TrimmedContents(this HtmlNode node)
     {
-        return node.InnerText?.Replace("\n", "")?.Replace("\r", "")?.Trim() ?? "";
+        if (string.IsNullOrEmpty(node.InnerText))
+        {
+            return null;
+        }
+        return node.InnerText?.Replace("\n", "").Replace("\r", "").Trim() ?? "";
     }
 
 
-    public static string TrimmedLabel(this HtmlNode node)
-    {
-        return node.CssSelect(".label").FirstOrDefault()?.InnerText?.Trim() ?? "";
-    }
-
-
-    public static string RemoveLabelAndSupp(this string attribute_value,
+    public static string? RemoveLabelAndSupp(this string attribute_value,
                                    string attribute_name, string? suppText)
     {
+        if (string.IsNullOrEmpty(attribute_value))
+        {
+            return null;
+        }
+        
         // drop the attribute name from the text
         string attValue = attribute_value.Replace(attribute_name, "");
 
@@ -233,118 +230,102 @@ public static class DateExtensions
         }
     }
 
-    public static string? AsISODate(this string? instring)
+    public static string? AsISODate(this string? input_string)
     {
-        string? interim_string = instring.Tidy();
+        string? interim_string = input_string.Tidy();
 
-        if (interim_string is null || interim_string == "1900-01-01" || interim_string == "01/01/1900"
-                      || interim_string == "Jan  1 1900" || interim_string == "Jan  1 1900 12:00AM")
+        if (interim_string is null or "1900-01-01" or "01/01/1900" or "Jan  1 1900" or "Jan  1 1900 12:00AM")
         {
             return null;
         }
+
+        // First make the delimiter constant and remove commas,
+        // before checking against regexes for the different date formats.
+
+        string date_string = interim_string.Replace('/', '-').Replace('.', '-').Replace(",", "");
+
+        string yyyy_mm_dd = @"^(19|20)\d{2}-(0?[1-9]|1[0-2])-(0?[1-9]|1\d|2\d|3[0-1])$";
+        string dd_mm_yyyy = @"^(0?[1-9]|1\d|2\d|3[0-1])-(0?[1-9]|1[0-2])-(19|20)\d{2}$";
+        string dd_MMM_yyyy = @"^(0?[1-9]|1\d|2\d|3[0-1]) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (19|20)\d{2}$";
+        string dd_MMMM_yyyy = @"^(0?[1-9]|1\d|2\d|3[0-1]) (January|February|March|April|May|June|July|August|September|October|November|December) (19|20)\d{2}$";
+        
+        if (Regex.Match(date_string, yyyy_mm_dd).Success)
+        {
+            if (date_string.Length == 10)
+            {
+                return date_string;  // already OK
+            }
+            int dash1 = date_string.IndexOf('-');
+            int dash2 = date_string.LastIndexOf('-');
+            string year_s = date_string[..4];
+            string month_s = date_string[(dash1 + 1)..(dash2 - dash1 - 1)];
+            if (month_s.Length == 1) month_s = "0" + month_s;
+            string day_s = date_string[(dash2 + 1)..];
+            if (day_s.Length == 1) day_s = "0" + day_s;
+            return year_s + "-" + month_s + "-" + day_s;
+        }
+        else if (Regex.Match(date_string, dd_mm_yyyy).Success)
+        {
+            int dash1 = date_string.IndexOf('-');
+            int dash2 = date_string.LastIndexOf('-');
+            string year_s = date_string[^4..];
+            string month_s = date_string[(dash1 + 1)..dash2];
+            if (month_s.Length == 1) month_s = "0" + month_s;
+            string day_s = date_string[..(dash1)];
+            if (day_s.Length == 1) day_s = "0" + day_s;
+            return year_s + "-" + month_s + "-" + day_s;
+        }
+        else if (Regex.Match(date_string, dd_MMM_yyyy).Success)
+        {
+            int dash1 = date_string.IndexOf(' ');
+            int dash2 = date_string.LastIndexOf(' ');
+            string year_s = date_string[^4..];
+            string month = date_string[(dash1 + 1)..dash2];
+            string month_s = month.GetMonth3AsInt().ToString("00");
+            string day_s = date_string[..(dash1)];
+            if (day_s.Length == 1) day_s = "0" + day_s;
+            return year_s + "-" + month_s + "-" + day_s;
+        }
+        else if (Regex.Match(date_string, dd_MMMM_yyyy).Success)
+        {
+            int dash1 = date_string.IndexOf(' ');
+            int dash2 = date_string.LastIndexOf(' ');
+            string year_s = date_string[^4..];
+            string month = date_string[(dash1 + 1)..dash2];
+            string month_s = month.GetMonthAsInt().ToString("00");
+            string day_s = date_string[..(dash1)];
+            if (day_s.Length == 1) day_s = "0" + day_s;
+            return year_s + "-" + month_s + "-" + day_s;
+        }
         else
         {
-            // First make the delimiter constant and remove commas.
-
-            string datestring = interim_string.Replace('/', '-').Replace('.', '-').Replace(",", "");
-
-            // yyyymmdd Regex
-            if (Regex.Match(datestring, @"^(19|20)\d{2}-(0?[1-9]|1[0-2])-(0?[1-9]|1\d|2\d|3[0-1])$").Success)
-            {
-                // date in form yyyy-(m)m-(d)d
-
-                if (datestring.Length == 10)
-                {
-                    // already OK
-                    return datestring;
-                }
-                else
-                {
-                    int dash1 = datestring.IndexOf('-');
-                    int dash2 = datestring.LastIndexOf('-');
-                    string year_s = datestring[..4];
-                    string month_s = datestring[(dash1 + 1)..(dash2 - dash1 - 1)];
-                    if (month_s.Length == 1) month_s = "0" + month_s;
-                    string day_s = datestring[(dash2 + 1)..];
-                    if (day_s.Length == 1) day_s = "0" + day_s;
-                    return year_s + "-" + month_s + "-" + day_s;
-                }
-            }
-
-            // ddmmyyyy Regex
-            else if (Regex.Match(datestring, @"^(0?[1-9]|1\d|2\d|3[0-1])-(0?[1-9]|1[0-2])-(19|20)\d{2}$").Success)
-            {
-                // date in form (d)d-(m)m-yyyy
-
-                int dash1 = datestring.IndexOf('-');
-                int dash2 = datestring.LastIndexOf('-');
-                string year_s = datestring[^4..];
-                string month_s = datestring[(dash1 + 1)..dash2];
-                if (month_s.Length == 1) month_s = "0" + month_s;
-                string day_s = datestring[..(dash1)];
-                if (day_s.Length == 1) day_s = "0" + day_s;
-                return year_s + "-" + month_s + "-" + day_s;
-            }
-
-            // ddMMMyyyy Regex
-            else if (Regex.Match(datestring, @"^(0?[1-9]|1\d|2\d|3[0-1]) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (19|20)\d{2}$").Success)
-            {
-                // date in form (d)d MMM yyyy
-
-                int dash1 = datestring.IndexOf(' ');
-                int dash2 = datestring.LastIndexOf(' ');
-                string year_s = datestring[^4..];
-                string month = datestring[(dash1 + 1)..dash2];
-                string month_s = month.GetMonth3AsInt().ToString("00");
-                string day_s = datestring[..(dash1)];
-                if (day_s.Length == 1) day_s = "0" + day_s;
-                return year_s + "-" + month_s + "-" + day_s;
-            }
-
-            // ddMMMMyyyy Regex
-            else if (Regex.Match(datestring, @"^(0?[1-9]|1\d|2\d|3[0-1]) (January|February|March|April|May|June|July|August|September|October|November|December) (19|20)\d{2}$").Success)
-            {
-                // date in form (d)d MMMM yyyy
-
-                int dash1 = datestring.IndexOf(' ');
-                int dash2 = datestring.LastIndexOf(' ');
-                string year_s = datestring[^4..];
-                string month = datestring[(dash1 + 1)..dash2];
-                string month_s = month.GetMonthAsInt().ToString("00");
-                string day_s = datestring[..(dash1)];
-                if (day_s.Length == 1) day_s = "0" + day_s;
-                return year_s + "-" + month_s + "-" + day_s;
-            }
-            else
-            {
-                // to investigate other date forms.....
-                return interim_string;
-            }
+            // To investigate other date forms.....
+            
+            return interim_string;
         }
+
     }
 
 
-    public static string? GetTimeUnits(this string? instring)
+    public static string? GetTimeUnits(this string? input_string)
     {
-        if (string.IsNullOrEmpty(instring))
+        if (string.IsNullOrEmpty(input_string))
         {
             return null;
         }
-        else
-        {
-            string time_string = instring.ToLower();
-            return time_string switch 
-            { 
-                string when time_string.Contains("year") => "Years",
-                string when time_string.Contains("month") => "Months",
-                string when time_string.Contains("week") => "Weeks",
-                string when time_string.Contains("day") => "Days",
-                string when time_string.Contains("hour") => "Hours",
-                string when time_string.Contains("min") => "Minutes",
-                _ => "Other (" + time_string + ")"
 
-            };
-        }
+        string time_string = input_string.ToLower();
+        return time_string switch 
+        { 
+            _ when time_string.Contains("year") => "Years",
+            _ when time_string.Contains("month") => "Months",
+            _ when time_string.Contains("week") => "Weeks",
+            _ when time_string.Contains("day") => "Days",
+            _ when time_string.Contains("hour") => "Hours",
+            _ when time_string.Contains("min") => "Minutes",
+            _ => "Other (" + time_string + ")"
+        };
+
     }
 
 
@@ -381,7 +362,8 @@ public static class DateExtensions
         // split the string on the comma.
 
         string year_string, month_name, day_string;
-        int? year_num, month_num, day_num;
+        int? year_num, day_num;
+        string? month_as3 = null;
 
         int comma_pos = dateString.IndexOf(',');
         if (comma_pos > 0)
@@ -404,22 +386,26 @@ public static class DateExtensions
 
         // convert strings into integers
         if (int.TryParse(year_string, out int y)) year_num = y; else year_num = null;
-        month_num = month_name.GetMonthAsInt();
-        string month_as3 = ((Months3)month_num).ToString();
+        int month_num = month_name.GetMonthAsInt();
+        if (month_num > 0)
+        {
+            month_as3 = ((Months3)month_num).ToString();
+        }
+
         if (int.TryParse(day_string, out int d)) day_num = d; else day_num = null;
 
 
         // get date as string
         string? date_as_string;
-        if (year_num is not null && month_num is not null && day_num is not null)
+        if (year_num is not null && month_as3 is not null && day_num is not null)
         {
-            date_as_string = year_num.ToString() + " " + month_as3 + " " + day_num.ToString();
+            date_as_string = year_num + " " + month_as3 + " " + day_num;
         }
-        else if (year_num is not null && month_num is not null && day_num is null)
+        else if (year_num is not null && month_as3 is not null && day_num is null)
         {
-            date_as_string = year_num.ToString() + ' ' + month_as3;
+            date_as_string = year_num + " " + month_as3;
         }
-        else if (year_num is not null && month_num is null && day_num is null)
+        else if (year_num is not null && month_as3 is null && day_num is null)
         {
             date_as_string = year_num.ToString();
         }
@@ -438,19 +424,13 @@ public static class DateExtensions
         {
             return null;
         }
-        else
+        
+        SplitDate? sd = dateString.GetDateParts();
+        if (sd is null || sd.year is null || sd.month is null || sd.day is null)
         {
-            SplitDate? sd = dateString.GetDateParts();
-            if (sd is not null && sd.year is not null
-                               && sd.month is not null && sd.day is not null)
-            {
-                return new DateTime((int)sd.year, (int)sd.month, (int)sd.day);
-            }
-            else
-            {
-                return null;
-            }
+            return null;
         }
+        return new DateTime((int)sd.year, (int)sd.month, (int)sd.day);
     }
 
 }

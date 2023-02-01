@@ -119,13 +119,13 @@ namespace MDR_Downloader.biolincc
             if (res is null)
             {
                 // store the details in the table for later matching
-                sql_string = "Insert into pp.document_types (resource_name, type_id, type_name)";
+                sql_string = "Insert into pp.document_types (resource_name, type_id, type_name) ";
                 sql_string += "values('" + doc_name + "', 0, 'to be added to lookup');";
-            }
+            } 
             return res;
         }
 
-        public SponsorDetails FetchSponsorFromNCT(string nct_id)
+        public SponsorDetails? FetchSponsorFromNCT(string nct_id)
         {
             using var conn = new NpgsqlConnection(_ctg_connString);
             string sql_string = "Select organisation_id as org_id, organisation_name as org_name from ad.study_contributors ";
@@ -134,7 +134,7 @@ namespace MDR_Downloader.biolincc
         }
 
 
-        public string FetchNameBaseFromNCT(string sd_sid)
+        public string? FetchNameBaseFromNCT(string sd_sid)
         {
             using var conn = new NpgsqlConnection(_ctg_connString);
             string sql_string = "Select display_title from ad.studies ";

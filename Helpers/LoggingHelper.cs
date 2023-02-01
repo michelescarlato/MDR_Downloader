@@ -1,17 +1,14 @@
 ﻿using Microsoft.Extensions.Configuration;
 
-
 namespace MDR_Downloader
 {
     public class ILoggingHelper : IILoggingHelper
     {
-        private string logfile_startofpath;
-        private string summary_logfile_startofpath;
-        private string logfile_path = "";
-        private string summary_logfile_path = "";
-        string dt_string;
-
-        private StreamWriter? sw;
+        private readonly string  _logfileStartOfPath;
+        private readonly string _summaryLogfileStartOfPath;
+        private string _logfilePath = "";
+        private string _summaryLogfilePath = "";
+        private StreamWriter? _sw;
 
         public ILoggingHelper()
         {
@@ -20,61 +17,63 @@ namespace MDR_Downloader
                 .AddJsonFile("appsettings.json")
                 .Build();
 
-            dt_string = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture)
-                              .Replace(":", "").Replace("T", " ");
-
-            logfile_startofpath = settings["logfilepath"] ?? "";
-            summary_logfile_startofpath = settings["summaryfilepath"] ?? "";
+            _logfileStartOfPath = settings["logfilepath"] ?? "";
+            _summaryLogfileStartOfPath = settings["summaryfilepath"] ?? "";
         }
-
 
         // Used to check if a log file with a named source has been created.
 
-        public string LogFilePath => logfile_path;
+        public string LogFilePath => _logfilePath;
 
-
-        public void OpenLogFile(string? source_file_name, string database_name)
+        public void OpenLogFile(string? sourceFileName, string databaseName)
         {
             string dt_string = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture)
                               .Replace(":", "").Replace("T", " ");
             
-            string log_folder_path = Path.Combine(logfile_startofpath, database_name);
+            string log_folder_path = Path.Combine(_logfileStartOfPath, databaseName);
             if (!Directory.Exists(log_folder_path))
             {
                 Directory.CreateDirectory(log_folder_path);
             }
-
-            logfile_path = Path.Combine(log_folder_path, "DL " + database_name + " " + dt_string);
-            summary_logfile_path = Path.Combine(summary_logfile_startofpath, "DL " + database_name + " " + dt_string);
-
-            // source file name used for WHO case, where the source is a file
-            // In other cases is not required
-
-            if (source_file_name is not null)
+            
+            string log_file_name = "DL " + databaseName + " " + dt_string;
+            
+            // source file name used for WHO case, where the source is a file.
+            // In other cases it is not required.
+            
+            if (sourceFileName is not null)
             {
-                string file_name = source_file_name.Substring(source_file_name.LastIndexOf("\\") + 1);
-                logfile_path += " USING " + file_name + ".log";
+                int LastBackSlashPos = sourceFileName.LastIndexOf("\\", StringComparison.Ordinal);
+                string file_name = sourceFileName[(LastBackSlashPos + 1)..];
+                log_file_name += " USING " + file_name + ".log";
             }
             else
             {
-                logfile_path += ".log";
+                log_file_name += ".log";
 
             }
-            sw = new StreamWriter(logfile_path, true, System.Text.Encoding.UTF8);
+            _logfilePath = Path.Combine(log_folder_path, log_file_name);            
+            _summaryLogfilePath = Path.Combine(_summaryLogfileStartOfPath, log_file_name);
+            _sw = new StreamWriter(_logfilePath, true, System.Text.Encoding.UTF8);
         }
 
 
         public void OpenNoSourceLogFile()
         {
-            logfile_path += logfile_startofpath + "DL Source not set " + dt_string + ".log";
-            sw = new StreamWriter(logfile_path, true, System.Text.Encoding.UTF8);
+            string dt_string = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture)
+                .Replace(":", "").Replace("T", " ");
+            
+            string log_file_name = "DL Source not set " + dt_string + ".log";
+            _logfilePath = Path.Combine(_logfileStartOfPath, log_file_name);
+            _summaryLogfilePath = Path.Combine(_summaryLogfileStartOfPath, log_file_name);
+            _sw = new StreamWriter(_logfilePath, true, System.Text.Encoding.UTF8);
         }
 
 
         public void LogLine(string message, string identifier = "")
         {
-            string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-            string feedback = dt_string + message + identifier;
+            string dt_prefix = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
+            string feedback = dt_prefix + message + identifier;
             Transmit(feedback);
         }
 
@@ -105,7 +104,7 @@ namespace MDR_Downloader
             }
             if (opts.SkipRecentDays is not null)
             {
-                string day_word = "";
+                string day_word;
                 if (opts.SkipRecentDays > 1)
                 {
                     day_word = $"in most recent {opts.SkipRecentDays} days";
@@ -127,7 +126,7 @@ namespace MDR_Downloader
                 LogLine($"Start Page: {opts.StartPage}");
                 LogLine($"End pages: {opts.EndPage}");
             }
-            if (opts.PreviousSearches?.Any() == true)
+            if (opts.PreviousSearches?.Any() is true)
             {
                 foreach (int i in opts.PreviousSearches)
                 {
@@ -143,8 +142,8 @@ namespace MDR_Downloader
 
         public void LogHeader(string message)
         {
-            string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-            string header = dt_string + "**** " + message + " ****";
+            string dt_prefix = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
+            string header = dt_prefix + "**** " + message + " ****";
             Transmit("");
             Transmit(header);
         }
@@ -152,8 +151,8 @@ namespace MDR_Downloader
 
         public void LogError(string message)
         {
-            string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-            string error_message = dt_string + "***ERROR*** " + message;
+            string dt_prefix = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
+            string error_message = dt_prefix + "***ERROR*** " + message;
             Transmit("");
             Transmit("+++++++++++++++++++++++++++++++++++++++");
             Transmit(error_message);
@@ -164,16 +163,16 @@ namespace MDR_Downloader
 
         public void LogParseError(string header, string errorNum, string errorType)
         {
-            string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-            string error_message = dt_string + "***ERROR*** " + "Error " + errorNum + ": " + header + " " + errorType;
+            string dt_prefix = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
+            string error_message = dt_prefix + "***ERROR*** " + "Error " + errorNum + ": " + header + " " + errorType;
             Transmit(error_message);
         }
 
 
         public void LogCodeError(string header, string errorMessage, string? stackTrace)
         {
-            string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-            string headerMessage = dt_string + "***ERROR*** " + header + "\n";
+            string dt_prefix = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
+            string headerMessage = dt_prefix + "***ERROR*** " + header + "\n";
             Transmit("");
             Transmit("+++++++++++++++++++++++++++++++++++++++");
             Transmit(headerMessage);
@@ -186,17 +185,24 @@ namespace MDR_Downloader
 
         public void CloseLog()
         {
-            if (sw is not null)
+            if (_sw is not null)
             {
                 LogHeader("Closing Log");
-                sw.Flush();
-                sw.Close();
+                _sw.Flush();
+                _sw.Close();
             }
+            
+            // Write out the summary file.
+        
+            var sw_summary = new StreamWriter(_summaryLogfilePath, true, System.Text.Encoding.UTF8);
+        
+            sw_summary.Flush();
+            sw_summary.Close();
         }
 
         private void Transmit(string message)
         {
-            sw?.WriteLine(message);
+            _sw?.WriteLine(message);
             Console.WriteLine(message);
         }
 

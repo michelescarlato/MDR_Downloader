@@ -6,7 +6,7 @@ namespace MDR_Downloader.yoda
 {
     public class Yoda_Record
     {
-        public string? sd_sid { get; set; }
+        public string sd_sid { get; set; } = null!;
         public string? registry_id { get; set; }
         public string? yoda_title { get; set; }
         public string? name_base_title { get; set; }
@@ -47,10 +47,9 @@ namespace MDR_Downloader.yoda
         }
     }
 
-
     public class Summary
     {
-        public string? sd_sid { get; set; }
+        public string sd_sid { get; set; } = null!;
         public string? registry_id { get; set; }
         public string? generic_name { get; set; }
         public string? study_name { get; set; }
@@ -69,7 +68,6 @@ namespace MDR_Downloader.yoda
 
     public class StudyDetails
     {
-        public string? sd_sid { get; set; }
         public string? display_title { get; set; }
         public string? brief_description { get; set; }
         public int? study_type_id { get; set; }
@@ -78,7 +76,6 @@ namespace MDR_Downloader.yoda
 
     public class NotRegisteredDetails
     {
-        public string? sd_sid { get; set; }
         public int? sponsor_id { get; set; }
         public string? sponsor_name { get; set; }
         public string? short_sponsor_name { get; set; }
@@ -91,16 +88,15 @@ namespace MDR_Downloader.yoda
 
     public class Title
     {
-        public string? sd_id { get; set; }
         public string? title_text { get; set; }
         public int? title_type_id { get; set; }
         public string? title_type { get; set; }
         public bool? is_default { get; set; }
         public string? comments { get; set; }
 
-        public Title(string _sd_id, string _title_text, int? _title_type_id, string _title_type, bool _is_default, string _comments)
+        public Title(string? _title_text, int? _title_type_id, 
+                     string? _title_type, bool? _is_default, string? _comments)
         {
-            sd_id = _sd_id;
             title_text = _title_text;
             title_type_id = _title_type_id;
             title_type = _title_type;

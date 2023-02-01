@@ -1,7 +1,4 @@
 ﻿using CsvHelper.Configuration.Attributes;
-using System;
-using System.Collections.Generic;
-
 
 namespace MDR_Downloader.who;
 
@@ -11,8 +8,8 @@ public class WHO_SourceRecord
     // Recent files have no header at all...
     // hence the need to index all fields in the source model
 
-    [Index(0)]
-    public string? TrialID { get; set; }
+    [Index(0)] 
+    public string TrialID { get; set; } = null!;
     [Index(1)]
     public string? last_updated { get; set; }
     [Index(2)]
@@ -144,7 +141,7 @@ public class WHORecord
 {
     public int source_id { get; set; }
     public string? record_date { get; set; }
-    public string? sd_sid { get; set; }
+    public string sd_sid { get; set; } = null!;
     public string? public_title { get; set; }
     public string? scientific_title { get; set; }
     public string? remote_url { get; set; }
@@ -206,11 +203,6 @@ public class Secondary_Id
     public string? sec_id { get; set; }
     public string? processed_id { get; set; }
     public int? sec_id_source { get; set; }
-
-    public bool? ShouldSerializesec_id_source()
-    {
-        return sec_id_source.HasValue;
-    }
 
     public Secondary_Id(string? _source_field, string? _sec_id,
                         string? _processed_id, int? _sec_id_source)

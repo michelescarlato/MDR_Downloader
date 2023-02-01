@@ -5,7 +5,7 @@ using System.Text;
 
 namespace MDR_Downloader.vivli
 {
-    public class Vivli_Controller
+    public class Vivli_Controller : ISourceController
     {
         private readonly ILoggingHelper _logging_helper;
         private readonly IMonDataLayer _mon_data_layer;
@@ -22,7 +22,7 @@ namespace MDR_Downloader.vivli
             processor = new Vivli_Processor();
         }
 
-        public async Task<DownloadResult> ObtainDatafromSourceAsync(Options opts, Source source)
+        public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
         {
             FetchURLDetails(opts, source);
             await LoopThroughPagesAsync(opts, source);
