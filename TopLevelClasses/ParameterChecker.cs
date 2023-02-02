@@ -48,7 +48,6 @@ internal class ParameterChecker
             Source? source = _mon_data_layer.FetchSourceParameters(opts.SourceId);
             if (source is null)
             {
-
                 throw new ArgumentException("The first argument does not correspond to a known source");
             }
 

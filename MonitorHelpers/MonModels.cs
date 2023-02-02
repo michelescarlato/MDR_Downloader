@@ -6,27 +6,38 @@ namespace MDR_Downloader;
 [Table("sf.source_parameters")]
 public class Source
 {
-    public int id { get; set; }
-    public int? preference_rating { get; set; }
-    public string? database_name { get; set; }
-    public bool? uses_who_harvest { get; set; }
-    public string? local_folder { get; set; }
-    public bool? local_files_grouped { get; set; }
-    public int? grouping_range_by_id { get; set; }
-    public string? local_file_prefix { get; set; }
-    public bool? has_study_tables { get; set; }
-    public bool? has_study_topics { get; set; }
-    public bool? has_study_features { get; set; }
-    public bool? has_study_contributors { get; set; }
-    public bool? has_study_references { get; set; }
-    public bool? has_study_relationships { get; set; }
-    public bool? has_study_links { get; set; }
-    public bool? has_study_ipd_available { get; set; }
-    public bool? has_object_datasets { get; set; }
-    public bool? has_object_dates { get; set; }
-    public bool? has_object_relationships { get; set; }
-    public bool? has_object_rights { get; set; }
-    public bool? has_object_pubmed_set { get; set; }
+    public int id { get; }
+    public string? source_type { get; }
+    public int? preference_rating { get; }
+    public string? database_name { get; }
+    public string? repo_name { get; }
+    public string? db_conn { get; set; }
+    public bool? uses_who_harvest { get; }
+    public int? harvest_chunk { get; }
+    public string? local_folder { get; }
+    public bool? local_files_grouped { get; }
+    public int? grouping_range_by_id { get; }
+    public string? local_file_prefix { get; }
+    public bool? has_study_tables { get; }
+    public bool? has_study_topics { get; }
+    public bool? has_study_conditions { get; }
+    public bool? has_study_features { get; }
+    public bool? has_study_iec{ get; }
+    public string? study_iec_storage_type { get; }
+    public bool? has_study_organisations { get; }
+    public bool? has_study_people { get; }
+    public bool? has_study_references { get; }
+    public bool? has_study_relationships { get; }
+    public bool? has_study_links { get; }
+    public bool? has_study_countries { get; }
+    public bool? has_study_locations { get; }
+    public bool? has_study_ipd_available { get; }
+    public bool? has_object_datasets { get; }
+    public bool? has_object_dates { get; }
+    public bool? has_object_relationships { get; }
+    public bool? has_object_rights { get; }
+    public bool? has_object_pubmed_set { get; }
+    public bool? has_object_doi_set { get; }
 }
 
 
