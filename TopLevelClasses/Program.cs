@@ -30,8 +30,8 @@ IHost host = Host.CreateDefaultBuilder()
     .ConfigureServices((services) =>
     {
         services.AddSingleton<ICredentials, Credentials>();
-        services.AddSingleton<IILoggingHelper, ILoggingHelper>();
-        services.AddSingleton<IIMonDataLayer, IMonDataLayer>();
+        services.AddSingleton<ILoggingHelper, LoggingHelper>();
+        services.AddSingleton<IMonDataLayer, MonDataLayer>();
     })
     .Build();
 
@@ -58,11 +58,10 @@ if (paramsCheck.ParseError || paramsCheck.ValidityError)
 
     return -1;  
 }
-
 try
 {
     // Should be able to proceed - (opts and source are known to be non-null).
-    // Open log file, create Downloader class and call the main downloader function
+    // Create Downloader class and call the main downloader function
 
     var opts = paramsCheck.Pars!;     
     var source = paramsCheck.Source!;

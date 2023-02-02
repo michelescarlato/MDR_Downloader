@@ -1,23 +1,22 @@
 ﻿using MDR_Downloader.Helpers;
-using System.Collections.Generic;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Xml.Serialization;
 
 namespace MDR_Downloader.isrctn;
 
-class ISRCTN_Controller : ISourceController
+class ISRCTN_Controller : IDLController
 {
-    private readonly ILoggingHelper _logging_helper;
-    private readonly IMonDataLayer _mon_data_layer;
+    private readonly IMonDataLayer _monDataLayer;
+    private readonly ILoggingHelper _loggingHelper;    
     private readonly JsonSerializerOptions? _json_options;
     private readonly string _base_url;
 
-    public ISRCTN_Controller(IMonDataLayer mon_data_layer, ILoggingHelper logging_helper)
+    public ISRCTN_Controller(IMonDataLayer monDataLayer, ILoggingHelper loggingHelper)
     {
-        _logging_helper = logging_helper;
-        _mon_data_layer = mon_data_layer;
-
+        _monDataLayer = monDataLayer;
+        _loggingHelper = loggingHelper;
+        
         _json_options = new()
         {
             AllowTrailingCommas = true,
@@ -38,7 +37,7 @@ class ISRCTN_Controller : ISourceController
     // from within a returned set. If the number of available records for a selected 
     // period is > 100 records the call is broken down calls for individual days. 
     // If a day returns > 100 the limit must be raised to the amount concerned.
-    // Note also that the 'days_ago' check is not able to be implemeneted
+    // Note also that the 'days_ago' check is not able to be implemented
     // in a batch download process (unless the system switches to
     // downloading one study at a time).
 
@@ -49,7 +48,7 @@ class ISRCTN_Controller : ISourceController
         string? file_base = source.local_folder;
         if (file_base is null)
         {
-            _logging_helper.LogError("Null value passed for local folder value for this source");
+            _loggingHelper.LogError("Null value passed for local folder value for this source");
             return res;   // return zero result
         }
         int t = opts.FetchTypeId;
@@ -60,11 +59,12 @@ class ISRCTN_Controller : ISourceController
         }
         else if (t == 115 && opts.CutoffDate is not null && opts.EndDate is not null)
         {
-            return await DownloadRecordsBetweenDates(file_base, (DateTime)opts.CutoffDate, (DateTime)opts.EndDate, source.id, (int)opts.saf_id!);
+            return await DownloadRecordsBetweenDates(file_base, (DateTime)opts.CutoffDate, (DateTime)opts.EndDate,
+                source.id, (int)opts.saf_id!, _monDataLayer, _loggingHelper);
         }
         else
         {
-            _logging_helper.LogError("Invalid parameters passed to download controller - unable to proceed");
+            _loggingHelper.LogError("Invalid parameters passed to download controller - unable to proceed");
             return new DownloadResult();   // return zero result
         }
     }
@@ -77,13 +77,13 @@ class ISRCTN_Controller : ISourceController
     public async Task<DownloadResult> DownloadRevisedRecords(string file_base, DateTime cut_off_date, int source_id, int saf_id)
     {
         DownloadResult res = new();
-        ScrapingHelpers ch = new(_logging_helper); 
+        ScrapingHelpers ch = new(_loggingHelper); 
 
         // initially get a single study to indicate total number to be downloaded.
 
         string url = GetUrl(1, cut_off_date);
         string? responseBodyAsString = await ch.GetAPIResponseAsync(url);
-        allTrials? initial_result = Deserialize<allTrials?>(responseBodyAsString);
+        allTrials? initial_result = Deserialize<allTrials?>(responseBodyAsString, _loggingHelper);
 
         if (initial_result is not null)
         {
@@ -98,7 +98,8 @@ class ISRCTN_Controller : ISourceController
                     responseBodyAsString = await ch.GetAPIResponseAsync(url);
                     if (responseBodyAsString is not null)
                     {
-                        DownloadResult batch_res = await DownloadBatch(responseBodyAsString, file_base, source_id, saf_id);
+                        DownloadResult batch_res = await DownloadBatch(responseBodyAsString, file_base, source_id,
+                               saf_id);
                         res.num_checked += batch_res.num_checked;
                         res.num_downloaded += batch_res.num_downloaded;
                         res.num_added += batch_res.num_added;
@@ -111,14 +112,15 @@ class ISRCTN_Controller : ISourceController
                     DateTime date_to_check = cut_off_date;
                     while (date_to_check.Date <= DateTime.Now.Date)
                     {
-                        DownloadResult day_res = await DownloadStudiesFromSingleDay(date_to_check, file_base, source_id, saf_id);
+                        DownloadResult day_res = await DownloadStudiesFromSingleDay(date_to_check, file_base, 
+                            source_id, saf_id);
                         res.num_checked += day_res.num_checked;
                         res.num_downloaded += day_res.num_downloaded;
                         res.num_added += day_res.num_added;
 
                         string feedback = $"{day_res.num_downloaded} studies downloaded, for {date_to_check.ToShortDateString()}.";
                         feedback += $" Total downloaded: {res.num_downloaded}";
-                        _logging_helper.LogLine(feedback);
+                        _loggingHelper.LogLine(feedback);
 
                         date_to_check = date_to_check.AddDays(1);
                         Thread.Sleep(800);  // Add a pause between calls.
@@ -135,11 +137,12 @@ class ISRCTN_Controller : ISourceController
     // By default the download is done in batches of 4 days. If the end date is included
     // in a batch, the batch is made up to the end date.
 
-    public async Task<DownloadResult> DownloadRecordsBetweenDates(string file_base, DateTime start_date, DateTime end_date, int source_id, int saf_id)
+    public async Task<DownloadResult> DownloadRecordsBetweenDates(string file_base, DateTime start_date, 
+        DateTime end_date, int source_id, int saf_id,
+        IMonDataLayer mon_data_layer, ILoggingHelper logging_helper)
     {
         DownloadResult res = new();
-        ISRCTN_Processor ISRCTN_processor = new();
-        ScrapingHelpers ch = new(_logging_helper);
+        ScrapingHelpers ch = new(logging_helper);
 
         // If the start date is earlier than 10/11/2005 it is made into 10/11/2005,
         // the earliest date in the ISRCTN system for 'date last edited'.
@@ -153,8 +156,6 @@ class ISRCTN_Controller : ISourceController
         DateTime baseDate = new DateTime(2005, 1, 1);
         int startday = (start_date - baseDate).Days;
         int endday = (end_date - baseDate).Days;
-        string? responseBodyAsString;
-        string url;
 
         for (int d = startday; d < endday; d += 4)
         {
@@ -171,9 +172,9 @@ class ISRCTN_Controller : ISourceController
 
             // Initial call to get number of studies in this period
 
-            url = GetUrl(1, date_GE, date_LT);
-            responseBodyAsString = await ch.GetAPIResponseAsync(url);
-            allTrials? result = Deserialize<allTrials?>(responseBodyAsString);
+            string url = GetUrl(1, date_GE, date_LT);
+            string? responseBodyAsString = await ch.GetAPIResponseAsync(url);
+            allTrials? result = Deserialize<allTrials?>(responseBodyAsString, logging_helper);
             if (result is not null)
             {
                 int record_num = result.totalCount;
@@ -181,7 +182,7 @@ class ISRCTN_Controller : ISourceController
                 {
                     if (record_num <= 100)
                     {
-                        // Do a single call but with the increased lnmit.
+                        // Do a single call but with the increased limit.
 
                         url = GetUrl(record_num, date_GE, date_LT);
                         responseBodyAsString = await ch.GetAPIResponseAsync(url);
@@ -195,7 +196,7 @@ class ISRCTN_Controller : ISourceController
                             string feedback = $"{batch_res.num_downloaded} studies downloaded, ";
                             feedback += $"with last edited GE { date_GE.ToShortDateString()} and LT { date_LT.ToShortDateString()}. ";
                             feedback += $"Total downloaded: {res.num_downloaded}";
-                            _logging_helper.LogLine(feedback);
+                            logging_helper.LogLine(feedback);
                             Thread.Sleep(800);  // Add a pause between calls.
                         }
                     }
@@ -213,7 +214,7 @@ class ISRCTN_Controller : ISourceController
 
                             string feedback = $"{day_res.num_downloaded} studies downloaded, for {date_to_check.ToShortDateString()}.";
                             feedback += $" Total downloaded: {res.num_downloaded}";
-                            _logging_helper.LogLine(feedback);
+                            logging_helper.LogLine(feedback);
                             date_to_check = date_to_check.AddDays(1);
                             Thread.Sleep(800);  // Add a pause between calls.
                         }
@@ -231,15 +232,16 @@ class ISRCTN_Controller : ISourceController
     // First gets a single record to calculate total amount to be retrieved, and
     // then sets the limit in a following call to retrieve all records.
 
-    private async Task<DownloadResult> DownloadStudiesFromSingleDay(DateTime date_to_check, string file_base, int source_id, int saf_id)
+    private async Task<DownloadResult> DownloadStudiesFromSingleDay(DateTime date_to_check, string file_base, 
+        int source_id, int saf_id)
     {
         DownloadResult res = new();
-        ScrapingHelpers ch = new(_logging_helper);
+        ScrapingHelpers ch = new(_loggingHelper);
         DateTime next_day_date = date_to_check.AddDays(1);
 
         string url = GetUrl(1, date_to_check, next_day_date);
         string? responseBodyAsString = await ch.GetAPIResponseAsync(url);
-        allTrials? day_result = Deserialize<allTrials?>(responseBodyAsString);
+        allTrials? day_result = Deserialize<allTrials?>(responseBodyAsString, _loggingHelper);
 
         if (day_result is not null)
         {
@@ -265,37 +267,36 @@ class ISRCTN_Controller : ISourceController
     // from an API call). The string first needs deserializing to the response object, and then each individual 
     // study needs to be transformed into the json file model, and saved as a json file in the appropriate folder.
 
-    private async Task<DownloadResult> DownloadBatch(string responseBodyAsString, string file_base, int source_id, int saf_id)
+    private async Task<DownloadResult> DownloadBatch(string responseBodyAsString, string file_base, 
+                        int source_id, int saf_id)
     {
         DownloadResult res = new();
-        allTrials? result = Deserialize<allTrials?>(responseBodyAsString);
+        allTrials? result = Deserialize<allTrials?>(responseBodyAsString, _loggingHelper);
         if(result is null)
         {
-            _logging_helper.LogError("Error deserialising " + responseBodyAsString);
+            _loggingHelper.LogError("Error de-serialising " + responseBodyAsString);
             return res;
         }
-        else
-        {
-            ISRCTN_Processor isrctn_processor = new();
-            int number_returned = result.totalCount;
-            if (number_returned > 0 && result.fullTrials?.Any() is true) 
-            { 
-                foreach (FullTrial f in result.fullTrials)
+
+        ISRCTN_Processor isrctn_processor = new();
+        int number_returned = result.totalCount;
+        if (number_returned > 0 && result.fullTrials?.Any() is true) 
+        { 
+            foreach (FullTrial f in result.fullTrials)
+            {
+                res.num_checked++;
+                Study? s = await isrctn_processor.GetFullDetails(f, _loggingHelper);
+                if (s is not null)
                 {
-                    res.num_checked++;
-                    Study s = await isrctn_processor.GetFullDetails(f, _logging_helper);
-                    if (s is not null && s.sd_sid is not null)
+                    string full_path = await WriteOutFile(s, s.sd_sid, file_base);
+                    if (full_path != "error")
                     {
-                        string full_path = await WriteOutFile(s, s.sd_sid, file_base);
-                        if (full_path != "error")
-                        {
-                            string remote_url = "https://www.isrctn.com/" + s.sd_sid;
-                            DateTime? last_updated = s.lastUpdated?.FetchDateTimeFromISO();
-                            bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, s.sd_sid, remote_url, saf_id,
-                                                    last_updated, full_path);
-                            res.num_downloaded++;
-                            if (added) res.num_added++;
-                        }
+                        string remote_url = "https://www.isrctn.com/" + s.sd_sid;
+                        DateTime? last_updated = s.lastUpdated?.FetchDateTimeFromISO();
+                        bool added = _monDataLayer.UpdateStudyDownloadLog(source_id, s.sd_sid, remote_url, saf_id,
+                                                last_updated, full_path);
+                        res.num_downloaded++;
+                        if (added) res.num_added++;
                     }
                 }
             }
@@ -310,17 +311,17 @@ class ISRCTN_Controller : ISourceController
     private async Task<string> WriteOutFile(Study s, string sd_sid, string file_base)
     {
         string file_name = sd_sid + ".json";
-        string full_path = Path.Combine(file_base, file_name!);
+        string full_path = Path.Combine(file_base, file_name);
         try
         {
-            using FileStream jsonStream = File.Create(full_path);
+            await using FileStream jsonStream = File.Create(full_path);
             await JsonSerializer.SerializeAsync(jsonStream, s, _json_options);
             await jsonStream.DisposeAsync();
             return full_path;
         }
         catch (Exception e)
         {
-            _logging_helper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
+            _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
             return "error";
         }
     }
@@ -329,17 +330,17 @@ class ISRCTN_Controller : ISourceController
 
     private string GetUrl(int limit, DateTime startdate, DateTime? enddate = null)
     {
-        string start_date_param, end_date_param, id_params;
+        string start_date_param, id_params;
         if (enddate is null)
         {
-            start_date_param = $"{startdate.Year}-{startdate.Month.ToString("00")}-{startdate.Day.ToString("00")}";
+            start_date_param = $"{startdate.Year}-{startdate.Month:00}-{startdate.Day:00}";
             id_params = "lastEdited%20GE%20" + start_date_param + "T00:00:00%20";
         }
         else
         {
             DateTime end_date = (DateTime)enddate;
-            start_date_param = $"{startdate.Year}-{startdate.Month.ToString("00")}-{startdate.Day.ToString("00")}";
-            end_date_param = $"{end_date.Year}-{end_date.Month.ToString("00")}-{end_date.Day.ToString("00")}";
+            start_date_param = $"{startdate.Year}-{startdate.Month:00}-{startdate.Day:00}";
+            string end_date_param = $"{end_date.Year}-{end_date.Month:00}-{end_date.Day:00}";
             id_params = "lastEdited%20GE%20" + start_date_param + "T00:00:00%20AND%20lastEdited%20LT%20" + end_date_param + "T00:00:00";
         }
         string end_url = $"&limit={limit}";
@@ -349,25 +350,23 @@ class ISRCTN_Controller : ISourceController
 
     // General XML Deserialize function.
 
-    private T? Deserialize<T>(string? inputString)
+    private T? Deserialize<T>(string? inputString, ILoggingHelper logging_helper)
     {
         if (inputString is null)
         {
             return default;
         }
 
-        T? instance = default;
+        T? instance;
         try
         {
             var xmlSerializer = new XmlSerializer(typeof(T));
-            using (var stringreader = new StringReader(inputString))
-            {
-                instance = (T?)xmlSerializer.Deserialize(stringreader);
-            }
+            using var stringreader = new StringReader(inputString);
+            instance = (T?)xmlSerializer.Deserialize(stringreader);
         }
         catch(Exception e)
         {
-            _logging_helper.LogCodeError("Error when deserialising " + inputString, e.Message, e.StackTrace);
+            logging_helper.LogCodeError("Error when de-serialising " + inputString, e.Message, e.StackTrace);
             return default;
         }
 

@@ -7,15 +7,15 @@ using System.Text.Json;
 
 namespace MDR_Downloader.yoda
 {
-    class Yoda_Controller : ISourceController
+    class Yoda_Controller : IDLController
     {
-        private readonly ILoggingHelper _logging_helper;
-        private readonly IMonDataLayer _mon_data_layer;
+        private readonly IMonDataLayer _monDataLayer;
+        private readonly ILoggingHelper _loggingHelper;
 
-        public Yoda_Controller(IMonDataLayer mon_data_layer, ILoggingHelper logging_helper)
+        public Yoda_Controller(IMonDataLayer monDataLayer, ILoggingHelper loggingHelper)
         {
-            _logging_helper = logging_helper;
-            _mon_data_layer = mon_data_layer;
+            _monDataLayer = monDataLayer;
+            _loggingHelper = loggingHelper;
         }
 
         public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
@@ -25,20 +25,18 @@ namespace MDR_Downloader.yoda
             // not a concept of an update or focused download, as opposed to a full download.
 
             DownloadResult res = new();
-            ScrapingHelpers ch = new (_logging_helper);
+            ScrapingHelpers ch = new (_loggingHelper);
             string? folder_path = source.local_folder;
             if (folder_path is null)
             {
-                _logging_helper.LogError("Null value passed for local folder value for this source");
+                _loggingHelper.LogError("Null value passed for local folder value for this source");
                 return res;   // return zero result
             }
-            else
+            if (!Directory.Exists(folder_path))
             {
-                if (!Directory.Exists(folder_path))
-                {
-                    Directory.CreateDirectory(folder_path);  // ensure folder is present
-                }
+                Directory.CreateDirectory(folder_path);  // ensure folder is present
             }
+
 
             int source_id = source.id;
             int? days_ago = opts.SkipRecentDays;
@@ -55,19 +53,19 @@ namespace MDR_Downloader.yoda
             WebPage? firstPage = await ch.GetPageAsync(baseURL + "0");
             if (firstPage is null)
             {
-                _logging_helper.LogError("Attempt to access first Yoda studies list page failed");
+                _loggingHelper.LogError("Attempt to access first Yoda studies list page failed");
                 return res;   // return zero result
             }
 
             HtmlNode? resultCountStatement = firstPage.Find("div", By.Class("result-count")).FirstOrDefault();
             if (resultCountStatement is null) 
             {
-                _logging_helper.LogError("Unable to find record count details section on first search page");
+                _loggingHelper.LogError("Unable to find record count details section on first search page");
                 return res;
             }
 
             string record_string = resultCountStatement.InnerText;
-            int of_pos = record_string.IndexOf(" of ");
+            int of_pos = record_string.IndexOf(" of ", StringComparison.Ordinal);
             string record_number_string = record_string[(of_pos + 4)..];
 
             if (Int32.TryParse(record_number_string, out int record_count))
@@ -76,29 +74,29 @@ namespace MDR_Downloader.yoda
             }
             else
             {
-                _logging_helper.LogError("Unable to extract record count total on first search page");
+                _loggingHelper.LogError("Unable to extract record count total on first search page");
                 return res;
             }
 
-            YodaDataLayer yoda_repo = new();
-            Yoda_Processor yoda_processor = new(ch, _logging_helper, yoda_repo);
+            YodaDataLayer yoda_repo = new(_monDataLayer.Credentials);
+            Yoda_Processor yoda_processor = new(ch, _loggingHelper, yoda_repo);
             List<Summary> all_study_list = new();
 
-            // Loop through the search pages and build up a list of stuudy summaries
+            // Loop through the search pages and build up a list of study summaries
 
             for (int i = 0; i < search_page_limit; i++)
             {
                 WebPage? searchPage = await ch.GetPageAsync(baseURL + i.ToString());
                 if (searchPage is null)
                 {
-                    _logging_helper.LogError($"Attempt to access Yoda studies list page {i} failed");
+                    _loggingHelper.LogError($"Attempt to access Yoda studies list page {i} failed");
                     return res;  // return zero res
                 }
                 else
                 {
                     List<Summary> page_study_list = yoda_processor.GetStudyInitialDetails(searchPage);
                     all_study_list.AddRange(page_study_list);
-                    _logging_helper.LogLine($"search page: {i}, yielding {page_study_list.Count} study summaries");
+                    _loggingHelper.LogLine($"search page: {i}, yielding {page_study_list.Count} study summaries");
                     Thread.Sleep(300);
                 }
             }
@@ -113,14 +111,12 @@ namespace MDR_Downloader.yoda
             {
                 n++;
                 bool transfer_to_list = true;
-                string id_to_check = sm.sd_sid!;
-                int s_pos = 0;
+                string id_to_check = sm.sd_sid;
                 foreach (Summary s in study_list)
                 {
-                    s_pos++;
                     if (id_to_check == s.sd_sid)
                     {
-                        _logging_helper.LogLine("More than one id found for " + n.ToString() + ": " + sm.study_name);
+                        _loggingHelper.LogLine("More than one id found for " + n.ToString() + ": " + sm.study_name);
                         transfer_to_list = false;
                     }
                 }
@@ -132,17 +128,17 @@ namespace MDR_Downloader.yoda
             }
 
             // Finally ready to process the Yoda study details
-            _logging_helper.LogLine($"Studies to download: {study_list.Count}");
+            _loggingHelper.LogLine($"Studies to download: {study_list.Count}");
 
             foreach (Summary sm in study_list)
             {
-                if (sm.sd_sid is not null && sm.details_link is not null)
+                if (sm.details_link is not null)
                 {
                     // sd_sid and details_link should normally always be present but just in case...
                     // Unless record already downloaded in stipulated period get the web page and,
                     // assuming it has been retrieved OK, process it.
 
-                    if (days_ago is null || !_mon_data_layer.Downloaded_recently(source_id, sm.sd_sid, (int)days_ago))
+                    if (days_ago is null || !_monDataLayer.Downloaded_recently(source_id, sm.sd_sid, (int)days_ago))
                     {
                         WebPage? studyPage = await ch.GetPageAsync(sm.details_link);
                         res.num_checked++;
@@ -161,17 +157,17 @@ namespace MDR_Downloader.yoda
                                     string full_path = Path.Combine(folder_path, file_name);
                                     try
                                     {
-                                        using FileStream jsonStream = File.Create(full_path);
+                                        await using FileStream jsonStream = File.Create(full_path);
                                         await JsonSerializer.SerializeAsync(jsonStream, st, json_options);
                                         await jsonStream.DisposeAsync();
-                                        _logging_helper.LogLine($"{res.num_checked}: {st.sd_sid} downloaded");
+                                        _loggingHelper.LogLine($"{res.num_checked}: {st.sd_sid} downloaded");
                                     }
                                     catch (Exception e)
                                     {
-                                        _logging_helper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
+                                        _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
                                     }
 
-                                    bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, st.sd_sid!, 
+                                    bool added = _monDataLayer.UpdateStudyDownloadLog(source_id, st.sd_sid, 
                                                   st.remote_url, (int)opts.saf_id!, null, full_path);
                                     res.num_downloaded++;
                                     if (added) res.num_added++;
@@ -182,7 +178,7 @@ namespace MDR_Downloader.yoda
                                 }
                                 else
                                 {
-                                    _logging_helper.LogLine($"Null study details for {sm.sd_sid}");
+                                    _loggingHelper.LogLine($"Null study details for {sm.sd_sid}");
                                 }
                             }
                         }

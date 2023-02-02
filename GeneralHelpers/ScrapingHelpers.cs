@@ -85,6 +85,20 @@ public class ScrapingHelpers
             return null;
         }
     }
-
-
 }
+
+public class PMCResponse
+{
+    public string? status { get; set; }
+    public string? responseDate { get; set; }
+    public string? request { get; set; }
+    public List<NLMRecords>? records { get; set; }
+}
+
+public class NLMRecords
+{
+    public string? pmcid { get; set; }
+    public string? pmid { get; set; }
+    public string? doi { get; set; }
+}
+

@@ -36,7 +36,7 @@ public class BioLincc_Record
     public List<RelatedStudy>? related_studies { get; set; }
 
     // Set this List up in case it is needed
-    public List<string> UnmatchedDocTypes = new List<string>();
+    public readonly List<string> UnmatchedDocTypes = new();
 
     public BioLincc_Record(BioLincc_Basics bb)
     {

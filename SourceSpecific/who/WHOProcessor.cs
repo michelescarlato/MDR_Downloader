@@ -1,6 +1,4 @@
 ﻿using MDR_Downloader.Helpers;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace MDR_Downloader.who
@@ -11,7 +9,7 @@ namespace MDR_Downloader.who
 
         public WHO_Processor()
         {
-            _wh = new();
+            _wh = new WHOHelpers();
         }
 
         public WHORecord? ProcessStudyDetails(WHO_SourceRecord sr)

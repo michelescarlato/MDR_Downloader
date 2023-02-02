@@ -164,7 +164,7 @@ namespace MDR_Downloader.yoda
                     {
                         case "Generic Name": st.compound_generic_name = value; break;
                         case "Product Name": st.compound_product_name = value; break;
-                        case "Therapeutic Area": st.therapaeutic_area = value; break;
+                        case "Therapeutic Area": st.therapeutic_area = value; break;
                         case "Enrollment": st.enrolment = value; break;
                         case "% Female": st.percent_female = value; break;
                         case "% White": st.percent_white = value; break;

@@ -7,55 +7,17 @@ namespace MDR_Downloader.pubmed
 {
     public class PubMedDataLayer
     {
-        private readonly NpgsqlConnectionStringBuilder builder;
         private readonly string connString;
         private readonly string mon_connString;
         private readonly string context_connString;
-        private readonly string folder_base;
-        private readonly ILoggingHelper _logging_helper;
+        private readonly Credentials _credentials;
 
-        public PubMedDataLayer(ILoggingHelper logging_helper)
+        public PubMedDataLayer(Credentials credentials)
         {
-            IConfigurationRoot settings = new ConfigurationBuilder()
-                .SetBasePath(AppContext.BaseDirectory)
-                .AddJsonFile("appsettings.json")
-                .Build();
-
-            builder = new()
-            {
-                Host = settings["host"],
-                Username = settings["user"],
-                Password = settings["password"]
-            };
-            string? PortAsString = settings["port"];
-            if (string.IsNullOrWhiteSpace(PortAsString))
-            {
-                builder.Port = 5432;
-            }
-            else
-            {
-                if (Int32.TryParse(PortAsString, out int port_num))
-                {
-                    builder.Port = port_num;
-                }
-                else
-                {
-                    builder.Port = 5432;
-                }
-            }
-
-            builder.Database = "pubmed";
-            connString = builder.ConnectionString;
-
-            builder.Database = "mon";
-            mon_connString = builder.ConnectionString;
-
-            builder.Database = "context";
-            context_connString = builder.ConnectionString;
-
-            folder_base = settings["folder_base"] ?? "";
-
-            _logging_helper = logging_helper;
+            _credentials = credentials;
+            connString = credentials.GetConnectionString("pubmed");
+            mon_connString = credentials.GetConnectionString("mon");
+            context_connString = credentials.GetConnectionString("context");
         }
 
         // Tables and functions used for the PMIDs collected from DB Sources
@@ -89,16 +51,14 @@ namespace MDR_Downloader.pubmed
         {
             using NpgsqlConnection conn = new(mon_connString);
             string sql_string = @"select * from sf.source_parameters
-                where has_study_references = true";
+                       where has_study_references = true";
             return conn.Query<Source>(sql_string);
         }
 
 
         public IEnumerable<PMIDBySource> FetchSourceReferences(string db_name)
         {
-            builder.Database = db_name;
-            string db_conn_string = builder.ConnectionString;
-
+            string db_conn_string = _credentials.GetConnectionString(db_name);
             using NpgsqlConnection conn = new(db_conn_string);
             string sql_string = @"SELECT DISTINCT 
                         sd_sid, pmid::int from ad.study_references 
@@ -162,12 +122,12 @@ namespace MDR_Downloader.pubmed
         }
 
 
-        // gets a 2 letter language code rather than thean the original 3
+        // Gets a 2 letter language code rather than than the original 3.
+        
         public string? lang_3_to_2(string lang_code_3)
         {
             using NpgsqlConnection Conn = new(context_connString);
-            string sql_string = "select code from lup.language_codes where ";
-            sql_string += " marc_code = '" + lang_code_3 + "';";
+            string sql_string = $@"select code from lup.language_codes where marc_code = '{lang_code_3}'";
             return Conn.Query<string>(sql_string).FirstOrDefault();
         }
     }

@@ -2,15 +2,16 @@
 
 namespace MDR_Downloader;
 
-public class ILoggingHelper : IILoggingHelper
+public class LoggingHelper : ILoggingHelper
 {
     private readonly string  _logfileStartOfPath;
     private readonly string _summaryLogfileStartOfPath;
     private string _logfilePath = "";
     private string _summaryLogfilePath = "";
+    private string summary_string = "";
     private StreamWriter? _sw;
 
-    public ILoggingHelper()
+    public LoggingHelper()
     {
         IConfigurationRoot settings = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
@@ -21,10 +22,8 @@ public class ILoggingHelper : IILoggingHelper
         _summaryLogfileStartOfPath = settings["summaryfilepath"] ?? "";
     }
 
-    // Used to check if a log file with a named source has been created.
-
-    public string LogFilePath => _logfilePath;
-
+    public string LogFilePath => _logfilePath;  // Used to check if a log file exists.
+    
     public void OpenLogFile(string? sourceFileName, string databaseName)
     {
         string dt_string = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture)
@@ -57,7 +56,6 @@ public class ILoggingHelper : IILoggingHelper
         _sw = new StreamWriter(_logfilePath, true, System.Text.Encoding.UTF8);
     }
 
-
     public void OpenNoSourceLogFile()
     {
         string dt_string = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture)
@@ -70,75 +68,12 @@ public class ILoggingHelper : IILoggingHelper
     }
 
 
-    public void LogLine(string message, string identifier = "")
+    public void LogLine(string message)
     {
         string dt_prefix = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-        string feedback = dt_prefix + message + identifier;
+        string feedback = dt_prefix + message;
         Transmit(feedback);
     }
-
-
-    public void LogCommandLineParameters(Options opts)
-    {
-        LogLine("****** DOWNLOAD ******");
-        LogHeader("Set up");
-        LogLine($"Download event Id is {opts.saf_id}");
-        LogLine("");
-        LogLine($"Source_id is {opts.SourceId}");
-        LogLine($"Type_id is {opts.FetchTypeId}");
-        if (opts.FileName is not null)
-        {
-            LogLine($"File name is {opts.FileName}");
-        }
-        if (opts.CutoffDate is not null)
-        {
-            LogLine($"Cutoff date is {opts.CutoffDateAsString}");
-        }
-        if (opts.EndDate is not null)
-        {
-            LogLine($"End date is {opts.EndDateAsString}");
-        }
-        if (opts.FocusedSearchId is not null)
-        {
-            LogLine($"Filter is {opts.FocusedSearchId}");
-        }
-        if (opts.SkipRecentDays is not null)
-        {
-            string day_word;
-            if (opts.SkipRecentDays > 1)
-            {
-                day_word = $"in most recent {opts.SkipRecentDays} days";
-                
-            }
-            else
-            {
-                day_word = opts.SkipRecentDays == 0 ? "today" : "today or yesterday";
-            }
-            LogLine($"Ignore files already downloaded {day_word}");
-        }
-        if (opts.FetchTypeId == 141 || opts.FetchTypeId == 142)
-        {
-            LogLine($"Offset for record Ids: {opts.OffsetIds}");
-            LogLine($"Amount of record Ids: {opts.AmountIds}");
-        }
-        if (opts.FetchTypeId == 146)
-        {
-            LogLine($"Start Page: {opts.StartPage}");
-            LogLine($"End pages: {opts.EndPage}");
-        }
-        if (opts.PreviousSearches?.Any() is true)
-        {
-            foreach (int i in opts.PreviousSearches)
-            {
-                LogLine($"previous_search is {i}");
-            }
-        }
-        if (opts.NoLogging is not null)
-        {
-            LogLine($"Logging suppressed");
-        }
-    }
-
 
     public void LogHeader(string message)
     {
@@ -149,23 +84,105 @@ public class ILoggingHelper : IILoggingHelper
     }
 
 
+    public void LogCommandLineParameters(Options opts)
+    {
+        LogLine("****** DOWNLOAD ******");
+        summary_string = $"\nRecord of Download :\n";
+        LogHeader("Set up");
+        LogLine($"Download event Id is {opts.saf_id}");
+        LogLine("");
+        LogLine($"Source_id is {opts.SourceId}");
+        summary_string += $"\nSource_id is {opts.SourceId}";
+        LogLine($"Type_id is {opts.FetchTypeId}");
+        summary_string += $"\nType_id is {opts.FetchTypeId}";
+        if (opts.FileName is not null)
+        {
+            LogLine($"File name is {opts.FileName}");
+            summary_string += $"\nFile name is {opts.FileName}";
+        }
+        if (opts.CutoffDate is not null)
+        {
+            LogLine($"Cutoff date is {opts.CutoffDateAsString}");
+            summary_string += $"\nCutoff date is {opts.CutoffDateAsString}";
+        }
+        if (opts.EndDate is not null)
+        {
+            LogLine($"End date is {opts.EndDateAsString}");
+            summary_string += $"\nEnd date is {opts.EndDateAsString}";
+        }
+        if (opts.FocusedSearchId is not null)
+        {
+            LogLine($"Filter is {opts.FocusedSearchId}");
+            summary_string += $"\nFilter is {opts.FocusedSearchId}";
+        }
+        if (opts.SkipRecentDays is not null)
+        {
+            string day_word;
+            if (opts.SkipRecentDays > 1)
+            {
+                day_word = $"in most recent {opts.SkipRecentDays} days";
+            }
+            else
+            {
+                day_word = opts.SkipRecentDays == 0 ? "today" : "today or yesterday";
+            }
+            LogLine($"Ignore files already downloaded {day_word}");
+            summary_string += $"\nIgnore files already downloaded {day_word}";
+        }
+        if (opts.FetchTypeId == 141 || opts.FetchTypeId == 142)
+        {
+            LogLine($"Offset for record Ids: {opts.OffsetIds}");
+            LogLine($"Amount of record Ids: {opts.AmountIds}");
+            summary_string += $"\nOffset for record Ids: {opts.OffsetIds}";
+            summary_string += $"\nAmount of record Ids: {opts.AmountIds}";
+        }
+        if (opts.FetchTypeId == 146)
+        {
+            LogLine($"Start Page: {opts.StartPage}");
+            LogLine($"End pages: {opts.EndPage}");
+            summary_string += $"\nStart Page: {opts.StartPage}";
+            summary_string += $"\nEnd pages: {opts.EndPage}";
+        }
+        if (opts.PreviousSearches?.Any() is true)
+        {
+            foreach (int i in opts.PreviousSearches)
+            {
+                LogLine($"previous_search is {i}");
+                summary_string += $"\nprevious_search is {i}:";
+            }
+        }
+        if (opts.NoLogging is not null)
+        {
+            LogLine($"Logging suppressed");
+            summary_string += $"\nLogging suppressed";
+        }
+    }
+
     public void LogError(string message)
     {
         string dt_prefix = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
         string error_message = dt_prefix + "***ERROR*** " + message;
-        Transmit("");
-        Transmit("+++++++++++++++++++++++++++++++++++++++");
-        Transmit(error_message);
-        Transmit("+++++++++++++++++++++++++++++++++++++++");
-        Transmit("");
+        
+        LogLine("");
+        LogLine("+++++++++++++++++++++++++++++++++++++++");
+        LogLine(error_message);
+        LogLine("+++++++++++++++++++++++++++++++++++++++");
+        LogLine("");
+        
+        summary_string += $"\n\n+++++++++++++++++++++++++++++++++++++++";
+        summary_string += $"\nError or exception:";
+        summary_string += $"\n{error_message}";
     }
 
 
     public void LogParseError(string header, string errorNum, string errorType)
     {
-        string dt_prefix = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-        string error_message = dt_prefix + "***ERROR*** " + "Error " + errorNum + ": " + header + " " + errorType;
-        Transmit(error_message);
+        string error_message = "***ERROR*** " + "Error " + errorNum + ": " + header + " " + errorType;
+        LogLine(error_message);
+        
+        summary_string += $"\n\n+++++++++++++++++++++++++++++++++++++++";
+        summary_string += $"\nParse error:";
+        summary_string += $"\n{error_message}";
     }
 
 
@@ -173,13 +190,20 @@ public class ILoggingHelper : IILoggingHelper
     {
         string dt_prefix = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
         string headerMessage = dt_prefix + "***ERROR*** " + header + "\n";
-        Transmit("");
-        Transmit("+++++++++++++++++++++++++++++++++++++++");
-        Transmit(headerMessage);
-        Transmit(errorMessage + "\n");
-        Transmit(stackTrace ?? "No stack trace provided by error.");
-        Transmit("+++++++++++++++++++++++++++++++++++++++");
-        Transmit("");
+        string stack = stackTrace ?? "No stack trace provided by error.";
+        LogLine("");
+        LogLine("+++++++++++++++++++++++++++++++++++++++");
+        LogLine(headerMessage);
+        LogLine(errorMessage + "\n");
+        LogLine(stack);
+        LogLine("+++++++++++++++++++++++++++++++++++++++");
+        LogLine("");
+        
+        summary_string += $"\n\n+++++++++++++++++++++++++++++++++++++++";
+        summary_string += $"\nCode error:";
+        summary_string += $"\n{header}";
+        summary_string += $"\n{errorMessage}";
+        summary_string += $"\n{stack}";
     }
 
 
@@ -195,7 +219,7 @@ public class ILoggingHelper : IILoggingHelper
         // Write out the summary file.
     
         var sw_summary = new StreamWriter(_summaryLogfilePath, true, System.Text.Encoding.UTF8);
-    
+        sw_summary.WriteLine(summary_string);
         sw_summary.Flush();
         sw_summary.Close();
     }
@@ -206,13 +230,23 @@ public class ILoggingHelper : IILoggingHelper
         Console.WriteLine(message);
     }
 
-    public void LogRes(DownloadResult res)
+    public void LogRes(SAFEvent saf)
     {
-        string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-        Transmit("");
-        Transmit(dt_string + "**** " + "Download Result" + " ****");
-        Transmit(dt_string + "**** " + "Records checked: " + res.num_checked.ToString() + " ****");
-        Transmit(dt_string + "**** " + "Records downloaded: " + res.num_downloaded.ToString() + " ****");
-        Transmit(dt_string + "**** " + "Records added: " + res.num_added.ToString() + " ****");
+        LogHeader("Download Result");
+        LogLine("Source Id: " + saf.source_id);
+        LogLine("Download Event Id: " + saf.id);
+        LogLine("Start time: " + saf.time_started);
+        LogLine("End time: " + saf.time_ended);
+        LogLine("Records checked: " + saf.num_records_checked);
+        LogLine("Records downloaded: " + saf.num_records_downloaded);
+        LogLine("Records added: " + saf.num_records_added);
+        
+        summary_string += $"\n\nDownload Result:";
+        summary_string += $"\nDownload Event Id: {saf.id}";
+        summary_string += $"\nStart time: {saf.time_started}";
+        summary_string += $"\nEnd time: {saf.time_ended}";
+        summary_string += $"\nRecords checked: {saf.num_records_checked}";
+        summary_string += $"\nRecords downloaded: {saf.num_records_downloaded}";
+        summary_string += $"\nRecords added: {saf.num_records_added}";
     }
 }

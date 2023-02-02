@@ -1,8 +1,12 @@
 namespace MDR_Downloader;
 
-public interface IIMonDataLayer
+public interface IMonDataLayer
 {
+    
+    
     public string? PubmedAPIKey { get; }
+    public Credentials Credentials { get; }
+    
     public Source? FetchSourceParameters(int source_id);
     public DateTime? ObtainLastDownloadDate(int source_id);
     public DateTime? ObtainLastDownloadDateWithFilter(int source_id, int filter_id);
@@ -10,7 +14,7 @@ public interface IIMonDataLayer
     public int GetNextSearchFetchId();
     public StudyFileRecord? FetchStudyFileRecord(string sd_id, int? source_id);
     public ObjectFileRecord? FetchObjectFileRecord(string sd_id, int source_id);
-    public IEnumerable<StudyFileRecord> FetchStudyFileRecords(int source_id);
+    public IEnumerable<StudyFileRecord> FetchStudyIds(int source_id);
     public int InsertSAFEventRecord(SAFEvent saf);
     public bool StoreStudyFileRec(StudyFileRecord file_record);
     public bool StoreObjectFileRec(ObjectFileRecord file_record);

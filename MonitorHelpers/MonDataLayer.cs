@@ -4,17 +4,21 @@ using Npgsql;
 
 namespace MDR_Downloader;
 
-public class IMonDataLayer : IIMonDataLayer
+public class MonDataLayer : IMonDataLayer
 {
-    private readonly IILoggingHelper _logging_helper;
+    private readonly ILoggingHelper _logging_helper;
+    private readonly ICredentials _credentials;
+    
     private readonly string connString;
     private readonly string sql_file_select_string;
     private readonly string pubmedAPIKey;
     private Source? source;
 
-    public IMonDataLayer(IILoggingHelper logging_helper, ICredentials credentials)
+    public MonDataLayer(ILoggingHelper logging_helper, ICredentials credentials)
     {
         _logging_helper = logging_helper;
+        _credentials = credentials;
+        
         connString = credentials.GetConnectionString("mon");
         pubmedAPIKey = credentials.PubmedAPIKey;
  
@@ -24,6 +28,8 @@ public class IMonDataLayer : IIMonDataLayer
     }
 
     public string PubmedAPIKey => pubmedAPIKey;
+    
+    public Credentials Credentials => (Credentials)_credentials;
 
     public Source? FetchSourceParameters(int source_id)
     {
@@ -86,14 +92,13 @@ public class IMonDataLayer : IIMonDataLayer
     }
     
 
-    // used for biolincc only
-    public IEnumerable<StudyFileRecord> FetchStudyFileRecords(int source_id)
+    // Used for biolincc only.
+    
+    public IEnumerable<StudyFileRecord> FetchStudyIds(int source_id)
     {
-        string sql_string = "select id, sd_id, local_path, last_saf_id ";
-        sql_string += " from sf.source_data_studies ";
-        sql_string += " where source_id = " + source_id.ToString();
-        sql_string += " order by local_path";
-
+        string sql_string = $@"select id, sd_id, local_path 
+            from sf.source_data_studies 
+            where source_id = {source_id} order by local_path";
         using NpgsqlConnection Conn = new(connString);
         return Conn.Query<StudyFileRecord>(sql_string);
     }

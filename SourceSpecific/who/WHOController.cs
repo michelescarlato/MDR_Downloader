@@ -5,100 +5,99 @@ using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
-namespace MDR_Downloader.who
+namespace MDR_Downloader.who;
+
+class WHO_Controller : IDLController
 {
-    class WHO_Controller : ISourceController
+    private readonly IMonDataLayer _monDataLayer;
+    private readonly ILoggingHelper _loggingHelper;
+
+    public WHO_Controller(IMonDataLayer monDataLayer, ILoggingHelper loggingHelper)
     {
-        private readonly ILoggingHelper _logging_helper;
-        private readonly IMonDataLayer _mon_data_layer;
+        _monDataLayer = monDataLayer;
+        _loggingHelper = loggingHelper;
+    }
+    
+    public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
+    {
+        // WHO processing unusual in that it is from a csv file
+        // The program loops through the file and creates an XML file from each row
+        // It then distributes it to the correct source folder for 
+        // later harvesting.
 
-        public WHO_Controller(IMonDataLayer mon_data_layer, ILoggingHelper logging_helper)
+        // In some cases the file will be one of a set created from a large
+        // 'all data' download, in other cases it will be a weekly update file
+        // In both cases any existing XML files of the same name should be overwritten.
+
+        DownloadResult res = new();
+        string? file_base = source.local_folder;
+
+        if (file_base is null)
         {
-            _logging_helper = logging_helper;
-            _mon_data_layer = mon_data_layer;
+            _loggingHelper.LogError("Null value passed for local folder value for this source");
+            return res;   // return zero result
         }
 
-        public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
+        WHO_Processor who_processor = new();
+        string source_file = opts.FileName!;     // already checked as non-null
+
+        var csv_reader_config = new CsvConfiguration(CultureInfo.InvariantCulture)
         {
-            // WHO processing unusual in that it is from a csv file
-            // The program loops through the file and creates an XML file from each row
-            // It then distributes it to the correct source folder for 
-            // later harvesting.
+            HasHeaderRecord = false,
+        };
 
-            // In some cases the file will be one of a set created from a large
-            // 'all data' download, in other cases it will be a weekly update file
-            // In both cases any existing XML files of the same name should be overwritten.
+        var json_options = new JsonSerializerOptions()
+        {
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            WriteIndented = true
+        };
 
-            DownloadResult res = new();
-            string? file_base = source.local_folder;
+        using (var reader = new StreamReader(source_file, true))
+        {
+            using var csv = new CsvReader(reader, csv_reader_config);
+            var records = csv.GetRecords<WHO_SourceRecord>();
+            _loggingHelper.LogLine("Rows loaded into WHO record structure");
 
-            if (file_base is null)
+            // Consider each study row in turn and turn it into a WHO record class.
+
+            foreach (WHO_SourceRecord sr in records)
             {
-                _logging_helper.LogError("Null value passed for local folder value for this source");
-                return res;   // return zero result
-            }
+                res.num_checked++;
+                WHORecord? r = who_processor.ProcessStudyDetails(sr);
 
-            WHO_Processor who_processor = new();
-            string source_file = opts.FileName!;     // already checked as non-null
-
-            var csv_reader_config = new CsvConfiguration(CultureInfo.InvariantCulture)
-            {
-                HasHeaderRecord = false,
-            };
-
-            var json_options = new JsonSerializerOptions()
-            {
-                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-                WriteIndented = true
-            };
-
-            using (var reader = new StreamReader(source_file, true))
-            {
-                using var csv = new CsvReader(reader, csv_reader_config);
-                var records = csv.GetRecords<WHO_SourceRecord>();
-                _logging_helper.LogLine("Rows loaded into WHO record structure");
-
-                // Consider each study row in turn and turn it into a WHO record class.
-
-                foreach (WHO_SourceRecord sr in records)
+                if (r is not null)
                 {
-                    res.num_checked++;
-                    WHORecord? r = who_processor.ProcessStudyDetails(sr);
+                    // Write out study record as JSON, log the download.
 
-                    if (r is not null)
+                    if (!string.IsNullOrEmpty(r.folder_name))
                     {
-                        // Write out study record as JSON, log the download.
-
-                        if (!string.IsNullOrEmpty(r.folder_name))
+                        if (!Directory.Exists(r.folder_name))
                         {
-                            if (!Directory.Exists(r.folder_name))
-                            {
-                                Directory.CreateDirectory(r.folder_name);
-                            }
-                            string file_name = r.sd_sid + ".json";
-                            string full_path = Path.Combine(r.folder_name, file_name);
-                            try
-                            {
-                                await using FileStream jsonStream = File.Create(full_path);
-                                await JsonSerializer.SerializeAsync(jsonStream, r, json_options);
-                                await jsonStream.DisposeAsync();
-                            }
-                            catch (Exception e)
-                            {
-                                _logging_helper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
-                            }
-
-                            bool added = _mon_data_layer.UpdateStudyDownloadLog(r.source_id, r.sd_sid!, r.remote_url, (int)opts.saf_id!,
-                                                                r.record_date?.FetchDateTimeFromISO(), full_path);
-                            res.num_downloaded++;
-                            if (added) res.num_added++;
+                            Directory.CreateDirectory(r.folder_name);
                         }
-                    }
+                        string file_name = r.sd_sid + ".json";
+                        string full_path = Path.Combine(r.folder_name, file_name);
+                        try
+                        {
+                            await using FileStream jsonStream = File.Create(full_path);
+                            await JsonSerializer.SerializeAsync(jsonStream, r, json_options);
+                            await jsonStream.DisposeAsync();
+                        }
+                        catch (Exception e)
+                        {
+                            _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
+                        }
 
-                    if (res.num_checked % 100 == 0) _logging_helper.LogLine(res.num_checked.ToString());
+                        bool added = _monDataLayer.UpdateStudyDownloadLog(r.source_id, r.sd_sid, r.remote_url, (int)opts.saf_id!,
+                                                            r.record_date?.FetchDateTimeFromISO(), full_path);
+                        res.num_downloaded++;
+                        if (added) res.num_added++;
+                    }
                 }
+
+                if (res.num_checked % 100 == 0) _loggingHelper.LogLine(res.num_checked.ToString());
             }
-            return res;
         }
+        return res;
     }
 }

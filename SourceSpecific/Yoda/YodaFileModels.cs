@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-
-
+﻿
 namespace MDR_Downloader.yoda
 {
     public class Yoda_Record
     {
-        public string sd_sid { get; set; } = null!;
+        public string sd_sid { get; set; }
         public string? registry_id { get; set; }
         public string? yoda_title { get; set; }
         public string? name_base_title { get; set; }
@@ -18,7 +15,7 @@ namespace MDR_Downloader.yoda
         public int? study_type_id { get; set; }
         public string? compound_generic_name { get; set; }
         public string? compound_product_name { get; set; }
-        public string? therapaeutic_area { get; set; }
+        public string? therapeutic_area { get; set; }
         public string? enrolment { get; set; }
         public string? percent_female { get; set; }
         public string? percent_white { get; set; }
@@ -33,16 +30,12 @@ namespace MDR_Downloader.yoda
         public List<Title>? study_titles { get; set; }
         public List<Reference>? study_references { get; set; }
 
-        public Yoda_Record()
-        {
-        }
-
         public Yoda_Record(Summary sm)
         {
             sd_sid = sm.sd_sid;
             registry_id = sm.registry_id ?? "";
             yoda_title = sm.study_name;
-            is_yoda_only = (registry_id.StartsWith("NCT") || registry_id.StartsWith("ISRCTN")) ? false : true;
+            is_yoda_only = !registry_id.StartsWith("NCT") && !registry_id.StartsWith("ISRCTN");
             remote_url = sm.details_link;
         }
     }

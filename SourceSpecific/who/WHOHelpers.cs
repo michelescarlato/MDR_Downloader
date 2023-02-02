@@ -12,14 +12,11 @@ public class WHOHelpers
         {
             return null;
         }
-        else
-        {
-            return string_list.Split(";").ToList();
-        }
+        return string_list.Split(";").ToList();
     }
 
 
-    public List<string>? split_and_dedup_countries(string countries)
+    public List<string> split_and_dedup_countries(string countries)
     {
         // countries known to be non-null and already 'tidied'.
 
@@ -230,7 +227,7 @@ public class WHOHelpers
 
     public SecIdBase? GetSeconIdDetails(string sec_id, string sd_sid)
     {
-        string? interim_id = "", processed_id = null;
+        string? interim_id, processed_id = null;
         int? sec_id_source = null;
 
         if (sec_id.Contains("NCT"))
@@ -266,12 +263,12 @@ public class WHOHelpers
 
         else if (sec_id.Contains("ISRCTN"))
         {
+            interim_id = sec_id.Replace("ISRCTN ", "ISRCTN");
             interim_id = interim_id.Replace("(ISRCTN)", "");
             interim_id = interim_id.Replace("ISRCTN(International", "");
-            interim_id = sec_id.Replace("ISRCTN ", "ISRCTN");
             interim_id = interim_id.Replace("ISRCTN: ", "ISRCTN");
             interim_id = interim_id.Replace("ISRCTNISRCTN", "ISRCTN");
-
+            
             if (Regex.Match(interim_id, @"ISRCTN[0-9]{8}").Success)
             {
                 processed_id = Regex.Match(interim_id, @"ISRCTN[0-9]{8}").Value;
@@ -809,24 +806,24 @@ public class WHOHelpers
             string tid = trial_id.ToUpper();
             return tid switch
             {
-                string when tid.StartsWith("NCT") => 100120,
-                string when tid.StartsWith("EUCTR") => 100123,
-                string when tid.StartsWith("JPRN") => 100127,
-                string when tid.StartsWith("ACTRN") => 100116,
-                string when tid.StartsWith("RBR") => 100117,
-                string when tid.StartsWith("CHICTR") => 100118,
-                string when tid.StartsWith("KCT") => 100119,
-                string when tid.StartsWith("CTRI") => 100121,
-                string when tid.StartsWith("RPCEC") => 100122,
-                string when tid.StartsWith("DRKS") => 100124,
-                string when tid.StartsWith("IRCT") => 100125,
-                string when tid.StartsWith("ISRCTN") => 100126,
-                string when tid.StartsWith("PACTR") => 100128,
-                string when tid.StartsWith("PER") => 100129,
-                string when tid.StartsWith("SLCTR") => 100130,
-                string when tid.StartsWith("TCTR") => 100131,
-                string when tid.StartsWith("NL") || tid.StartsWith("NTR") => 100132,
-                string when tid.StartsWith("LBCTR") => 101989,
+                _ when tid.StartsWith("NCT") => 100120,
+                _ when tid.StartsWith("EUCTR") => 100123,
+                _ when tid.StartsWith("JPRN") => 100127,
+                _ when tid.StartsWith("ACTRN") => 100116,
+                _ when tid.StartsWith("RBR") => 100117,
+                _ when tid.StartsWith("CHICTR") => 100118,
+                _ when tid.StartsWith("KCT") => 100119,
+                _ when tid.StartsWith("CTRI") => 100121,
+                _ when tid.StartsWith("RPCEC") => 100122,
+                _ when tid.StartsWith("DRKS") => 100124,
+                _ when tid.StartsWith("IRCT") => 100125,
+                _ when tid.StartsWith("ISRCTN") => 100126,
+                _ when tid.StartsWith("PACTR") => 100128,
+                _ when tid.StartsWith("PER") => 100129,
+                _ when tid.StartsWith("SLCTR") => 100130,
+                _ when tid.StartsWith("TCTR") => 100131,
+                _ when tid.StartsWith("NL") || tid.StartsWith("NTR") => 100132,
+                _ when tid.StartsWith("LBCTR") => 101989,
                 _ => 0
             };
         }

@@ -98,7 +98,7 @@ public class StudyFileRecord
     [Key] 
     public int id { get; set; }
     public int? source_id { get; set; }
-    public string?sd_id { get; set; }
+    public string sd_id { get; set; } = null!;
     public string? remote_url { get; set; }
     public DateTime? last_revised { get; set; }
     public bool? assume_complete { get; set; }
@@ -112,7 +112,7 @@ public class StudyFileRecord
     public DateTime? last_imported { get; set; }
 
     // constructor when a revision data can be expected (not always there)
-    public StudyFileRecord(int? _source_id, string? _sd_id, string? _remote_url, int? _last_saf_id,
+    public StudyFileRecord(int? _source_id, string _sd_id, string? _remote_url, int? _last_saf_id,
                                           DateTime? _last_revised, string? _local_path)
     {
         source_id = _source_id;
@@ -211,60 +211,3 @@ public class DownloadResult
     }
 }
 
-
-public class PMCResponse
-{
-    public string? status { get; set; }
-    public string? responseDate { get; set; }
-    public string? request { get; set; }
-    public List<NLMRecords>? records { get; set; }
-}
-
-
-public class NLMRecords
-{
-    public string? pmcid { get; set; }
-    public string? pmid { get; set; }
-    public string? doi { get; set; }
-}
-
-
-[Table("sf.extraction_notes")]
-public class ExtractionNote
-{
-    public int? id { get; set; }
-    public int? source_id { get; set; }
-    public string? sd_id { get; set; }
-    public string? event_type { get; set; }
-    public int? event_type_id { get; set; }
-    public int? note_type_id { get; set; }
-    public string? note { get; set; }
-
-    public ExtractionNote(int? _source_id, string? _sd_id, string? _event_type,
-                          int? _event_type_id, int? _note_type_id, string? _note)
-    {
-        source_id = _source_id;
-        sd_id = _sd_id;
-        event_type = _event_type;
-        event_type_id = _event_type_id;
-        note_type_id = _note_type_id;
-        note = _note;
-    }
-}
-
-
-public class LoggingCopyHelper
-{
-    public PostgreSQLCopyHelper<StudyFileRecord> file_record_copyhelper =
-        new PostgreSQLCopyHelper<StudyFileRecord>("sf", "source_data_studies")
-            .MapInteger("source_id", x => x.source_id)
-            .MapVarchar("sd_id", x => x.sd_id)
-            .MapVarchar("remote_url", x => x.remote_url)
-            .MapInteger("last_saf_id", x => x.last_saf_id)
-            .MapTimeStampTz("last_revised", x => x.last_revised)
-            .MapBoolean("assume_complete", x => x.assume_complete)
-            .MapInteger("download_status", x => x.download_status)
-            .MapTimeStampTz("last_downloaded", x => x.last_downloaded)
-            .MapVarchar("local_path", x => x.local_path);
-
-}

@@ -5,19 +5,20 @@ using System.Text.Json;
 
 namespace MDR_Downloader.euctr;
 
-class EUCTR_Controller : ISourceController
+class EUCTR_Controller : IDLController
 {
-    private readonly ILoggingHelper _logging_helper;
-    private readonly IMonDataLayer _mon_data_layer;
+    private readonly IMonDataLayer _monDataLayer;
+    private readonly ILoggingHelper _loggingHelper;    
+    
     private readonly string _baseURL;
     private readonly JsonSerializerOptions? _json_options;
     private readonly EUCTR_Processor _processor = new();
     private int _access_error_num;
     
-    public EUCTR_Controller(IMonDataLayer mon_data_layer, ILoggingHelper logging_helper)
+    public EUCTR_Controller(IMonDataLayer monDataLayer, ILoggingHelper loggingHelper)
     {
-        _logging_helper = logging_helper;
-        _mon_data_layer = mon_data_layer;
+        _monDataLayer = monDataLayer;
+        _loggingHelper = loggingHelper;
         
         _baseURL = "https://www.clinicaltrialsregister.eu/ctr-search/search?page=";
         _json_options = new()
@@ -29,14 +30,15 @@ class EUCTR_Controller : ISourceController
     }
 
     public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
+        
     {
         DownloadResult res = new();
-        ScrapingHelpers ch = new(_logging_helper);
+        ScrapingHelpers ch = new(_loggingHelper);
         string? file_base = source.local_folder;
 
         if (file_base is null)
         {
-            _logging_helper.LogError("Null value passed for local folder value for this source");
+            _loggingHelper.LogError("Null value passed for local folder value for this source");
             return res;   // return zero result
         }
 
@@ -47,7 +49,7 @@ class EUCTR_Controller : ISourceController
         WebPage? initialPage = await ch.GetPageAsync(_baseURL + "1");
         if (initialPage is null)
         {
-            _logging_helper.LogError("Unable to open initial summary page (web site may be down), so unable to proceed");
+            _loggingHelper.LogError("Unable to open initial summary page (web site may be down), so unable to proceed");
             return res;   // return zero result
         }
 
@@ -57,7 +59,7 @@ class EUCTR_Controller : ISourceController
         int rec_num = _processor.GetListLength(initialPage);
         if (rec_num == 0)
         {
-            _logging_helper.LogError("Unable to capture total record numbers in preliminary set up, so unable to proceed");
+            _loggingHelper.LogError("Unable to capture total record numbers in preliminary set up, so unable to proceed");
             return res;  // return zero result
         }
 
@@ -70,10 +72,8 @@ class EUCTR_Controller : ISourceController
 
         if (opts.FetchTypeId == 145)
         {
-            if (opts.StartPage is null)
-            {
-                opts.StartPage = 0; // by default start at the beginning, but can be over-written by StartPage parameter
-            }
+            // by default start at the beginning, but can be over-written by StartPage parameter
+            opts.StartPage ??= 0;
             start_page = (int)opts.StartPage;
             end_page = total_summary_pages;
         }
@@ -86,13 +86,13 @@ class EUCTR_Controller : ISourceController
             }
             else
             {
-                _logging_helper.LogError("Valid start and end page numbers not provided for page based download");
+                _loggingHelper.LogError("Valid start and end page numbers not provided for page based download");
                 return res;  // return zero result
             }
         }
         else
         {
-            _logging_helper.LogError("Download type requested not in allowed list for EU CTR"); 
+            _loggingHelper.LogError("Download type requested not in allowed list for EU CTR"); 
             return res;  // return zero result
         }
 
@@ -103,11 +103,11 @@ class EUCTR_Controller : ISourceController
     }
 
 
-    async Task<DownloadResult> LoopThroughDesignatedPagesAsync(int type_id, int start_page, int end_page, 
-                                                          int? days_ago, int source_id, int saf_id, string file_base)
+    private async Task<DownloadResult> LoopThroughDesignatedPagesAsync(int type_id, int start_page, int end_page, 
+                               int? days_ago, int source_id, int saf_id, string file_base)
     {
         DownloadResult res = new DownloadResult();
-        ScrapingHelpers ch = new(_logging_helper);
+        ScrapingHelpers ch = new(_loggingHelper);
 
         for (int i = start_page; i <= end_page; i++)
         {
@@ -118,14 +118,14 @@ class EUCTR_Controller : ISourceController
             WebPage? summaryPage = await ch.GetPageAsync(_baseURL + i.ToString());
             if (summaryPage is null)
             {
-                _logging_helper.LogError($"Unable to reach summary data page {i} - skipping this page");
+                _loggingHelper.LogError($"Unable to reach summary data page {i} - skipping this page");
                 break;
             }
 
             List<Study_Summary>? summaries = _processor.GetStudyList(summaryPage);
             if (summaries?.Any() != true)
             {
-                _logging_helper.LogError($"Problem in collecting summary data on page {i} - skipping this page");
+                _loggingHelper.LogError($"Problem in collecting summary data on page {i} - skipping this page");
                 break;
             }
 
@@ -137,10 +137,10 @@ class EUCTR_Controller : ISourceController
             {
                 bool do_download = false;
                 res.num_checked++;
-                StudyFileRecord? file_record = _mon_data_layer.FetchStudyFileRecord(s.eudract_id, source_id);
+                StudyFileRecord? file_record = _monDataLayer.FetchStudyFileRecord(s.eudract_id, source_id);
                 if (file_record is null)
                 {
-                    // a new record not yet existing in study sourece table - must be downloaded.
+                    // a new record not yet existing in study source table - must be downloaded.
 
                     do_download = true;
                 }
@@ -158,7 +158,7 @@ class EUCTR_Controller : ISourceController
 
                         if (days_ago is not null)
                         {
-                            if (_mon_data_layer.Downloaded_recently(source_id, s.eudract_id, (int)days_ago))
+                            if (_monDataLayer.Downloaded_recently(source_id, s.eudract_id, (int)days_ago))
                             {
                                 do_download = false;
                             }
@@ -177,15 +177,14 @@ class EUCTR_Controller : ISourceController
 
             if (num_to_download > 0)
             {
-                for (int j = 0; j < summaries.Count; j++)
+                foreach (var s in summaries)
                 {
-                    Study_Summary s = summaries[j];
-                    if ((bool)s.do_download!)
+                    if (s.do_download is true)
                     {
                         Euctr_Record st = _processor.GetInfoFromSummary(s);
                         if (st.details_url is null)
                         {
-                            _logging_helper.LogError($"Problem in obtaining protocol details url from summary page, for {s.eudract_id}");
+                            _loggingHelper.LogError($"Problem in obtaining protocol details url from summary page, for {s.eudract_id}");
                             CheckAccessErrorCount();
                         }
                         else
@@ -194,7 +193,7 @@ class EUCTR_Controller : ISourceController
                             WebPage? detailsPage = await ch.GetPageAsync(st.details_url);
                             if (detailsPage is null)
                             {
-                                _logging_helper.LogError($"Problem in navigating to protocol details page for {s.eudract_id}");
+                                _loggingHelper.LogError($"Problem in navigating to protocol details page for {s.eudract_id}");
                                 CheckAccessErrorCount();
                             }
                             else 
@@ -213,7 +212,7 @@ class EUCTR_Controller : ISourceController
                                     }
                                     else
                                     {
-                                        _logging_helper.LogError($"Problem in navigating to result details, for {s.eudract_id}");
+                                        _loggingHelper.LogError($"Problem in navigating to result details, for {s.eudract_id}");
                                         CheckAccessErrorCount();
                                     }
                                 }
@@ -225,23 +224,22 @@ class EUCTR_Controller : ISourceController
                                 if (full_path != "error")
                                 {
                                     string? remote_url = st.details_url;
-                                    bool added = _mon_data_layer.UpdateStudyDownloadLog(source_id, s.eudract_id, 
-                                                      remote_url, saf_id, null, full_path);
+                                    bool added = _monDataLayer.UpdateStudyDownloadLog(source_id, s.eudract_id, 
+                                        remote_url, saf_id, null, full_path);
                                     res.num_downloaded++;
                                     if (added) res.num_added++;
                                 }
                             }
                         }
                     }
-                }  
+                }
             }
-            _logging_helper.LogLine($"Page {i} processed: {res.num_checked} studies checked, {res.num_downloaded} downloaded");
+            _loggingHelper.LogLine($"Page {i} processed: {res.num_checked} studies checked, {res.num_downloaded} downloaded");
         }
 
         return res;
     }
-                
-
+      
     // Writes out the file with the correct name to the correct folder, as indented json.
     // Called from the DownloadBatch function.
     // Returns the full file path as constructed, or an 'error' string if an exception occurred.
@@ -259,7 +257,7 @@ class EUCTR_Controller : ISourceController
         }
         catch (Exception e)
         {
-            _logging_helper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
+            _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
             return "error";
         }
     }

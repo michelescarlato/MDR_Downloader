@@ -283,10 +283,10 @@ public class Options
     [Option('f', "file_name", Required = false, HelpText = "Filename of csv file with data.")]
     public string? FileName { get; set; }
 
-    [Option('a', "amount for id based download", Required = false, HelpText = "Integer indicating the nmumber of ids to be iuused in fetching data.")]
+    [Option('a', "amount for id based download", Required = false, HelpText = "Integer indicating the number of ids to be used in fetching data.")]
     public int? AmountIds { get; set; }
 
-    [Option('o', "offset for id based download", Required = false, HelpText = "Integer indicating the offset to use when interrogatring the list of Ids.")]
+    [Option('o', "offset for id based download", Required = false, HelpText = "Integer indicating the offset to use when interrogating the list of Ids.")]
     public int? OffsetIds { get; set; }
 
     [Option('I', "skip_recent", Required = false, HelpText = "Integer id representing the number of days ago, to skip recent downloads (0 = today).")]
@@ -310,7 +310,6 @@ public class Options
     public string? previous_saf_ids { get; set; }
 
 }
-
 
 internal class ParamsCheckResult
 {

@@ -16,7 +16,6 @@
     <Compile Remove="SourceSpecific\pubmed\PubMedSearchResult.cs" />
     <Compile Remove="SourceSpecific\download_controller.cs" />
     <Compile Remove="SourceSpecific\pubmed\PubMedOriginalSourceModels.cs" />
-    <Compile Remove="TopLevelClasses\SourceController.cs" />
   </ItemGroup>
 
   <ItemGroup>
