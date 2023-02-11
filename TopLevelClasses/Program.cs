@@ -4,15 +4,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MDR_Downloader;
 
-string AssemblyLocation = Assembly.GetExecutingAssembly().Location;
-string? BasePath = Path.GetDirectoryName(AssemblyLocation);
-if (string.IsNullOrWhiteSpace(BasePath))
+string assemblyLocation = Assembly.GetExecutingAssembly().Location;
+string? basePath = Path.GetDirectoryName(assemblyLocation);
+if (string.IsNullOrWhiteSpace(basePath))
 {
     return -1;
 }
 
 var configFiles = new ConfigurationBuilder()
-    .SetBasePath(BasePath)
+    .SetBasePath(basePath)
     .AddJsonFile("appsettings.json")
     .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json", true)
     .Build();
@@ -22,7 +22,7 @@ var configFiles = new ConfigurationBuilder()
 // Note ALL listed services are singletons.
 
 IHost host = Host.CreateDefaultBuilder()
-    .UseContentRoot(BasePath)
+    .UseContentRoot(basePath)
     .ConfigureAppConfiguration(builder =>
     {
         builder.AddConfiguration(configFiles);
@@ -49,8 +49,8 @@ IMonDataLayer mon_data_layer = ActivatorUtilities.CreateInstance<IMonDataLayer>(
 // original arguments and the 'source' object with details of the
 // single data source being downloaded. 
 
-ParameterChecker _param_checker = new(logging_helper, mon_data_layer);
-ParamsCheckResult paramsCheck = _param_checker.CheckParams(args);
+ParameterChecker param_checker = new(logging_helper, mon_data_layer);
+ParamsCheckResult paramsCheck = param_checker.CheckParams(args);
 if (paramsCheck.ParseError || paramsCheck.ValidityError)
 {
     // End program, parameter errors should have been logged
