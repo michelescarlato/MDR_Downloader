@@ -50,7 +50,7 @@ public class BioLINCC_Processor
     }
 
 
-    public async Task<BioLincc_Record?> GetStudyDetailsAsync(BioLincc_Basics bb)
+    public async Task<BioLinccRecord?> GetStudyDetailsAsync(BioLincc_Basics bb)
     {
         // First check the study main page can be reached.
 
@@ -83,7 +83,7 @@ public class BioLINCC_Processor
               
         // Establish record to be filled, and obtain major page components.
 
-        BioLincc_Record st = new(bb);
+        BioLinccRecord st = new(bb);
         List<PrimaryDoc> primary_docs = new();
         List<RegistryId> registry_ids = new();
         List<Resource> study_resources = new();
@@ -158,13 +158,13 @@ public class BioLINCC_Processor
             string? NCTId = registry_ids[0].nct_id;
             if (NCTId is not null)
             {
-                var sponsor_details = _repo.FetchSponsorFromNCT(NCTId);
+                var sponsor_details = _repo.FetchSponsorFromNct(NCTId);
                 if (sponsor_details is not null)
                 {
                     st.sponsor_id = sponsor_details.org_id;
                     st.sponsor_name = sponsor_details.org_name;
                 }
-                st.nct_base_name = _repo.FetchNameBaseFromNCT(NCTId);
+                st.nct_base_name = _repo.FetchNameBaseFromNct(NCTId);
             }
         }
 
@@ -180,7 +180,7 @@ public class BioLINCC_Processor
     }
 
 
-    async Task ProcessBasicDetails(BioLincc_Record st, IEnumerable<HtmlNode> entries, 
+    async Task ProcessBasicDetails(BioLinccRecord st, IEnumerable<HtmlNode> entries, 
                  List<PrimaryDoc> primary_docs, List<RegistryId> registry_ids, 
                  List<RelatedStudy> related_studies)
     {
@@ -387,7 +387,7 @@ public class BioLINCC_Processor
     }
 
 
-    void ProcessDescriptiveParas(BioLincc_Record st, HtmlNode description, IEnumerable<HtmlNode> section_headings)
+    void ProcessDescriptiveParas(BioLinccRecord st, HtmlNode description, IEnumerable<HtmlNode> section_headings)
     {
         string descriptive_text = description.InnerHtml;
         string? descriptive_paras = "";
@@ -440,7 +440,7 @@ public class BioLINCC_Processor
     }
 
 
-    string? ProcessSideBar(BioLincc_Record st, IEnumerable<HtmlNode> sections, List<Resource> study_resources)
+    string? ProcessSideBar(BioLinccRecord st, IEnumerable<HtmlNode> sections, List<Resource> study_resources)
     {
         string? pubs_link = null;
         foreach (HtmlNode section in sections)
@@ -641,7 +641,7 @@ public class BioLINCC_Processor
     }
 
 
-    void ProcessConsents(BioLincc_Record st, IEnumerable<HtmlNode> entries)
+    void ProcessConsents(BioLinccRecord st, IEnumerable<HtmlNode> entries)
     {
         // Scan second table with any consent restriction details
         bool comm_use_data_restrictions = false;
@@ -721,7 +721,7 @@ public class BioLINCC_Processor
     }
 
 
-    async Task<int> ProcessPublicationData(BioLincc_Record st, IEnumerable<HtmlNode> articleLinks, List<AssocDoc> assoc_docs)
+    async Task<int> ProcessPublicationData(BioLinccRecord st, IEnumerable<HtmlNode> articleLinks, List<AssocDoc> assoc_docs)
     {
         int n = 0;
         foreach (HtmlNode article in articleLinks)

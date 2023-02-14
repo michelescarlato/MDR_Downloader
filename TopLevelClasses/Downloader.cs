@@ -34,7 +34,7 @@ public class Downloader
         {
             case 101900:
                 {
-                    dl_controller = new BioLINCC_Controller(_monDataLayer, _loggingHelper); break;
+                    dl_controller = new BioLinccController(_monDataLayer, _loggingHelper); break;
                 }
             case 101901:
                 {

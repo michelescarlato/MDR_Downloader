@@ -8,14 +8,14 @@ using System.Text.Json;
 
 namespace MDR_Downloader.biolincc;
 
-public class BioLINCC_Controller : IDLController
+public class BioLinccController : IDLController
 {
     private readonly IMonDataLayer _monDataLayer;
     private readonly ILoggingHelper _loggingHelper;    
     private readonly BioLinccDataLayer _biolinccRepo;    
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public BioLINCC_Controller(IMonDataLayer monDataLayer, ILoggingHelper loggingHelper)
+    public BioLinccController(IMonDataLayer monDataLayer, ILoggingHelper loggingHelper)
     {
         _monDataLayer = monDataLayer;
         _loggingHelper = loggingHelper;
@@ -48,7 +48,7 @@ public class BioLINCC_Controller : IDLController
 
         DownloadResult res = await LoopThroughPagesAsync(opts, source);
         
-        // A second routine uses the data collected about which BIOLINCC studies link to 
+        // A second routine uses the data collected about which biolincc studies link to 
         // which NCT studies (it is not always 1-to-1) to update the 'in multi-BioLINCC
         // group' field, when multiple BioLINCC studies correspond to a single NCT study,
         // for those records that require it.
@@ -130,7 +130,7 @@ public class BioLINCC_Controller : IDLController
                         // the download for that record - but an error is posted so that the 
                         // issue can be resolved.
                         
-                        BioLincc_Record? st = await biolincc_processor.GetStudyDetailsAsync(bb);
+                        BioLinccRecord? st = await biolincc_processor.GetStudyDetailsAsync(bb);
                         _loggingHelper.LogLine($"Obtaining #{res.num_checked}: {bb.sd_sid}");
 
                         if (st is not null)
@@ -191,10 +191,10 @@ public class BioLINCC_Controller : IDLController
     // of a group linked to a single NCT record. If so it de-serialises the file and updates
     // the relevant field, before re-serialising the data back to the file.
     
-    private async Task PostProcessDataAsync(List<StudyFileRecord> file_list)
+    private async Task PostProcessDataAsync(List<StudyFileRecord> fileList)
     {
         int n = 0, r= 0; 
-        foreach (StudyFileRecord rec in file_list)
+        foreach (StudyFileRecord rec in fileList)
         {
             n++;
             bool in_multiple_biolincc_group = _biolinccRepo.GetMultiLinkStatus(rec.sd_id);
@@ -204,7 +204,7 @@ public class BioLINCC_Controller : IDLController
                 if (File.Exists(filePath) && filePath[^4..] == "json")  
                 { 
                     string jsonString = await File.ReadAllTextAsync(filePath);
-                    BioLincc_Record? biolincc_study = JsonSerializer.Deserialize<BioLincc_Record?>(jsonString, _jsonOptions);
+                    BioLinccRecord? biolincc_study = JsonSerializer.Deserialize<BioLinccRecord?>(jsonString, _jsonOptions);
                     if (biolincc_study is not null)
                     {
                         biolincc_study.in_multiple_biolincc_group = true;
@@ -224,6 +224,6 @@ public class BioLINCC_Controller : IDLController
             }
             if (n % 10 == 0) _loggingHelper.LogLine("Checked " + n.ToString());
         }
-        _loggingHelper.LogLine("Updated " + r.ToString() + " as being in 'multiple Biolincc to 1 NCT' group");
+        _loggingHelper.LogLine("Updated " + r.ToString() + " as being in 'multiple biolincc to 1 NCT' group");
     }
 }

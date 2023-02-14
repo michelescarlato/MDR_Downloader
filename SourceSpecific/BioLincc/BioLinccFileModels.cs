@@ -1,6 +1,6 @@
 ﻿namespace MDR_Downloader.biolincc;
 
-public class BioLincc_Record
+public class BioLinccRecord
 {
     public string sd_sid { get; set; } = null!;
     public string? remote_url { get; set; }
@@ -38,7 +38,7 @@ public class BioLincc_Record
     // Set this List up in case it is needed
     public readonly List<string> UnmatchedDocTypes = new();
 
-    public BioLincc_Record(BioLincc_Basics bb)
+    public BioLinccRecord(BioLincc_Basics bb)
     {
         sd_sid = bb.sd_sid;
         remote_url = bb.remote_url;
@@ -48,7 +48,7 @@ public class BioLincc_Record
 
     }
 
-    public BioLincc_Record()
+    public BioLinccRecord()
     { }
 }
 
@@ -76,10 +76,10 @@ public class RegistryId
     public string? nct_id { get; set; }
     public string? comment { get; set; }
 
-    public RegistryId(string? _url,	string? _nctid, string? _comment)
+    public RegistryId(string? _url,	string? _nct_id, string? _comment)
     {
         url = _url;
-        nct_id = _nctid;
+        nct_id = _nct_id;
         comment = _comment;
     }
 

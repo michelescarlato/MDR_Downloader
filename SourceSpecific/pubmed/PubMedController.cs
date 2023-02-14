@@ -31,17 +31,17 @@ public class PubMed_Controller : IDLController
 {
     private readonly IMonDataLayer _monDataLayer;
     private readonly ILoggingHelper _loggingHelper;   
-    private readonly PubMedDataLayer _pubmed_repo;
+    private readonly PubMedDataLayer _pubmedRepo;
     
-    private readonly JsonSerializerOptions? _json_options;    
+    private readonly JsonSerializerOptions? _jsonOptions;    
     private string postBaseURL = "", searchBaseURL = "", fetchBaseURL = "";
 
     public PubMed_Controller(IMonDataLayer monDataLayer, ILoggingHelper loggingHelper)
     {
         _monDataLayer = monDataLayer;
         _loggingHelper = loggingHelper;
-        _pubmed_repo = new(monDataLayer.Credentials);
-        _json_options = new()
+        _pubmedRepo = new(monDataLayer.Credentials);
+        _jsonOptions = new()
         {
             AllowTrailingCommas = true,
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
@@ -124,7 +124,7 @@ public class PubMed_Controller : IDLController
 
         // Get list of potential linked data banks (includes trial registries).
 
-        IEnumerable<PMSource> banks = _pubmed_repo.FetchDatabanks();
+        IEnumerable<PMSource> banks = _pubmedRepo.FetchDatabanks();
         string? web_env = "";
         int query_key = 0;
 
@@ -221,25 +221,25 @@ public class PubMed_Controller : IDLController
             // cutoff date as the last revised date is not known at this time
             // - has to be checked later.
 
-            _pubmed_repo.SetUpTempPMIDsBySourceTables();
-            IEnumerable<Source> sources = _pubmed_repo.FetchSourcesWithReferences();
+            _pubmedRepo.SetUpTempPMIDsBySourceTables();
+            IEnumerable<Source> sources = _pubmedRepo.FetchSourcesWithReferences();
             foreach (Source s in sources)
             {
-                IEnumerable<PMIDBySource> references = _pubmed_repo.FetchSourceReferences(s.database_name!);
-                _pubmed_repo.StorePmidsBySource(helper.source_ids_helper, references);
+                IEnumerable<PMIDBySource> references = _pubmedRepo.FetchSourceReferences(s.database_name!);
+                _pubmedRepo.StorePmidsBySource(helper.source_ids_helper, references);
             }
 
             // Groups the ids into lists of a 100 (max) each, in  
             // pp.pmid_id_strings table.
 
-            _pubmed_repo.CreatePMID_IDStrings();
+            _pubmedRepo.CreatePMID_IDStrings();
 
             // Then take each string
             // and post it to the Entry history server
             // getting back the web environment and query key parameters
 
             int string_num = 0;
-            IEnumerable<string> id_strings = _pubmed_repo.FetchSourcePMIDStrings();
+            IEnumerable<string> id_strings = _pubmedRepo.FetchSourcePMIDStrings();
             foreach (string id_string in id_strings)
             {
                 string_num++;
@@ -343,7 +343,7 @@ public class PubMed_Controller : IDLController
                 var articles = search_result.PubmedArticles;
                 if (articles?.Any() is true)
                 {
-                    PubMed_Processor pubmed_processor = new(_pubmed_repo, _loggingHelper);
+                    PubMed_Processor pubmed_processor = new(_pubmedRepo, _loggingHelper);
                     foreach (PubmedArticle article in articles)
                     {
                         // Send each pubmed article object, as obtained from the XML, to the 
@@ -395,9 +395,9 @@ public class PubMed_Controller : IDLController
     // Called from the FetchPubMedRecordsAsync function.
     // Returns the full file path as constructed, or an 'error' string if an exception occurred.
 
-    private async Task<string> WriteOutFile(FullObject fob, int ipmid, string file_base)
+    private async Task<string> WriteOutFile(FullObject fob, int ipmid, string fileBase)
     {
-        string folder_name = Path.Combine(file_base, "PM" + (ipmid / 10000).ToString("00000") + "xxxx");
+        string folder_name = Path.Combine(fileBase, "PM" + (ipmid / 100000).ToString("0000") + "xxxxx");
         if (!Directory.Exists(folder_name))
         {
             Directory.CreateDirectory(folder_name);
@@ -407,7 +407,7 @@ public class PubMed_Controller : IDLController
         try
         {
             await using FileStream jsonStream = File.Create(full_path);
-            await JsonSerializer.SerializeAsync(jsonStream, fob, _json_options);
+            await JsonSerializer.SerializeAsync(jsonStream, fob, _jsonOptions);
             await jsonStream.DisposeAsync();
             return full_path;
         }

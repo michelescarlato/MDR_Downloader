@@ -154,10 +154,10 @@ class ISRCTN_Controller : IDLController
         end_date = end_date > DateTime.Now ? DateTime.Now.Date : end_date;
 
         DateTime baseDate = new DateTime(2005, 1, 1);
-        int startday = (start_date - baseDate).Days;
-        int endday = (end_date - baseDate).Days;
+        int startDay = (start_date - baseDate).Days;
+        int endDay = (end_date - baseDate).Days;
 
-        for (int d = startday; d < endday; d += 4)
+        for (int d = startDay; d < endDay; d += 4)
         {
             // The 4 days being considered are the start date
             // and the following three days. 
@@ -328,18 +328,18 @@ class ISRCTN_Controller : IDLController
 
     // String function that constructs the required URL for the ISRCTN API.
 
-    private string GetUrl(int limit, DateTime startdate, DateTime? enddate = null)
+    private string GetUrl(int limit, DateTime startDate, DateTime? endDate = null)
     {
         string start_date_param, id_params;
-        if (enddate is null)
+        if (endDate is null)
         {
-            start_date_param = $"{startdate.Year}-{startdate.Month:00}-{startdate.Day:00}";
+            start_date_param = $"{startDate.Year}-{startDate.Month:00}-{startDate.Day:00}";
             id_params = "lastEdited%20GE%20" + start_date_param + "T00:00:00%20";
         }
         else
         {
-            DateTime end_date = (DateTime)enddate;
-            start_date_param = $"{startdate.Year}-{startdate.Month:00}-{startdate.Day:00}";
+            DateTime end_date = (DateTime)endDate;
+            start_date_param = $"{startDate.Year}-{startDate.Month:00}-{startDate.Day:00}";
             string end_date_param = $"{end_date.Year}-{end_date.Month:00}-{end_date.Day:00}";
             id_params = "lastEdited%20GE%20" + start_date_param + "T00:00:00%20AND%20lastEdited%20LT%20" + end_date_param + "T00:00:00";
         }
@@ -361,8 +361,8 @@ class ISRCTN_Controller : IDLController
         try
         {
             var xmlSerializer = new XmlSerializer(typeof(T));
-            using var stringreader = new StringReader(inputString);
-            instance = (T?)xmlSerializer.Deserialize(stringreader);
+            using var stringReader = new StringReader(inputString);
+            instance = (T?)xmlSerializer.Deserialize(stringReader);
         }
         catch(Exception e)
         {
