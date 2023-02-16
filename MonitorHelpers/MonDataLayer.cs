@@ -20,7 +20,7 @@ public class MonDataLayer : IMonDataLayer
         _credentials = credentials;
         
         connString = credentials.GetConnectionString("mon");
-        pubmedAPIKey = credentials.PubmedAPIKey;
+        pubmedAPIKey = credentials.GetPubMedApiKey();
  
         sql_file_select_string = "select id, source_id, sd_id, remote_url, last_revised, ";
         sql_file_select_string += " assume_complete, download_status, local_path, last_saf_id, last_downloaded, ";

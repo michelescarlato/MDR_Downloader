@@ -159,19 +159,19 @@ public class PubMed_Controller : IDLController
             }
 
             // loop through the records and obtain and store relevant
-            // records, of PubMed Ids, retmax (= 100) at a time     
+            // records, of PubMed Ids, retMax (= 100) at a time     
 
             if (totalRecords > 0 && web_env is not null)
             {
-                int retmax = 100;
-                int numCallsNeeded = totalRecords / retmax + 1;
+                int retMax = 100;
+                int numCallsNeeded = totalRecords / retMax + 1;
                 for (int i = 0; i < numCallsNeeded; i++)
                 {
                     try
                     {
                         // Retrieve the articles as nodes.
                         string fetchUrl = fetchBaseURL + "&WebEnv=" + web_env + "&query_key=" + query_key.ToString();
-                        fetchUrl += "&retstart=" + (i * retmax).ToString() + "&retmax=" + retmax.ToString();
+                        fetchUrl += "&retstart=" + (i * retMax).ToString() + "&retmax=" + retMax.ToString();
                         fetchUrl += "&retmode=xml";
                         await FetchPubMedRecordsAsync(fetchUrl, res, source, (int)opts.saf_id!, source.local_folder!);
                         Thread.Sleep(300);
@@ -181,9 +181,9 @@ public class PubMed_Controller : IDLController
                         _loggingHelper.LogError("In PubMed ProcessPMIDsListFromBanksAsync(): " + e.Message);
                     }
 
-                    if ((i + 1) * retmax < totalRecords)
+                    if ((i + 1) * retMax < totalRecords)
                     {
-                        _loggingHelper.LogLine($"Processed {(i + 1) * retmax} records from {s.nlm_abbrev}");
+                        _loggingHelper.LogLine($"Processed {(i + 1) * retMax} records from {s.nlm_abbrev}");
                     }
                 }
             }

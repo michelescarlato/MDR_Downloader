@@ -53,7 +53,7 @@ public class ScrapingHelpers
     }
 
 
-    public async Task<string?> GetPMIDFromNLMAsync(string pmc_id)
+    public async Task<string?> GetPmidFromNlmAsync(string pmc_id)
     {
         string base_url = "https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/";
         base_url += "?tool=ECRIN-MDR&email=steve@canhamis.eu&versions=no&ids=";
@@ -92,6 +92,7 @@ public class PMCResponse
     public string? status { get; set; }
     public string? responseDate { get; set; }
     public string? request { get; set; }
+    // ReSharper disable once CollectionNeverUpdated.Global
     public List<NLMRecords>? records { get; set; }
 }
 

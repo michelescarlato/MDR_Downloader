@@ -25,7 +25,6 @@ namespace MDR_Downloader.yoda
 
         public List<Summary> GetStudyInitialDetails(WebPage homePage)
         {
-            string? cellValue;
             List<Summary> page_study_list = new ();
 
             HtmlNode? pageContent = homePage.Find("div", By.Class("view-content")).FirstOrDefault();
@@ -35,8 +34,8 @@ namespace MDR_Downloader.yoda
                 return page_study_list;  // empty list
             }
 
-            IEnumerable<HtmlNode>? studyRows = pageContent.CssSelect("tbody tr");
-            if (studyRows?.Any() != true)
+            List<HtmlNode> studyRows = pageContent.CssSelect("tbody tr").ToList();
+            if (!studyRows.Any())
             {
                 _logging_helper.LogError("Unable to find study rows listing on summary page");
                 return page_study_list;  // empty list
@@ -55,14 +54,14 @@ namespace MDR_Downloader.yoda
                 for (int i = 0; i < 5; i++)
                 {
                     HtmlNode col = cols[i];
-                    cellValue = col.InnerText?.Replace("\n", "")?.Replace("\r", "")?.Trim() ?? "";
-                    if (cellValue != "")
+                    string cellValue = col.InnerText?.Replace("\n", "").Replace("\r", "").Trim() ?? "";
+                    if (!string.IsNullOrEmpty(cellValue))
                     {
                         cellValue = cellValue.Replace("??", " ").Replace("&#039;", "’").Replace("'", "’");
                     }
                     switch (i)
                     {
-                        case 0: sm.registry_id = cellValue; break;   // Usually NCT number, may be an ISRCT id, may be blank
+                        case 0: sm.registry_id = cellValue; break;   // Usually NCT number, may be an ISRCTN id, may be blank
                         case 1: sm.generic_name = cellValue; break;
                         case 2:
                             {
@@ -127,19 +126,14 @@ namespace MDR_Downloader.yoda
         public async Task<Yoda_Record?> GetStudyDetailsAsync (HtmlNode page, Summary sm)
         {
             Yoda_Record st = new (sm);
-            string sid = st.sd_sid!;
+            string sid = st.sd_sid;
 
             // Get page components.
 
             HtmlNode? propsBlock = page.CssSelect("#block-views-trial-details-block-2").FirstOrDefault();
-            IEnumerable<HtmlNode>? leftcol = propsBlock.CssSelect(".left-col");
-            IEnumerable<HtmlNode>? rightcol = propsBlock.CssSelect(".right-col");
-            IEnumerable<HtmlNode>? props = leftcol.CssSelect(".views-field").Concat(rightcol.CssSelect(".views-field"));
-            if (props is null)
-            {
-                _logging_helper.LogError("Unable to find main property box on details page");
-                return null;  // empty list
-            }
+            IEnumerable<HtmlNode>? leftCols = propsBlock.CssSelect(".left-col");
+            IEnumerable<HtmlNode>? rightCols = propsBlock.CssSelect(".right-col");
+            IEnumerable<HtmlNode> props = leftCols.CssSelect(".views-field").Concat(rightCols.CssSelect(".views-field"));
 
             List<SuppDoc> supp_docs = new ();
             List<Identifier> study_identifiers = new();
@@ -184,7 +178,7 @@ namespace MDR_Downloader.yoda
             SponsorDetails? sponsor = null;
             StudyDetails? sd = null;
 
-            bool isRegistered = sm.sd_sid!.StartsWith("Y-");
+            bool isRegistered = sm.sd_sid.StartsWith("Y-");
             if (isRegistered)
             {
                 if (reg_id is not null)
@@ -231,9 +225,9 @@ namespace MDR_Downloader.yoda
             {
                 // study is in Yoda but not registered elsewhere
                 // Details may be available from Yoda documents and
-                // manually aded to local table pp.not_registered
+                // manually added to local table pp.not_registered
 
-                string protid = "", sponsor_code = "", pp_id = "";
+                string protid = "", sponsor_code = "", pp_id;
                 if (!string.IsNullOrEmpty(st.sponsor_protocol_id))
                 {
                     protid = st.sponsor_protocol_id.Replace("/", "-").Replace("\\", "-").Replace(" ", "");
@@ -258,27 +252,27 @@ namespace MDR_Downloader.yoda
                 {
                     string input = sm.study_name + sm.enrolment_num + sm.csr_link;
                     byte[] inputBytes = System.Text.Encoding.ASCII.GetBytes(input);
-                    byte[] hashbytes = MD5.HashData(inputBytes);
-                    pp_id = "Y-" + string.Concat(hashbytes.Select(x => x.ToString("X2"))).ToLower();
+                    byte[] hashBytes = MD5.HashData(inputBytes);
+                    pp_id = "Y-" + string.Concat(hashBytes.Select(x => x.ToString("X2"))).ToLower();
                 }
 
                 // does this record already exist in the pp.not_registered table?
-                // if so get details, if not add it asnd log the fact that the
+                // if so get details, if not add it and log the fact that the
                 // table will need manually updating
 
-                NotRegisteredDetails dets = _repo.FetchNonRegisteredDetailsFromTable(pp_id);
-                if (dets == null)
+                NotRegisteredDetails details = _repo.FetchNonRegisteredDetailsFromTable(pp_id);
+                if (details.title is null)
                 {
                     _repo.AddNewNotRegisteredRecord(pp_id, st.yoda_title!, sponsor_code, protid);
                     _logging_helper.LogError("Further details required for " + st.yoda_title + " in pp.not_registered table, from " + st.remote_url);
                 }
                 else
                 {
-                    st.sponsor_id = dets.sponsor_id ?? 0;
-                    st.sponsor = dets.sponsor_name ?? "";
-                    st.name_base_title = dets.title ?? "";
-                    st.brief_description = dets.brief_description ?? "";
-                    st.study_type_id = dets.study_type_id ?? 0;
+                    st.sponsor_id = details.sponsor_id ?? 0;
+                    st.sponsor = details.sponsor_name ?? "";
+                    st.name_base_title = details.title ?? "";
+                    st.brief_description = details.brief_description ?? "";
+                    st.study_type_id = details.study_type_id ?? 0;
                 }
 
                 st.sd_sid = pp_id;    // replace the link id used initially (link id may not be fixed)
@@ -287,17 +281,17 @@ namespace MDR_Downloader.yoda
 
             // list of documents
             HtmlNode? docsBlock = page.CssSelect("#block-views-trial-details-block-1").FirstOrDefault();
-            IEnumerable<HtmlNode>? docs = docsBlock.CssSelect(".views-field");
+            List<HtmlNode> docs = docsBlock.CssSelect(".views-field").ToList();
 
-            if (docs?.Any() is true)
+            if (docs.Any())
             {
                 foreach (HtmlNode docType in docs)
                 {
                     string docName = docType.InnerText.Trim();
                     if (docName != "")
                     {
-                        SuppDoc suppdoc = new(docName);
-                        supp_docs.Add(suppdoc);
+                        SuppDoc supp_doc = new(docName);
+                        supp_docs.Add(supp_doc);
                     }
                 }
             }
@@ -328,19 +322,19 @@ namespace MDR_Downloader.yoda
                     if (csrLink != "" || csrComment != "")
                     {
                         // add a new supp doc record
-                        SuppDoc suppdoc = new("CSR Summary")
+                        SuppDoc supp_doc = new("CSR Summary")
                         {
                             url = csrLink,
                             comment = csrComment
                         };
-                        supp_docs.Add(suppdoc);
+                        supp_docs.Add(supp_doc);
 
                         // is this the same link as in the main table
                         // ought to be but...
-                        if (suppdoc.url != sm.csr_link)
+                        if (supp_doc.url != sm.csr_link)
                         {
                             string report = "mismatch in csr summary link - study id " + sid;
-                            report += "\nicon csr link = " + suppdoc.url;
+                            report += "\nicon csr link = " + supp_doc.url;
                             report += "\ntable csr link = " + sm.csr_link + "\n\n";
                             _logging_helper.LogLine(report);
                         }
@@ -366,7 +360,8 @@ namespace MDR_Downloader.yoda
                     }
                 }
 
-                // data specifcation
+                // data specification
+                
                 HtmlNode? dataSpec = iconsBlock.CssSelect(".views-field-field-data-specification-spreads").FirstOrDefault();
                 if (dataSpec is not null)
                 {
@@ -394,12 +389,12 @@ namespace MDR_Downloader.yoda
                         else
                         {
                             // add a new supp doc record
-                            SuppDoc suppdoc = new("Data Definition Specification")
+                            SuppDoc supp_doc = new("Data Definition Specification")
                             {
                                 url = dataLink,
                                 comment = dataComment
                             };
-                            supp_docs.Add(suppdoc);
+                            supp_docs.Add(supp_doc);
                         }
                     }
                 }
@@ -432,12 +427,12 @@ namespace MDR_Downloader.yoda
                         else
                         {
                             // add a new supp doc record
-                            SuppDoc suppdoc = new("Annotated Case Report Form")
+                            SuppDoc supp_doc = new("Annotated Case Report Form")
                             {  
                                 url = crfLink,
                                 comment = crfComment
                             };
-                            supp_docs.Add(suppdoc);
+                            supp_docs.Add(supp_doc);
                         }
                     }
                 }
@@ -447,12 +442,12 @@ namespace MDR_Downloader.yoda
             // Review supp_docs.
 
             List<SuppDoc> supp_docs_available = new();
-            bool add_this_doc;
-            foreach (SuppDoc suppdoc in supp_docs)
+            foreach (SuppDoc supp_doc in supp_docs)
             {
-                if (!string.IsNullOrEmpty(suppdoc.comment) && 
-                        (suppdoc.comment.ToLower() == "not available" || suppdoc.comment.ToLower() == "not yet available"
-                        || suppdoc.comment.ToLower() == "not yet avaiable"))
+                bool add_this_doc;
+                if (!string.IsNullOrEmpty(supp_doc.comment) && 
+                    (supp_doc.comment.ToLower() == "not available" || supp_doc.comment.ToLower() == "not yet available"
+                                                                   || supp_doc.comment.ToLower() == "not yet avaiable"))
                 {
                     // Exclude docs explicitly described as not available.
 
@@ -463,18 +458,13 @@ namespace MDR_Downloader.yoda
                     // If a URL link present...indicate that in the comment, otherwise
                     // add the presumed default condition in the comment
 
-                    if (!string.IsNullOrEmpty(suppdoc.url))
-                    {
-                        suppdoc.comment = "Available now";
-                    }
-                    else 
-                    {
-                        suppdoc.comment = "Available upon approval of data request";
-                    }
+                    supp_doc.comment = !string.IsNullOrEmpty(supp_doc.url) 
+                                             ? "Available now" 
+                                             : "Available upon approval of data request";
                     add_this_doc = true;
                 }
 
-                if (add_this_doc) supp_docs_available.Add(suppdoc);
+                if (add_this_doc) supp_docs_available.Add(supp_doc);
             }
            
 
@@ -497,7 +487,7 @@ namespace MDR_Downloader.yoda
                     string link = st.primary_citation_link.Replace("?dopt=Abstract", "");
                     string pos_pmid = "";
                         
-                    int pubmed_pos = link.IndexOf("pubmed/");
+                    int pubmed_pos = link.IndexOf("pubmed/", StringComparison.Ordinal);
                     if (pubmed_pos != -1)
                     {
                         pos_pmid = link[(pubmed_pos + 7)..];
@@ -505,7 +495,7 @@ namespace MDR_Downloader.yoda
 
                     if (pos_pmid == "")
                     {
-                        pubmed_pos = link.IndexOf("pubmed.ncbi.nlm.nih.gov/");
+                        pubmed_pos = link.IndexOf("pubmed.ncbi.nlm.nih.gov/", StringComparison.Ordinal);
                         if (pubmed_pos != -1)
                         {
                             pos_pmid = link[(pubmed_pos + 24)..];
@@ -514,7 +504,7 @@ namespace MDR_Downloader.yoda
 
                     if (pos_pmid != "")
                     {
-                        if (Int32.TryParse(pos_pmid, out int pmid_as_int))
+                        if (int.TryParse(pos_pmid, out _))
                         {
                             study_references.Add(new Reference(pos_pmid, link));
                         }
@@ -534,10 +524,10 @@ namespace MDR_Downloader.yoda
                 else if (st.primary_citation_link.Contains("/pmc/articles/"))
                 {
                     // need to interrogate NLM API 
-                    int pmc_pos = st.primary_citation_link.IndexOf("/pmc/articles/");
+                    int pmc_pos = st.primary_citation_link.IndexOf("/pmc/articles/", StringComparison.Ordinal);
                     string pmc_id = st.primary_citation_link[(pmc_pos + 14)..];
                     pmc_id = pmc_id.Replace("/", "");
-                    string? pubmed_id = await _ch.GetPMIDFromNLMAsync(pmc_id);
+                    string? pubmed_id = await _ch.GetPmidFromNlmAsync(pmc_id);
                     if (!string.IsNullOrEmpty(pubmed_id))
                     {
                         study_references.Add(new Reference(pubmed_id, st.primary_citation_link));
@@ -587,13 +577,14 @@ namespace MDR_Downloader.yoda
             if (page is not null)
             {
                 // only works with pmid pages, that have this dl tag....
+                
                 HtmlNode? ids_div = page.Find("dl", By.Class("rprtid")).FirstOrDefault();
                 if (ids_div is not null)
                 {
                     HtmlNode[] dts = ids_div.CssSelect("dt").ToArray();
                     HtmlNode[] dds = ids_div.CssSelect("dd").ToArray();
 
-                    if (dts is not null && dds is not null)
+                    if (dts.Length > 0 && dds.Length > 0)
                     {
                         for (int i = 0; i < dts.Length; i++)
                         {

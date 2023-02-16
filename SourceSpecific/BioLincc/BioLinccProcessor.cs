@@ -345,7 +345,7 @@ public class BioLINCC_Processor
                                 {
                                     string pmc_id = link_value[(pmc_pos + 14)..];
                                     pmc_id = pmc_id.Replace("/", "");
-                                    pubmed_id = await _ch.GetPMIDFromNLMAsync(pmc_id);
+                                    pubmed_id = await _ch.GetPmidFromNlmAsync(pmc_id);
                                 }
                             }
 

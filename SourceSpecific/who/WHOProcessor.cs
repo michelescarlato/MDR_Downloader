@@ -5,7 +5,7 @@ namespace MDR_Downloader.who
 {
     public class WHO_Processor
     {
-        WHOHelpers _wh;
+        private readonly WHOHelpers _wh;
 
         public WHO_Processor()
         {
@@ -15,14 +15,8 @@ namespace MDR_Downloader.who
         public WHORecord? ProcessStudyDetails(WHO_SourceRecord sr)
         {
             WHORecord r = new WHORecord();
-            string sd_sid;
 
-            if (sr.TrialID is null)
-            {
-                return null;
-            }
-
-            sd_sid = sr.TrialID.Replace("/", "-").Replace(@"\", "-").Replace(".", "-").Trim();
+            string sd_sid = sr.TrialID.Replace("/", "-").Replace(@"\", "-").Replace(".", "-").Trim();
             r.sd_sid = sd_sid;
             int source_id = _wh.get_reg_source(sd_sid);
 
@@ -33,7 +27,7 @@ namespace MDR_Downloader.who
 
                 return null;
             }
-            if (sd_sid is null || sd_sid == "null")
+            if (sd_sid == "null")
             {
                 // Seems to happen with one Dutch trial.
 
@@ -168,11 +162,10 @@ namespace MDR_Downloader.who
                 }
                 else
                 {
-                    bool M, F = false;
                     string gender_string = "";
-                    F = gen.Contains("female") || gen.Contains("women") || gen == "f";
+                    bool F = gen.Contains("female") || gen.Contains("women") || gen == "f";
                     string gen2 = F ? gen.Replace("female", "").Replace("women", "") : gen;
-                    M = gen2.Contains("male") || gen.Contains("men") || gen == "m" ;
+                    bool M = gen2.Contains("male") || gen.Contains("men") || gen == "m";
                     
                     if (M && F)
                     {
@@ -219,7 +212,7 @@ namespace MDR_Downloader.who
             exc_crit = exc_crit.ReplaceUnicodes().ReplaceHtmlTags();
             r.exclusion_criteria = exc_crit;
 
-            r.primary_outcome = sr.Primary_Outcome.Tidy().ReplaceUnicodes().ReplaceHtmlTags(); ;
+            r.primary_outcome = sr.Primary_Outcome.Tidy().ReplaceUnicodes().ReplaceHtmlTags();
             r.secondary_outcomes = sr.Secondary_Outcomes.Tidy().ReplaceUnicodes().ReplaceHtmlTags();
 
             r.bridging_flag = sr.Bridging_flag.Tidy();

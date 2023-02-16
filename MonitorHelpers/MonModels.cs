@@ -1,5 +1,4 @@
 ﻿using Dapper.Contrib.Extensions;
-using PostgreSQLCopyHelper;
 
 namespace MDR_Downloader;
 

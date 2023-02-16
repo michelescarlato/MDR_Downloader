@@ -1,7 +1,6 @@
 ﻿using HtmlAgilityPack;
 using ScrapySharp.Html;
 using ScrapySharp.Network;
-using System.Dynamic;
 using System.Net;
 using System.Text.RegularExpressions;
 
@@ -41,25 +40,33 @@ namespace MDR_Downloader.vivli
                     if (!panel.HasClass("facets"))
                     {
                         n++;
-                        VivliURL st = new();
-                        st.id = n;
-                        var paneldivs = panel.SelectNodes("div").ToArray();
-                        st.name = paneldivs[0].SelectSingleNode("h3/a").InnerText.Replace("\n", "").Replace("\r", "").Trim();
-                        st.doi = paneldivs[2].SelectSingleNode("a[1]").InnerText.Replace("\n", "").Replace("\r", "").Trim();
+                        VivliURL st = new()
+                        {
+                            id = n
+                        };
+                        HtmlNode[] paneldivs = panel.SelectNodes("div").ToArray();
+                        if (paneldivs.Length >= 3)
+                        {
+                            st.name = paneldivs[0].SelectSingleNode("h3/a").InnerText.Replace("\n", "")
+                                .Replace("\r", "").Trim();
+                            st.doi = paneldivs[2].SelectSingleNode("a[1]").InnerText.Replace("\n", "")
+                                .Replace("\r", "").Trim();
 
-                        string work_id = st.doi[(st.doi.LastIndexOf("/") + 1)..];
-                        if (work_id.Contains("."))
-                        {
-                            work_id = work_id.Replace(".", "_");
-                            st.type = "d";
-                            st.vivli_url = "https://prdapi.vivli.org/api/dataPackages/" + work_id + "/metadata";
+                            string work_id = st.doi[(st.doi.LastIndexOf("/", StringComparison.Ordinal) + 1)..];
+                            if (work_id.Contains('.'))
+                            {
+                                work_id = work_id.Replace(".", "_");
+                                st.type = "d";
+                                st.vivli_url = "https://prdapi.vivli.org/api/dataPackages/" + work_id + "/metadata";
+                            }
+                            else
+                            {
+                                st.type = "s";
+                                st.vivli_url = "https://prdapi.vivli.org/api/studies/" + work_id + "/metadata/fromdoi";
+                            }
+
+                            page_study_list.Add(st);
                         }
-                        else
-                        {
-                            st.type = "s";
-                            st.vivli_url = "https://prdapi.vivli.org/api/studies/" + work_id + "/metadata/fromdoi";
-                        }
-                        page_study_list.Add(st);
                     }
                 }
             }
@@ -68,7 +75,7 @@ namespace MDR_Downloader.vivli
 
         public async Task GetAndStoreStudyDetails(VivliURL s, VivliDataLayer repo, ILoggingHelper logging_repo)
         {
-            VivliCopyHelpers vch = new();
+            // VivliCopyHelpers vch = new();
 
             int seqnum = s.id;
             if (seqnum > 10001)
@@ -76,7 +83,7 @@ namespace MDR_Downloader.vivli
                 // Get data from the vivli website API as a json response
                 // Use the url previously stored in the VivliRecord.
 
-                VivliRecord st = new();
+                //VivliRecord st = new();
                 string? url = s.vivli_url;
 
                 if (url is not null)
@@ -90,26 +97,25 @@ namespace MDR_Downloader.vivli
 
                     catch (WebException we)
                     {
-                        HttpWebResponse? errorResponse = we.Response as HttpWebResponse;
-                        if (errorResponse is not null)
+                        if (we.Response is HttpWebResponse errorResponse)
                         {
                             if (errorResponse.StatusCode == HttpStatusCode.NotFound)
                             {
-                                logging_repo.LogError("Record " + seqnum.ToString() + "  threw a 404 error");
+                                logging_repo.LogError("Record " + seqnum + "  threw a 404 error");
                             }
                             else
                             {
-                                logging_repo.LogError("Record " + seqnum.ToString() + "  threw error " + errorResponse.StatusCode.ToString());
+                                logging_repo.LogError("Record " + seqnum + "  threw error " + errorResponse.StatusCode.ToString());
                             }
                         }
-                        throw we;
+                        throw;
                     }
 
                     // Read the response into a string and parse 
                     // Newtonsoft json used to deserialise the string into a dynamic object
                     // The Microsoft built in equivalent does not yet provide this functionality
 
-                    String responseString = response.ToString();
+                    // string responseString = response.ToString();
 
                     //dynamic? json_data = JsonConvert.DeserializeObject<ExpandoObject>(responseString, new ExpandoObjectConverter());
 

@@ -18,8 +18,8 @@ public class LoggingHelper : ILoggingHelper
             .AddJsonFile("appsettings.json")
             .Build();
 
-        _logfileStartOfPath = settings["logfilepath"] ?? "";
-        _summaryLogfileStartOfPath = settings["summaryfilepath"] ?? "";
+        _logfileStartOfPath = settings["logFilePath"] ?? "";
+        _summaryLogfileStartOfPath = settings["summaryFilePath"] ?? "";
     }
 
     public string LogFilePath => _logfilePath;  // Used to check if a log file exists.

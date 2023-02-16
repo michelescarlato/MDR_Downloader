@@ -39,8 +39,8 @@ IHost host = Host.CreateDefaultBuilder()
 // because the log file(s) are yet to be opened, and 
 // establish a reference to a Monitor repository.
 
-ILoggingHelper logging_helper = ActivatorUtilities.CreateInstance<ILoggingHelper>(host.Services);
-IMonDataLayer mon_data_layer = ActivatorUtilities.CreateInstance<IMonDataLayer>(host.Services);
+LoggingHelper logging_helper = ActivatorUtilities.CreateInstance<LoggingHelper>(host.Services);
+MonDataLayer mon_data_layer = ActivatorUtilities.CreateInstance<MonDataLayer>(host.Services);
 
 // Create a new parameter checker class, which first checks
 // if the program's arguments can be parsed and, if they can,

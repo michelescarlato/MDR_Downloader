@@ -29,7 +29,7 @@ public class CopyHelpers
     // defines the copy helpers required.
     // see https://github.com/PostgreSQLCopyHelper/PostgreSQLCopyHelper for details
 
-    public PostgreSQLCopyHelper<PMIDBySource> source_ids_helper =
+    public readonly PostgreSQLCopyHelper<PMIDBySource> source_ids_helper =
             new PostgreSQLCopyHelper<PMIDBySource>("pp", "pmids_by_source_total")
                 .MapVarchar("sd_sid", x => x.sd_sid)
                 .MapInteger("pmid", x => x.pmid);

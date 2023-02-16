@@ -1,10 +1,8 @@
 ﻿using Dapper;
 using Dapper.Contrib.Extensions;
-using Microsoft.Extensions.Configuration;
 using Npgsql;
 using PostgreSQLCopyHelper;
-using System;
-using System.Collections.Generic;
+
 
 namespace MDR_Downloader.vivli
 {
@@ -12,72 +10,25 @@ namespace MDR_Downloader.vivli
     public class VivliDataLayer
     {
         private readonly string connString;
-
-        /// <summary>
-        /// Parameterless constructor is used to automatically build
-        /// the connection string, using an appsettings.json file that 
-        /// has the relevant credentials (but which is not stored in GitHub).
-        /// The json file also includes the root folder path, which is
-        /// stored in the class's folder_base property.
-        /// </summary>
-        public VivliDataLayer()
+        
+        public VivliDataLayer(Credentials credentials)
         {
-            IConfigurationRoot settings = new ConfigurationBuilder()
-                .SetBasePath(AppContext.BaseDirectory)
-                .AddJsonFile("appsettings.json")
-                .Build();
-
-            NpgsqlConnectionStringBuilder builder = new NpgsqlConnectionStringBuilder();
-            builder.Host = settings["host"];
-            builder.Username = settings["user"];
-            builder.Password = settings["password"];
-            string? PortAsString = settings["port"];
-            if (string.IsNullOrWhiteSpace(PortAsString))
-            {
-                builder.Port = 5432;
-            }
-            else
-            {
-                int port_num;
-                if (Int32.TryParse(PortAsString, out port_num))
-                {
-                    builder.Port = port_num;
-                }
-                else
-                {
-                    builder.Port = 5432;
-                }
-            }
-
-            builder.Database = "vivli";
-            builder.SearchPath = "pp";
-            connString = builder.ConnectionString;
-
-            // example appsettings.json file...
-            // the only values required are for...
-            // {
-            //	  "host": "host_name...",
-            //	  "user": "user_name...",
-            //    "password": "user_password...",
-            //	  "folder_base": "C:\\MDR JSON\\Object JSON... "
-            // }
+            connString = credentials.GetConnectionString("vivli");
         }
 
         public void SetUpParameterTable()
         {
-            using (var conn = new NpgsqlConnection(connString))
-            {
-                string sql_string = "Drop table if exists pp.api_urls;";
-                conn.Execute(sql_string);
+            using var conn = new NpgsqlConnection(connString);
+            string sql_string = "Drop table if exists pp.api_urls;";
+            conn.Execute(sql_string);
 
-                sql_string = @"Create table pp.api_urls(
+            sql_string = @"Create table pp.api_urls(
                                     id int,
                                     name varchar,
                                     type varchar,
                                     doi varchar,
                                     vivli_url varchar);";
-                conn.Execute(sql_string);
-            }
+            conn.Execute(sql_string);
         }
 
 
@@ -140,7 +91,7 @@ namespace MDR_Downloader.vivli
         }
 
 
-        public void SetUpDataObectsTable()
+        public void SetUpDataObjectsTable()
         {
             using var conn = new NpgsqlConnection(connString);
             string sql_string = "Drop table if exists pp.data_objects;";
@@ -184,14 +135,14 @@ namespace MDR_Downloader.vivli
         public int StoreStudyRecord(VivliRecord vr)
         {
             using var conn = new NpgsqlConnection(connString);
-            return (int)conn.Insert<VivliRecord>(vr);
+            return (int)conn.Insert(vr);
         }
 
 
         public int StorePackageRecord(PackageRecord pr)
         {
             using var conn = new NpgsqlConnection(connString);
-            return (int)conn.Insert<PackageRecord>(pr);
+            return (int)conn.Insert(pr);
         }
 
 
@@ -209,7 +160,7 @@ namespace MDR_Downloader.vivli
 
     public class VivliCopyHelpers
     {
-        public PostgreSQLCopyHelper<VivliURL> api_url_copyhelper =
+        public readonly PostgreSQLCopyHelper<VivliURL> api_url_copyhelper =
             new PostgreSQLCopyHelper<VivliURL>("pp", "api_urls")
                 .MapInteger("id", x => x.id)
                 .MapVarchar("name", x => x.name)

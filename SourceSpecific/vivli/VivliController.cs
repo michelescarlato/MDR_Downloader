@@ -15,7 +15,7 @@ namespace MDR_Downloader.vivli
             _monDataLayer = monDataLayer;
             _loggingHelper = loggingHelper;
             
-            vivli_repo = new VivliDataLayer();
+            vivli_repo = new VivliDataLayer(monDataLayer.Credentials);
             processor = new Vivli_Processor();
         }
 
@@ -32,8 +32,8 @@ namespace MDR_Downloader.vivli
         public void FetchURLDetails(Options opts, Source source, 
             IMonDataLayer mon_data_layer, ILoggingHelper logging_helper)
         {
-            string? file_base = source.local_folder;
-            int source_id = source.id;
+            // string? file_base = source.local_folder;
+            // int source_id = source.id;
             ScrapingBrowser browser = new()
             {
                 AllowAutoRedirect = true,
@@ -45,7 +45,7 @@ namespace MDR_Downloader.vivli
             // Set up initial study list
             // store it in pp table
 
-            List<VivliURL> all_study_list = new();
+            //List<VivliURL> all_study_list = new();
             vivli_repo.SetUpParameterTable();
 
             string baseURL = "https://search.datacite.org/works?query=vivli&resource-type-id=dataset";
@@ -67,7 +67,7 @@ namespace MDR_Downloader.vivli
                 // Log to console and pause before the next page
 
                 logging_helper.LogLine(i.ToString());
-                System.Threading.Thread.Sleep(1000);
+                Thread.Sleep(1000);
             }
         }
 
@@ -75,13 +75,13 @@ namespace MDR_Downloader.vivli
             IMonDataLayer mon_data_layer, ILoggingHelper logging_helper)
         {
 
-            // Go through the vivli data, fetcvhing the stored urls
+            // Go through the vivli data, fetching the stored urls
             // and using these to call the api directly, receiving json
             // that can be extracted directly from the response
 
             vivli_repo.SetUpStudiesTable();
             vivli_repo.SetUpPackagesTable();
-            vivli_repo.SetUpDataObectsTable();
+            vivli_repo.SetUpDataObjectsTable();
 
             IEnumerable<VivliURL> all_study_list = vivli_repo.FetchVivliApiUrLs();
 
@@ -92,10 +92,10 @@ namespace MDR_Downloader.vivli
                 // logging to go here
 
                 // write to console...
-                logging_helper.LogLine(s.id.ToString() + ": " + s.vivli_url);
+                logging_helper.LogLine(s.id + ": " + s.vivli_url);
 
                 // put a pause here if necessary
-                System.Threading.Thread.Sleep(800);
+                Thread.Sleep(800);
 
             }
         }

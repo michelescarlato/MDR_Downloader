@@ -5,9 +5,9 @@ namespace MDR_Downloader.who;
 
 public class WHOHelpers
 {
-    public List<string>? split_string(string? instring)
+    public List<string>? split_string(string? input_string)
     {
-        string? string_list = instring.Tidy();
+        string? string_list = input_string.Tidy();
         if (string.IsNullOrEmpty(string_list))
         {
             return null;
@@ -20,19 +20,19 @@ public class WHOHelpers
     {
         // countries known to be non-null and already 'tidied'.
 
-        List<string> outstrings = new List<string>();
-        List<string> instrings = countries.Split(";").ToList();
+        List<string> out_strings = new List<string>();
+        List<string> in_strings = countries.Split(";").ToList();
 
-        foreach (string s in instrings)
+        foreach (string s in in_strings)
         {
-            if (outstrings.Count == 0)
+            if (out_strings.Count == 0)
             {
-                outstrings.Add(s);
+                out_strings.Add(s);
             }
             else
             {
                 bool add_string = true;
-                foreach (string s2 in outstrings)
+                foreach (string s2 in out_strings)
                 {
                     if (s2 == s)
                     {
@@ -40,19 +40,19 @@ public class WHOHelpers
                         break;
                     }
                 }
-                if (add_string) outstrings.Add(s);
+                if (add_string) out_strings.Add(s);
             }
         }
-        return outstrings;
+        return out_strings;
     }
 
 
-    public List<WhoCondition> GetConditions(string sd_sid, string instring)
+    public List<WhoCondition> GetConditions(string sd_sid, string in_string)
     {
         List<WhoCondition> conditions = new List<WhoCondition>();
-        if (!string.IsNullOrEmpty(instring))
+        if (!string.IsNullOrEmpty(in_string))
         {
-            string? condition_list = instring.Tidy();
+            string? condition_list = in_string.Tidy();
             if (!string.IsNullOrEmpty(condition_list))
             {
                 // replace escaped characters to remove the semi-colons
@@ -156,15 +156,8 @@ public class WHOHelpers
 
                         if (add_condition)
                         {
-                            if (code == "")
-                            {
-                                conditions.Add(new WhoCondition(s1));
-                            }
-                            else
-                            {
-                                conditions.Add(new WhoCondition(s1, code, code_system));
-
-                            }
+                            conditions.Add(code == "" ? new WhoCondition(s1) 
+                                                      : new WhoCondition(s1, code, code_system));
                         }
                     }
                 }
@@ -175,11 +168,11 @@ public class WHOHelpers
 
 
     public List<Secondary_Id> SplitAndAddIds(List<Secondary_Id> existing_ids, string sd_sid,
-                                         string instring, string source_field)
+                                         string in_string, string source_field)
     {
-        // instring already known to be non-null, non-empty.
+        // in_string already known to be non-null, non-empty.
 
-        List<string> ids = instring.Split(";").ToList();
+        List<string> ids = in_string.Split(";").ToList();
         foreach (string s in ids)
         {
             char[] chars_to_lose = { ' ', '\'', '‘', '’', ';' };
@@ -195,16 +188,16 @@ public class WHOHelpers
                     && !(s2.StartsWith("version"))
                     && !(s2.StartsWith("??")))
                 {
-                    SecIdBase? sec_id_base = GetSeconIdDetails(s1, sd_sid);
+                    SecIdBase? sec_id_base = GetSecondIdDetails(s1, sd_sid);
                     if (sec_id_base is not null)
                     {
                         // has this id been added before?
                         bool add_id = true;
                         if (existing_ids.Count > 0)
                         {
-                            foreach (Secondary_Id secid in existing_ids)
+                            foreach (Secondary_Id sec_id in existing_ids)
                             {
-                                if (sec_id_base.processed_id == secid.processed_id)
+                                if (sec_id_base.processed_id == sec_id.processed_id)
                                 {
                                     add_id = false;
                                     break;
@@ -225,7 +218,7 @@ public class WHOHelpers
     }
      
 
-    public SecIdBase? GetSeconIdDetails(string sec_id, string sd_sid)
+    public SecIdBase? GetSecondIdDetails(string sec_id, string sd_sid)
     {
         string? interim_id, processed_id = null;
         int? sec_id_source = null;
@@ -239,8 +232,7 @@ public class WHOHelpers
                 processed_id = Regex.Match(interim_id, @"NCT[0-9]{8}").Value;
                 sec_id_source = 100120;
             }
-            if (processed_id == "NCT11111111" || processed_id == "NCT99999999"
-                || processed_id == "NCT12345678" || processed_id == "NCT87654321")
+            if (processed_id is "NCT11111111" or "NCT99999999" or "NCT12345678" or "NCT87654321")
             {
                 // remove these 
                 processed_id = null;
@@ -418,25 +410,18 @@ public class WHOHelpers
             if (Regex.Match(sec_id, @"[0-9]{8}.[0-9].[0-9]{4}.[0-9]{4}").Success)
             {
                 processed_id = Regex.Match(sec_id, @"[0-9]{8}.[0-9].[0-9]{4}.[0-9]{4}").Value;
-                sec_id_source = 102000;  // Brasilian regulatory authority, ANVISA
+                sec_id_source = 102000;  // Brazilian regulatory authority, ANVISA
                 // number is an ethics approval submission id
             }
 
             if (Regex.Match(sec_id, @"[0-9].[0-9]{3}.[0-9]{3}").Success)
             {
                 processed_id = Regex.Match(sec_id, @"[0-9].[0-9]{3}.[0-9]{3}").Value;
-                sec_id_source = 102001;  // Brasilian ethics committee approval number
+                sec_id_source = 102001;  // Brazilian ethics committee approval number
             }
         }
 
-        if (processed_id is not null)
-        {
-            return new SecIdBase(processed_id, sec_id_source);
-        }
-        else
-        {
-            return null;
-        }
+        return processed_id is not null ? new SecIdBase(processed_id, sec_id_source) : null;
     }
 
 
@@ -444,28 +429,21 @@ public class WHOHelpers
     public string GetStatus(string study_status)
     {
         string status = study_status.ToLower();
-        if (status == "complete"
-              || status == "completed"
-              || status == "complete: follow-up complete"
-              || status == "complete: follow up complete"
-              || status == "data analysis completed"
-              || status == "main results already published")
+        if (status is "complete" or "completed" 
+            or "complete: follow-up complete" or "complete: follow up complete" 
+            or "data analysis completed" or "main results already published")
         {
             return "Completed";
         }
-        else if (status == "complete: follow-up continuing"
-              || status == "complete: follow up continuing"
-              || status == "active, not recruiting"
-              || status == "closed to recruitment of participants"
-              || status == "no longer recruiting"
-              || status == "not recruiting"
-              || status == "recruitment completed")
+        else if (status is "complete: follow-up continuing" 
+                 or "complete: follow up continuing" or "active, not recruiting" 
+                 or "closed to recruitment of participants" or "no longer recruiting" 
+                 or "not recruiting" or "recruitment completed")
         {
             return "Active, not recruiting";
         }
-        else if (status == "recruiting"
-              || status == "open public recruiting"
-              || status == "open to recruitment")
+        else if (status is "recruiting" or "open public recruiting" 
+                 or "open to recruitment")
         {
             return "Recruiting";
         }
@@ -700,88 +678,46 @@ public class WHOHelpers
         if (phase != "not selected" && phase != "not applicable"
             && phase != "na" && phase != "n/a")
         {
-            if (phase == "phase 0"
-             || phase == "phase-0"
-             || phase == "phase0"
-             || phase == "0"
-             || phase == "0 (exploratory trials)"
-             || phase == "phase 0 (exploratory trials)"
-             || phase == "0 (exploratory trials)")
+            if (phase is "phase 0" or "phase-0" or "phase0" 
+                or "0" or "0 (exploratory trials)" 
+                or "phase 0 (exploratory trials)" or "0 (exploratory trials)")
             {
                 study_features.Add(new WhoStudyFeature(20, "Phase", 105, "Early phase 1"));
             }
-            else if (phase == "1"
-                  || phase == "i"
-                  || phase == "i (phase i study)"
-                  || phase == "phase-1"
-                  || phase == "phase 1"
-                  || phase == "phase i"
-                  || phase == "phase1")
+            else if (phase is "1" or "i" or "i (phase i study)" 
+                     or "phase-1" or "phase 1" or "phase i" or "phase1")
             {
                 study_features.Add(new WhoStudyFeature(20, "phase", 110, "Phase 1"));
             }
-            else if (phase == "1-2"
-                  || phase == "1 to 2"
-                  || phase == "i-ii"
-                  || phase == "i+ii (phase i+phase ii)"
-                  || phase == "phase 1-2"
-                  || phase == "phase 1 / phase 2"
-                  || phase == "phase 1/ phase 2"
-                  || phase == "phase 1/phase 2"
-                  || phase == "phase i,ii"
-                  || phase == "phase1/phase2")
+            else if (phase is "1-2" or "1 to 2" or "i-ii" 
+                     or "i+ii (phase i+phase ii)" or "phase 1-2" 
+                     or "phase 1 / phase 2" or "phase 1/ phase 2" 
+                     or "phase 1/phase 2" or "phase i,ii" or "phase1/phase2")
             {
                 study_features.Add(new WhoStudyFeature(20, "Phase", 115, "Phase 1/Phase 2"));
             }
-            else if (phase == "2"
-                  || phase == "2a"
-                  || phase == "2b"
-                  || phase == "ii"
-                  || phase == "ii (phase ii study)"
-                  || phase == "iia"
-                  || phase == "iib"
-                  || phase == "phase-2"
-                  || phase == "phase 2"
-                  || phase == "phase ii"
-                  || phase == "phase2")
+            else if (phase is "2" or "2a" or "2b" 
+                     or "ii" or "ii (phase ii study)" or "iia" 
+                     or "iib" or "phase-2" or "phase 2" or "phase ii" or "phase2")
             {
                 study_features.Add(new WhoStudyFeature(20, "Phase", 120, "Phase 2"));
             }
-            else if (phase == "2-3"
-                 || phase == "ii-iii"
-                 || phase == "phase 2-3"
-                 || phase == "phase 2 / phase 3"
-                 || phase == "phase 2/ phase 3"
-                 || phase == "phase 2/phase 3"
-                 || phase == "phase2/phase3"
-                 || phase == "phase ii,iii")
+            else if (phase is "2-3" or "ii-iii" or "phase 2-3" 
+                     or "phase 2 / phase 3" or "phase 2/ phase 3" 
+                     or "phase 2/phase 3" or "phase2/phase3" or "phase ii,iii")
             {
                 study_features.Add(new WhoStudyFeature(20, "Phase", 125, "Phase 2/Phase 3"));
             }
-            else if (phase == "3"
-                  || phase == "iii"
-                  || phase == "iii (phase iii study)"
-                  || phase == "iiia"
-                  || phase == "iiib"
-                  || phase == "3-4"
-                  || phase == "phase-3"
-                  || phase == "phase 3"
-                  || phase == "phase 3 / phase 4"
-                  || phase == "phase 3/ phase 4"
-                  || phase == "phase3"
-                  || phase == "phase iii")
+            else if (phase is "3" or "iii" or "iii (phase iii study)" 
+                     or "iiia" or "iiib" or "3-4" or "phase-3" 
+                     or "phase 3" or "phase 3 / phase 4" 
+                     or "phase 3/ phase 4" or "phase3" or "phase iii")
             {
                 study_features.Add(new WhoStudyFeature(20, "Phase", 130, "Phase 3"));
             }
-            else if (phase == "4"
-                   || phase == "iv"
-                   || phase == "iv (phase iv study)"
-                   || phase == "phase-4"
-                   || phase == "phase 4"
-                   || phase == "post-market"
-                   || phase == "post marketing surveillance"
-                   || phase == "phase4"
-                   || phase == "phase iv")
+            else if (phase is "4" or "iv" or "iv (phase iv study)" 
+                     or "phase-4" or "phase 4" or "post-market" 
+                     or "post marketing surveillance" or "phase4" or "phase iv")
             {
                 study_features.Add(new WhoStudyFeature(20, "Phase", 135, "Phase 4"));
             }
@@ -834,21 +770,21 @@ public class WHOHelpers
     {
         return source_id switch
         {
-            100116 => @"C:\MDR_Data\anzctr\",
-            100117 => @"C:\MDR_Data\rebec\",
-            100118 => @"C:\MDR_Data\chictr\",
-            100119 => @"C:\MDR_Data\cris\",
-            100121 => @"C:\MDR_Data\ctri\",
-            100122 => @"C:\MDR_Data\rpcec\",
-            100124 => @"C:\MDR_Data\drks\",
-            100125 => @"C:\MDR_Data\irct\",
-            100127 => @"C:\MDR_Data\jprn\",
-            100128 => @"C:\MDR_Data\pactr\",
-            100129 => @"C:\MDR_Data\rpuec\",
-            100130 => @"C:\MDR_Data\slctr\",
-            100131 => @"C:\MDR_Data\thctr\",
-            100132 => @"C:\MDR_Data\nntr\",
-            101989 => @"C:\MDR_Data\lebctr\",
+            100116 => @"F:\MDR_Data\anzctr\",
+            100117 => @"F:\MDR_Data\rebec\",
+            100118 => @"F:\MDR_Data\chictr\",
+            100119 => @"F:\MDR_Data\cris\",
+            100121 => @"F:\MDR_Data\ctri\",
+            100122 => @"F:\MDR_Data\rpcec\",
+            100124 => @"F:\MDR_Data\drks\",
+            100125 => @"F:\MDR_Data\irct\",
+            100127 => @"F:\MDR_Data\jprn\",
+            100128 => @"F:\MDR_Data\pactr\",
+            100129 => @"F:\MDR_Data\rpuec\",
+            100130 => @"F:\MDR_Data\slctr\",
+            100131 => @"F:\MDR_Data\thctr\",
+            100132 => @"F:\MDR_Data\nntr\",
+            101989 => @"F:\MDR_Data\lebctr\",
             _ => ""
         };
     }
