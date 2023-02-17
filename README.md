@@ -1,7 +1,7 @@
 # MDR_Downloader
-Downloads data from mdr data sources to local files, stored as XML.
+Downloads or otherwise obtains data from mdr data sources and transfers that data to local files, stored as JSON.
 
-The functioning of the MDR begins with the creation of a local copy of all the source data. A folder is set up to receive the data, one per source, and the data download process adds files to that folder. The download events are self contained and can take place independently of any further processing. The local copy of the source data simply grows with successive download events. At any point in time the folder holds *all* the data relevant to the NDR from its source.<br/>
+The data extraction within the MDR begins with the creation of a local copy of the source data. A folder is created for each source, and the data download process adds files to that folder. The download events are self contained and can take place independently of any further processing. The local copy of the source data simply grows with successive download events. At any point in time the folder therefore holds *all* the data relevant to the NDR from its source.<br/>
 The basic details of each file, including the date and time of its download, are recorded in the monitoring database so that later processing stages can select subsets of files from that data store. Sources are trial registries and data repositories, and the download mechanisms used include
 * Downloading JSON files directly from a source's API, (e.g. for ClicalTrials.gov, PubMed) or downloading XML files directly from an API (ISRCTN)
 * Scraping web pages and generating the XML files from the data obtained (e.g. for EUCTR, Yoda, BioLincc)
