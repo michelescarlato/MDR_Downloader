@@ -42,12 +42,10 @@ IHost host = Host.CreateDefaultBuilder()
 LoggingHelper logging_helper = ActivatorUtilities.CreateInstance<LoggingHelper>(host.Services);
 MonDataLayer mon_data_layer = ActivatorUtilities.CreateInstance<MonDataLayer>(host.Services);
 
-// Create a new parameter checker class, which first checks
-// if the program's arguments can be parsed and, if they can,
-// then checks if they are valid.
-// If both tests are passed the object returned includes both the
-// original arguments and the 'source' object with details of the
-// single data source being downloaded. 
+// Create a new parameter checker class, which first checks if the program's 
+// arguments can be parsed and, if they can, then checks if they are valid.
+// If both tests are passed the object returned includes both the original arguments
+// and the 'source' object with details of the single data source being downloaded. 
 
 ParameterChecker param_checker = new(logging_helper, mon_data_layer);
 ParamsCheckResult paramsCheck = param_checker.CheckParams(args);
