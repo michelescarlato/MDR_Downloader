@@ -37,7 +37,6 @@ namespace MDR_Downloader.yoda
                 Directory.CreateDirectory(folder_path);  // ensure folder is present
             }
 
-
             int source_id = source.id;
             int? days_ago = opts.SkipRecentDays;
             var json_options = new JsonSerializerOptions()
@@ -48,9 +47,10 @@ namespace MDR_Downloader.yoda
 
             // Get list of studies from the Yoda start page.
 
-            string baseURL = "https://yoda.yale.edu/trials-search?amp%3Bpage=0&page=";
+            //string baseURL = "https://yoda.yale.edu/trials-search?amp%3Bpage=0&page=";
+            string baseURL = "https://yoda.yale.edu/trials-search?page=";
             int search_page_limit;
-            WebPage? firstPage = await ch.GetPageAsync(baseURL + "0");
+            WebPage? firstPage = await ch.GetPageAsync(baseURL);
             if (firstPage is null)
             {
                 _loggingHelper.LogError("Attempt to access first Yoda studies list page failed");
@@ -86,23 +86,32 @@ namespace MDR_Downloader.yoda
 
             for (int i = 0; i < search_page_limit; i++)
             {
-                WebPage? searchPage = await ch.GetPageAsync(baseURL + i.ToString());
+                // yoda site appears to be having intermittent problems, therefore attempt access up to three times
+                
+                WebPage? searchPage = null;
+                int j = 0;
+                while (searchPage is null && j < 3)
+                {
+                    j++;
+                    searchPage = await ch.GetPageAsync(baseURL + i);
+                    Thread.Sleep(1000);     // wait a second until retry
+                }
+                
                 if (searchPage is null)
                 {
-                    _loggingHelper.LogError($"Attempt to access Yoda studies list page {i} failed");
-                    return res;  // return zero res
+                    _loggingHelper.LogError($"Attempt to access Yoda studies list page {i} failed after 3 attempts");
                 }
                 else
                 {
                     List<Summary> page_study_list = yoda_processor.GetStudyInitialDetails(searchPage);
                     all_study_list.AddRange(page_study_list);
                     _loggingHelper.LogLine($"search page: {i}, yielding {page_study_list.Count} study summaries");
-                    Thread.Sleep(300);
+                    Thread.Sleep(500);
                 }
             }
 
             // Do a check on any possible id duplicates. Consider each study in turn.
-            // Duplicates rare but do occur but seem to be temporary features.
+            // Duplicates rare but do occur, though seem to be temporary features.
 
             int n = 0;
             List<Summary> study_list = new();
@@ -127,7 +136,8 @@ namespace MDR_Downloader.yoda
                 }
             }
 
-            // Finally ready to process the Yoda study details
+            // Finally ready to process the Yoda study details.
+            
             _loggingHelper.LogLine($"Studies to download: {study_list.Count}");
 
             foreach (Summary sm in study_list)
@@ -138,17 +148,43 @@ namespace MDR_Downloader.yoda
                     // Unless record already downloaded in stipulated period get the web page and,
                     // assuming it has been retrieved OK, process it.
 
-                    if (days_ago is null || !_monDataLayer.Downloaded_recently(source_id, sm.sd_sid, (int)days_ago))
+                    bool obtain_web_page = true;
+                    if (days_ago is not null)
                     {
-                        WebPage? studyPage = await ch.GetPageAsync(sm.details_link);
+                        int chk_days = (int)days_ago;
+                        if (_monDataLayer.Downloaded_recently(source_id, sm.sd_sid, chk_days) ||
+                            _monDataLayer.Downloaded_recentlywithlink(source_id, sm.details_link, chk_days))
+                        {
+                            obtain_web_page = false;
+                        }
+                    }
+                    
+                    if (obtain_web_page)
+                    {
+                        WebPage? studyPage = null;
+                        int j = 0;
+                        while (studyPage is null && j < 3)
+                        {
+                            j++;
+                            studyPage = await ch.GetPageAsync(sm.details_link);
+                            _loggingHelper.LogLine(
+                                $"Problem accessing details page for {sm.sd_sid}, trying again in a second");
+                            Thread.Sleep(1000); // wait a second until retry
+                        }
+
                         res.num_checked++;
-                        if (studyPage is not null)
+                        if (studyPage is null)
+                        {
+                            _loggingHelper.LogError(
+                                $"Attempt to access Yoda studies details page for {sm.sd_sid} failed after 3 attempts");
+                        }
+                        else
                         {
                             HtmlNode? page = studyPage.Find("div", By.Class("region-content")).FirstOrDefault();
                             if (page is not null)
                             {
                                 Yoda_Record? st = await yoda_processor.GetStudyDetailsAsync(page, sm);
-                                 
+
                                 if (st is not null)
                                 {
                                     // Write out study record as XML.
@@ -164,17 +200,18 @@ namespace MDR_Downloader.yoda
                                     }
                                     catch (Exception e)
                                     {
-                                        _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
+                                        _loggingHelper.LogLine("Error in trying to save file at " + full_path +
+                                                               ":: " + e.Message);
                                     }
 
-                                    bool added = _monDataLayer.UpdateStudyDownloadLog(source_id, st.sd_sid, 
-                                                  st.remote_url, (int)opts.saf_id!, null, full_path);
+                                    bool added = _monDataLayer.UpdateStudyDownloadLog(source_id, st.sd_sid,
+                                        st.remote_url, (int)opts.saf_id!, null, full_path);
                                     res.num_downloaded++;
                                     if (added) res.num_added++;
 
                                     // Put a pause here if necessary.
 
-                                    Thread.Sleep(500);
+                                    Thread.Sleep(800);
                                 }
                                 else
                                 {

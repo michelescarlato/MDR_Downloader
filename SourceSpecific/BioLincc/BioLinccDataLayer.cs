@@ -73,7 +73,7 @@ public class BioLinccDataLayer
         using var conn = new NpgsqlConnection(_biolinccConnString);
         string sql_string = $@"Select type_id, type_name from pp.document_types 
                                where resource_name = '{docName}';";
-        ObjectTypeDetails res = conn.QueryFirstOrDefault<ObjectTypeDetails>(sql_string);
+        ObjectTypeDetails? res = conn.QueryFirstOrDefault<ObjectTypeDetails>(sql_string);
         if (res is null)
         {
             // store the details in the table for later matching

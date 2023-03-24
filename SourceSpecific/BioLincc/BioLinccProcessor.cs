@@ -614,9 +614,9 @@ public class BioLINCC_Processor
                                 if (object_type_id == 0)
                                 {
                                     ObjectTypeDetails? object_type_details = _repo.FetchDocTypeDetails(doc_name);
-                                    if (object_type_details?.type_id is not null)
+                                    if (object_type_details?.type_id > 0)
                                     {
-                                        object_type_id = object_type_details.type_id ?? 0;
+                                        object_type_id = (int)object_type_details.type_id!;
                                         object_type = object_type_details.type_name ?? "";
                                     }
                                     else

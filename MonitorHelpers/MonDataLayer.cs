@@ -210,6 +210,16 @@ public class MonDataLayer : IMonDataLayer
         using NpgsqlConnection conn = new(connString);
         return conn.Query<int>(sql_string).FirstOrDefault() > 0;
     }
+    
+    
+    public bool Downloaded_recentlywithlink(int source_id, string details_link, int days_ago)
+    {
+        string sql_string = $@"select id from sf.source_data_studies 
+                               where last_downloaded::date >= now()::date - {days_ago} 
+                               and remote_url = '{details_link}' and source_id = {source_id}";
+        using NpgsqlConnection conn = new(connString);
+        return conn.Query<int>(sql_string).FirstOrDefault() > 0;
+    }
 
 }
 

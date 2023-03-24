@@ -130,8 +130,8 @@ public class BioLinccController : IDLController
                         // the download for that record - but an error is posted so that the 
                         // issue can be resolved.
                         
-                        BioLinccRecord? st = await biolincc_processor.GetStudyDetailsAsync(bb);
                         _loggingHelper.LogLine($"Obtaining #{res.num_checked}: {bb.sd_sid}");
+                        BioLinccRecord? st = await biolincc_processor.GetStudyDetailsAsync(bb);
 
                         if (st is not null)
                         {

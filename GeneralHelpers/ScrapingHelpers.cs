@@ -20,7 +20,7 @@ public class ScrapingHelpers
             AllowAutoRedirect = true,
             AllowMetaRedirect = true,
             Encoding = Encoding.UTF8
-        };
+        }; 
     }
 
 
