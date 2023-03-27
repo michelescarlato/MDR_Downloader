@@ -96,7 +96,7 @@ class CTG_Controller : IDLController
 
         string start_url = "https://clinicaltrials.gov/api/query/full_studies?expr=AREA%5BLastUpdatePostDate%5DRANGE%5B";
         string cut_off_params = month + "%2F" + day + "%2F" + year;
-        string end_url = "%2C+MAX%5D&min_rnk=" + min_rank.ToString() + "&max_rnk=" + max_rank.ToString() + "&fmt=json";
+        string end_url = "%2C+MAX%5D&min_rnk=" + min_rank + "&max_rnk=" + max_rank + "&fmt=json";
         string url = start_url + cut_off_params + end_url;
 
         ScrapingHelpers ch = new(_loggingHelper);
@@ -105,67 +105,64 @@ class CTG_Controller : IDLController
         // Do initial search 
 
         string? responseBody = await ch.GetAPIResponseAsync(url);
-        if (responseBody is not null)
-        {
-            CTGRootobject? resp = JsonSerializer.Deserialize<CTGRootobject?>(responseBody);
-            if (resp is null)
-            {
-                _loggingHelper.LogLine($"Not able to deserialise response to initial call. Download process aborted");
-                return res;       // return zero result
-            }
-            int? nums_studies_found = resp.FullStudiesResponse?.NStudiesFound;
-
-            if (nums_studies_found is > 0)
-            {
-                // Then go through the identified records 20 at a time.
-
-                int loop_count = nums_studies_found % 20 == 0
-                        ? (int)nums_studies_found / 20
-                        : ((int)nums_studies_found / 20) + 1;
-
-                for (int i = 0; i < loop_count; i++)
-                {
-                    Thread.Sleep(800);
-                    min_rank = (i * 20) + 1;
-                    max_rank = (i * 20) + 20;
-                    end_url = "%2C+MAX%5D&min_rnk=" + min_rank.ToString() + "&max_rnk=" + max_rank.ToString() + "&fmt=json";
-                    url = start_url + cut_off_params + end_url;
-
-                    responseBody = await ch.GetAPIResponseAsync(url);
-                    if (responseBody is not null)
-                    {
-                        DownloadResult batch_res = await DownloadBatch(responseBody, file_base, json_options, 
-                            source_id, saf_id);
-                        res.num_checked += batch_res.num_checked;
-                        res.num_downloaded += batch_res.num_downloaded;
-                        res.num_added += batch_res.num_added;
-                    }
-                    else
-                    {
-                        _loggingHelper.LogLine($"Null response when requesting {min_rank} to {max_rank}. Download process aborted");
-                        return res;   // return res in current state - abort process because null response body returned
-                    }
-
-                    if (i % 10 == 0)
-                    {
-                        _loggingHelper.LogLine($"{res.num_checked} files processed, {res.num_added} added, after {i} calls from {loop_count}");
-                    }
-                }
-
-                return res;   // return aggregated result 
-            }
-            else
-            {
-                _loggingHelper.LogLine($"No value found for number of studies. Download process aborted");
-                return res;   // return zero result
-            }
-        }
-        else
+        if (responseBody is null)
         {
             _loggingHelper.LogLine($"No response to initial call. Download process aborted");
             return res;       // return zero result
         }
+        CTGRootobject? resp = JsonSerializer.Deserialize<CTGRootobject?>(responseBody);
+        if (resp is null)
+        {
+            _loggingHelper.LogLine($"Not able to deserialise response to initial call. Download process aborted");
+            return res;       // return zero result
+        }
+        int? nums_studies_found = resp.FullStudiesResponse?.NStudiesFound;
+        if (nums_studies_found == 0)
+        {
+            _loggingHelper.LogLine($"No value found for number of studies. Download process aborted");
+            return res;     // return zero result
+        }
+
+        // otherwise, if all pre-conditions met, go through the identified records 20 at a time.
+
+        int loop_count = nums_studies_found % 20 == 0
+                   ? (int)nums_studies_found! / 20
+                   : ((int)nums_studies_found! / 20) + 1;
+
+        for (int i = 1260; i < loop_count; i++)    // ****************temp start 'higher up'
+        {
+            Thread.Sleep(800);
+            min_rank = (i * 20) + 1;
+            max_rank = (i * 20) + 20;
+            end_url = "%2C+MAX%5D&min_rnk=" + min_rank.ToString() + "&max_rnk=" + max_rank.ToString() + "&fmt=json";
+            url = start_url + cut_off_params + end_url;
+
+            responseBody = await ch.GetAPIResponseAsync(url);
+            if (responseBody is not null)
+            {
+                DownloadResult batch_res = await DownloadBatch(responseBody, file_base, json_options, 
+                    source_id, saf_id);
+                res.num_checked += batch_res.num_checked;
+                res.num_downloaded += batch_res.num_downloaded;
+                res.num_added += batch_res.num_added;
+            }
+            else
+            {
+                _loggingHelper.LogLine($"Null response when requesting {min_rank} to {max_rank}. Download process aborted");
+                return res;   // return res in current state - abort process because null response body returned
+            }
+
+            if ((i + 1) % 10 == 0)
+            {
+                string total_count = (i == 9 || (i + 1) % 200 == 0) ? $" (out of {loop_count})" : "";
+                _loggingHelper.LogLine($"{res.num_checked} files processed, {res.num_added} added, after {i+ 1} calls "
+                                            + total_count);
+            }
+        }
+
+        return res;   // return aggregated result 
     }
+
 
     // The t = 142, download all studies in a specified Id range option.
     // If all parameters are present the main loop is set up and for each

@@ -102,11 +102,13 @@ public class LoggingHelper : ILoggingHelper
         }
         if (opts.CutoffDate is not null)
         {
+            opts.CutoffDateAsString ??= ((DateTime)opts.CutoffDate).ToString("dd/MM/yyyy");
             LogLine($"Cutoff date is {opts.CutoffDateAsString}");
             summary_string += $"\nCutoff date is {opts.CutoffDateAsString}";
         }
         if (opts.EndDate is not null)
         {
+            opts.EndDateAsString ??= ((DateTime)opts.EndDate).ToString("dd/MM/yyyy");
             LogLine($"End date is {opts.EndDateAsString}");
             summary_string += $"\nEnd date is {opts.EndDateAsString}";
         }

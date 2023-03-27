@@ -52,21 +52,20 @@ class ISRCTN_Controller : IDLController
             return res;   // return zero result
         }
         int t = opts.FetchTypeId;
+        if (opts.CutoffDate is not null && opts.saf_id is not null)
+        {
+            if (t == 111)
+            {
+                return await DownloadRevisedRecords(file_base, opts, source.id);
+            }
+            if (t == 115 && opts.EndDate is not null)
+            {
+                return await DownloadRecordsBetweenDates(file_base, opts, source.id);
+            }
+        }
+        _loggingHelper.LogError("Invalid parameters passed to download controller - unable to proceed");
+        return new DownloadResult();   // return zero result
 
-        if (t == 111 && opts.CutoffDate is not null)
-        {
-            return await DownloadRevisedRecords(file_base, (DateTime)opts.CutoffDate, source.id, (int)opts.saf_id!);
-        }
-        else if (t == 115 && opts.CutoffDate is not null && opts.EndDate is not null)
-        {
-            return await DownloadRecordsBetweenDates(file_base, (DateTime)opts.CutoffDate, (DateTime)opts.EndDate,
-                source.id, (int)opts.saf_id!, _monDataLayer, _loggingHelper);
-        }
-        else
-        {
-            _loggingHelper.LogError("Invalid parameters passed to download controller - unable to proceed");
-            return new DownloadResult();   // return zero result
-        }
     }
 
     // DownloadRevisedRecords returns all records that have been revised on or since 
@@ -74,15 +73,18 @@ class ISRCTN_Controller : IDLController
     // often overlap on the day of the call. This is by design as the call day's records will
     // not necessarily be complete when the call is made.
 
-    public async Task<DownloadResult> DownloadRevisedRecords(string file_base, DateTime cut_off_date, int source_id, int saf_id)
+    public async Task<DownloadResult> DownloadRevisedRecords(string file_base, Options opts, int source_id)
     {
         DownloadResult res = new();
         ScrapingHelpers ch = new(_loggingHelper); 
 
         // initially get a single study to indicate total number to be downloaded.
 
+        DateTime cut_off_date = (DateTime)opts.CutoffDate!;
+        int saf_id = (int)opts.saf_id!;
         string url = GetUrl(1, cut_off_date);
-        string? responseBodyAsString = await ch.GetAPIResponseAsync(url);
+        string? responseBodyAsString =
+            await ch.GetAPIResponseWithRetriesAsync(url, 1000, cut_off_date.ToString("dd/MM/yyyy"));
         allTrials? initial_result = Deserialize<allTrials?>(responseBodyAsString, _loggingHelper);
 
         if (initial_result is not null)
@@ -95,7 +97,8 @@ class ISRCTN_Controller : IDLController
                     // Do a single call but with an increased limit.
 
                     url = GetUrl(record_num, cut_off_date);
-                    responseBodyAsString = await ch.GetAPIResponseAsync(url);
+                    responseBodyAsString =
+                        await ch.GetAPIResponseWithRetriesAsync(url, 1000, cut_off_date.ToString("dd/MM/yyyy"));
                     if (responseBodyAsString is not null)
                     {
                         DownloadResult batch_res = await DownloadBatch(responseBodyAsString, file_base, source_id,
@@ -137,12 +140,14 @@ class ISRCTN_Controller : IDLController
     // By default the download is done in batches of 4 days. If the end date is included
     // in a batch, the batch is made up to the end date.
 
-    public async Task<DownloadResult> DownloadRecordsBetweenDates(string file_base, DateTime start_date, 
-        DateTime end_date, int source_id, int saf_id,
-        IMonDataLayer mon_data_layer, ILoggingHelper logging_helper)
+    public async Task<DownloadResult> DownloadRecordsBetweenDates(string file_base, Options opts, int source_id
+        )
     {
         DownloadResult res = new();
-        ScrapingHelpers ch = new(logging_helper);
+        ScrapingHelpers ch = new(_loggingHelper);
+        DateTime start_date = (DateTime)opts.CutoffDate!;
+        DateTime end_date = (DateTime)opts.EndDate!;
+        int saf_id = (int)opts.saf_id!;
 
         // If the start date is earlier than 10/11/2005 it is made into 10/11/2005,
         // the earliest date in the ISRCTN system for 'date last edited'.
@@ -173,8 +178,10 @@ class ISRCTN_Controller : IDLController
             // Initial call to get number of studies in this period
 
             string url = GetUrl(1, date_GE, date_LT);
-            string? responseBodyAsString = await ch.GetAPIResponseAsync(url);
-            allTrials? result = Deserialize<allTrials?>(responseBodyAsString, logging_helper);
+            string? responseBodyAsString =
+                await ch.GetAPIResponseWithRetriesAsync(url, 1000, 
+                    date_GE.ToString("dd/MM/yyyy") + " to " + date_LT.ToString("dd/MM/yyyy"));
+            allTrials? result = Deserialize<allTrials?>(responseBodyAsString, _loggingHelper);
             if (result is not null)
             {
                 int record_num = result.totalCount;
@@ -185,7 +192,9 @@ class ISRCTN_Controller : IDLController
                         // Do a single call but with the increased limit.
 
                         url = GetUrl(record_num, date_GE, date_LT);
-                        responseBodyAsString = await ch.GetAPIResponseAsync(url);
+                        responseBodyAsString =
+                            await ch.GetAPIResponseWithRetriesAsync(url, 1000, 
+                                date_GE.ToString("dd/MM/yyyy") + " to " + date_LT.ToString("dd/MM/yyyy"));
                         if (responseBodyAsString is not null)
                         {
                             DownloadResult batch_res = await DownloadBatch(responseBodyAsString, file_base, source_id, saf_id);
@@ -196,7 +205,7 @@ class ISRCTN_Controller : IDLController
                             string feedback = $"{batch_res.num_downloaded} studies downloaded, ";
                             feedback += $"with last edited GE { date_GE.ToShortDateString()} and LT { date_LT.ToShortDateString()}. ";
                             feedback += $"Total downloaded: {res.num_downloaded}";
-                            logging_helper.LogLine(feedback);
+                            _loggingHelper.LogLine(feedback);
                             Thread.Sleep(800);  // Add a pause between calls.
                         }
                     }
@@ -214,7 +223,7 @@ class ISRCTN_Controller : IDLController
 
                             string feedback = $"{day_res.num_downloaded} studies downloaded, for {date_to_check.ToShortDateString()}.";
                             feedback += $" Total downloaded: {res.num_downloaded}";
-                            logging_helper.LogLine(feedback);
+                            _loggingHelper.LogLine(feedback);
                             date_to_check = date_to_check.AddDays(1);
                             Thread.Sleep(800);  // Add a pause between calls.
                         }
@@ -240,17 +249,19 @@ class ISRCTN_Controller : IDLController
         DateTime next_day_date = date_to_check.AddDays(1);
 
         string url = GetUrl(1, date_to_check, next_day_date);
-        string? responseBodyAsString = await ch.GetAPIResponseAsync(url);
+        string? responseBodyAsString =
+            await ch.GetAPIResponseWithRetriesAsync(url, 1000, date_to_check.ToString("dd/MM/yyyy"));
         allTrials? day_result = Deserialize<allTrials?>(responseBodyAsString, _loggingHelper);
 
         if (day_result is not null)
         {
             int day_record_num = day_result.totalCount;
-            if (day_record_num > 0)
+            if (day_record_num > 0) 
             {
                 Thread.Sleep(300);
                 url = GetUrl(day_record_num, date_to_check, next_day_date);
-                responseBodyAsString = await ch.GetAPIResponseAsync(url);
+                responseBodyAsString = await ch.GetAPIResponseWithRetriesAsync(url, 1000, 
+                                                   date_to_check.ToString("dd/MM/yyyy"));
                 if (responseBodyAsString is not null)
                 {
                     DownloadResult batch_res = await DownloadBatch(responseBodyAsString, file_base, source_id, saf_id);

@@ -88,20 +88,8 @@ namespace MDR_Downloader.yoda
             {
                 // yoda site appears to be having intermittent problems, therefore attempt access up to three times
                 
-                WebPage? searchPage = null;
-                int j = 0;
-                while (searchPage is null && j < 3)
-                {
-                    j++;
-                    searchPage = await ch.GetPageAsync(baseURL + i);
-                    Thread.Sleep(1000);     // wait a second until retry
-                }
-                
-                if (searchPage is null)
-                {
-                    _loggingHelper.LogError($"Attempt to access Yoda studies list page {i} failed after 3 attempts");
-                }
-                else
+                WebPage? searchPage = await ch.GetPagWithRetriesAsync(baseURL + i, 1000, "page " + i);
+                if (searchPage is not null)
                 {
                     List<Summary> page_study_list = yoda_processor.GetStudyInitialDetails(searchPage);
                     all_study_list.AddRange(page_study_list);
@@ -161,30 +149,15 @@ namespace MDR_Downloader.yoda
                     
                     if (obtain_web_page)
                     {
-                        WebPage? studyPage = null;
-                        int j = 0;
-                        while (studyPage is null && j < 3)
+                        WebPage? studyPage = await ch.GetPagWithRetriesAsync(sm.details_link, 1000, sm.sd_sid);
+                        if (studyPage is not null)
                         {
-                            j++;
-                            studyPage = await ch.GetPageAsync(sm.details_link);
-                            _loggingHelper.LogLine(
-                                $"Problem accessing details page for {sm.sd_sid}, trying again in a second");
-                            Thread.Sleep(1000); // wait a second until retry
-                        }
-
-                        res.num_checked++;
-                        if (studyPage is null)
-                        {
-                            _loggingHelper.LogError(
-                                $"Attempt to access Yoda studies details page for {sm.sd_sid} failed after 3 attempts");
-                        }
-                        else
-                        {
+                            res.num_checked++;
                             HtmlNode? page = studyPage.Find("div", By.Class("region-content")).FirstOrDefault();
                             if (page is not null)
                             {
                                 Yoda_Record? st = await yoda_processor.GetStudyDetailsAsync(page, sm);
-
+                                
                                 if (st is not null)
                                 {
                                     // Write out study record as XML.

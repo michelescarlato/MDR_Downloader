@@ -320,9 +320,7 @@ public class ISRCTN_Processor
                         // The initial web page access results in a blocking page
                         // The second access is required to actually access the page.
                         
-                        WebPage? study_page = await ch.GetPageAsync(details_url);
-                        Thread.Sleep(100); 
-                        study_page = await ch.GetPageAsync(details_url);
+                        WebPage? study_page = await ch.GetPagWithRetriesAsync(details_url, 100, st.sd_sid);
                         if (study_page is not null)
                         {
                             output_urls = new();

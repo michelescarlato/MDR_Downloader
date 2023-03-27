@@ -43,7 +43,7 @@ public class MonDataLayer : IMonDataLayer
         using NpgsqlConnection Conn = new(connString);
         string sql_string = $@"select max(time_ended) from sf.saf_events 
                                where source_id = {source_id}";
-        return Conn.QuerySingleOrDefault(sql_string);
+        return Conn.QuerySingleOrDefault<DateTime>(sql_string);
     }
 
 
@@ -52,7 +52,7 @@ public class MonDataLayer : IMonDataLayer
         using NpgsqlConnection Conn = new(connString);
         string sql_string = $@"select max(time_ended) from sf.saf_events 
                                where source_id = {source_id} and filter_id = {filter_id}";
-        return Conn.QuerySingleOrDefault(sql_string);
+        return Conn.QuerySingleOrDefault<DateTime>(sql_string);
     }
 
 

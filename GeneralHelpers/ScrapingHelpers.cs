@@ -23,7 +23,37 @@ public class ScrapingHelpers
         }; 
     }
 
-
+ 
+    public async Task<WebPage?> GetPagWithRetriesAsync(string url, int pause, string sid)
+    {
+        int j = 0;
+        WebPage? found_page = null;
+        while (found_page is null && j < 4)
+        {
+            try
+            {
+                found_page = await browser.NavigateToPageAsync(new Uri(url));
+            }
+            catch (Exception e)
+            {
+                if (j == 3)
+                {
+                    _logging_helper.LogError($"Error in obtaining page for {sid} from {url} : {e.Message}, after {j + 1} tries");
+                }
+                else
+                {
+                    if (j > 0)
+                    {
+                        _logging_helper.LogLine($"Error in obtaining page for {sid}, tries = {j + 1}");
+                    }
+                }
+                Thread.Sleep(pause);
+            }
+            j++;
+        }
+        return found_page;
+    }
+    
     public async Task<WebPage?> GetPageAsync(string url)
     {
         try
@@ -37,12 +67,42 @@ public class ScrapingHelpers
         }
     }
 
-
+    
+    public async Task<string?> GetAPIResponseWithRetriesAsync(string url, int pause, string sid)
+    {
+        int j = 0;
+        string? found_response = null;
+        while (found_response is null && j < 4)
+        {
+            try
+            {
+                found_response = await webClient.GetStringAsync(url);
+            }
+            catch (Exception e)
+            {
+                if (j == 3)
+                {
+                    _logging_helper.LogError($"Error in obtaining API response for {sid} from {url} : {e.Message}, after {j + 1} tries");
+                }
+                else
+                {
+                    if (j > 0)
+                    {
+                        _logging_helper.LogLine($"Error in obtaining API response for {sid}, tries = {j + 1}");
+                    }
+                }
+                Thread.Sleep(pause);
+            }
+            j++;
+        }
+        return found_response;
+    }
+    
     public async Task<string?> GetAPIResponseAsync(string url)
     {
         try
         {
-            return  await webClient.GetStringAsync(url);
+            return await webClient.GetStringAsync(url);
         }
         catch (Exception e)
         {
