@@ -18,8 +18,8 @@ public class BioLinccDataLayer
     public void RecreateBiolinccNctLinksTable()
     {
         using var conn = new NpgsqlConnection(_biolinccConnString);
-        string sql_string = @"DROP TABLE IF EXISTS pp.biolincc_nct_links;
-            CREATE TABLE pp.biolincc_nct_links (
+        string sql_string = @"DROP TABLE IF EXISTS mn.biolincc_nct_links;
+            CREATE TABLE mn.biolincc_nct_links (
                 sd_sid VARCHAR,
                 nct_id VARCHAR,
                 multi_biolincc_to_nct BOOL default false);";
@@ -34,9 +34,9 @@ public class BioLinccDataLayer
         {
             // Insert must follow a delete of any relevant records.
             
-            string sql_string = $@"Delete from pp.biolincc_nct_links 
+            string sql_string = $@"Delete from mn.biolincc_nct_links 
                     where sd_sid = '{sdSid}';
-                    Insert into pp.biolincc_nct_links(sd_sid, nct_id)
+                    Insert into mn.biolincc_nct_links(sd_sid, nct_id)
                     values('{sdSid}', '{id.nct_id}');";
             conn.Execute(sql_string);
         }
@@ -46,11 +46,11 @@ public class BioLinccDataLayer
     public void UpdateLinkStatus()
     {
         using var conn = new NpgsqlConnection(_biolinccConnString);
-        string sql_string = @"Update pp.biolincc_nct_links k
+        string sql_string = @"Update mn.biolincc_nct_links k
             set multi_biolincc_to_nct = true
             from 
                 (select nct_id
-                 from pp.biolincc_nct_links
+                 from mn.biolincc_nct_links
                  group by nct_id
                  having count(sd_sid) > 1) multiples
             where k.nct_id = multiples.nct_id;";
@@ -62,7 +62,7 @@ public class BioLinccDataLayer
     {
         using var conn = new NpgsqlConnection(_biolinccConnString);
         string sql_string = $@"select multi_biolincc_to_nct
-            from pp.biolincc_nct_links
+            from mn.biolincc_nct_links
             where sd_sid = '{sdSid}'";
         return conn.Query<bool>(sql_string).FirstOrDefault();
     }
@@ -71,13 +71,13 @@ public class BioLinccDataLayer
     public ObjectTypeDetails? FetchDocTypeDetails(string docName)
     {
         using var conn = new NpgsqlConnection(_biolinccConnString);
-        string sql_string = $@"Select type_id, type_name from pp.document_types 
+        string sql_string = $@"Select type_id, type_name from mn.document_types 
                                where resource_name = '{docName}';";
         ObjectTypeDetails? res = conn.QueryFirstOrDefault<ObjectTypeDetails>(sql_string);
         if (res is null)
         {
             // store the details in the table for later matching
-            sql_string = $@"Insert into pp.document_types (resource_name, type_id, type_name) 
+            sql_string = $@"Insert into mn.document_types (resource_name, type_id, type_name) 
                             values('{docName}', 0, 'to be added to lookup');";
             conn.Execute(sql_string);
         } 
@@ -88,7 +88,7 @@ public class BioLinccDataLayer
     {
         using var conn = new NpgsqlConnection(_ctgConnString);
         string sql_string = $@"Select organisation_id as org_id, 
-                              organisation_name as org_name from ad.study_contributors 
+                              organisation_name as org_name from ad.study_organisations
                               where sd_sid = '{nctId}' and contrib_type_id = 54;";
         return conn.QueryFirstOrDefault<SponsorDetails>(sql_string);
     }
@@ -106,9 +106,9 @@ public class BioLinccDataLayer
     public void InsertUnmatchedDocumentType(string documentType)
     {
         using var conn = new NpgsqlConnection(_biolinccConnString);
-        string sql_string = $@"INSERT INTO pp.document_types(resource_name) 
+        string sql_string = $@"INSERT INTO mn.document_types(resource_name) 
                 SELECT '{documentType}'
-                WHERE NOT EXISTS (SELECT id FROM pp.document_types 
+                WHERE NOT EXISTS (SELECT id FROM mn.document_types 
                        WHERE resource_name = '{documentType}');";
         conn.Execute(sql_string);
     }

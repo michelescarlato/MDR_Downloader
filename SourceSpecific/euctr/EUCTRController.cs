@@ -137,7 +137,7 @@ class EUCTR_Controller : IDLController
             {
                 bool do_download = false;
                 res.num_checked++;
-                StudyFileRecord? file_record = _monDataLayer.FetchStudyFileRecord(s.eudract_id, source_id);
+                StudyFileRecord? file_record = _monDataLayer.FetchStudyFileRecord(s.eudract_id, "");
                 if (file_record is null)
                 {
                     // a new record not yet existing in study source table - must be downloaded.
@@ -158,7 +158,7 @@ class EUCTR_Controller : IDLController
 
                         if (days_ago is not null)
                         {
-                            if (_monDataLayer.Downloaded_recently(source_id, s.eudract_id, (int)days_ago))
+                            if (_monDataLayer.Downloaded_recently(s.eudract_id, (int)days_ago))
                             {
                                 do_download = false;
                             }
@@ -224,7 +224,7 @@ class EUCTR_Controller : IDLController
                                 if (full_path != "error")
                                 {
                                     string? remote_url = st.details_url;
-                                    bool added = _monDataLayer.UpdateStudyDownloadLog(source_id, s.eudract_id, 
+                                    bool added = _monDataLayer.UpdateStudyLog(s.eudract_id, 
                                         remote_url, saf_id, null, full_path);
                                     res.num_downloaded++;
                                     if (added) res.num_added++;

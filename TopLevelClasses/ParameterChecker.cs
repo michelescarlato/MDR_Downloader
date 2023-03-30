@@ -291,7 +291,7 @@ public class Options
     [Option('I', "skip_recent", Required = false, HelpText = "Integer id representing the number of days ago, to skip recent downloads (0 = today).")]
     public int? SkipRecentDays { get; set; }
 
-    [Option('L', "no_Logging", Required = false, HelpText = "If present prevents the logging record in sf.saf_events")]
+    [Option('L', "no_Logging", Required = false, HelpText = "If present prevents the logging record in sf.dl_events")]
     public bool? NoLogging { get; set; }
 
     [Option('S', "start_page", Required = false, HelpText = "First summary page number to be considered if downloading all EU CTR records (starts at 1)")]

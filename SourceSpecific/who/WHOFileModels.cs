@@ -186,7 +186,7 @@ public class WHORecord
     public string? ipd_description { get; set; }
     public string? results_date_completed { get; set; }
     public string? results_yes_no { get; set; }
-    public string? folder_name { get; set; }
+    public string? db_name { get; set; }
 
     public string? design_string { get; set; }
     public string? phase_string { get; set; }

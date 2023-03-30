@@ -40,7 +40,7 @@ public class Source
 }
 
 
-[Table("sf.saf_types")]
+[Table("sf.dl_types")]
 public class SFType
 {
     public int id { get; set; }
@@ -58,7 +58,7 @@ public class SFType
 }
 
 
-[Table("sf.saf_events")]
+[Table("sf.dl_events")]
 public class SAFEvent
 {
     [ExplicitKey]
@@ -102,33 +102,34 @@ public class SAFEvent
 }
 
 
-[Table("sf.source_data_studies")]
+[Table("mn.source_data")]
 public class StudyFileRecord
 {
     [Key] 
     public int id { get; set; }
-    public int? source_id { get; set; }
-    public string sd_id { get; set; } = null!;
+    public string sd_sid { get; set; } = null!;
     public string? remote_url { get; set; }
     public DateTime? last_revised { get; set; }
-    public bool? assume_complete { get; set; }
     public int? download_status { get; set; }
     public string? local_path { get; set; }
-    public int? last_saf_id { get; set; }
+    public int? last_dl_id { get; set; }
     public DateTime? last_downloaded { get; set; }
     public int? last_harvest_id { get; set; }
     public DateTime? last_harvested { get; set; }
     public int? last_import_id { get; set; }
     public DateTime? last_imported { get; set; }
+    public int? last_coding_id { get; set; }
+    public DateTime? last_coded { get; set; }
+    public int? last_aggregation_id { get; set; }
+    public DateTime? last_aggregated { get; set; }
 
     // constructor when a revision data can be expected (not always there)
-    public StudyFileRecord(int? _source_id, string _sd_id, string? _remote_url, int? _last_saf_id,
+    public StudyFileRecord(string _sd_sid, string? _remote_url, int? _last_dl_id,
                                           DateTime? _last_revised, string? _local_path)
     {
-        source_id = _source_id;
-        sd_id = _sd_id;
+        sd_sid = _sd_sid;
         remote_url = _remote_url;
-        last_saf_id = _last_saf_id;
+        last_dl_id = _last_dl_id;
         last_revised = _last_revised;
         download_status = 2;
         last_downloaded = DateTime.Now;
@@ -140,47 +141,51 @@ public class StudyFileRecord
 
 }
 
+// This only used in the context of PubMed (or other later object based resources)
 
-[Table("sf.source_data_objects")]
+[Table("mn.source_data")]
 public class ObjectFileRecord
 {
     [Key]
     public int id { get; set; }
-    public int? source_id { get; set; }
-    public string? sd_id { get; set; }
+    public string? sd_oid { get; set; }
     public string? remote_url { get; set; }
     public DateTime? last_revised { get; set; }
-    public bool? assume_complete { get; set; }
     public int? download_status { get; set; }
     public string? local_path { get; set; }
-    public int? last_saf_id { get; set; }
+    public int? last_dl_id { get; set; }
     public DateTime? last_downloaded { get; set; }
     public int? last_harvest_id { get; set; }
     public DateTime? last_harvested { get; set; }
     public int? last_import_id { get; set; }
     public DateTime? last_imported { get; set; }
+    public int? last_coding_id { get; set; }
+    public DateTime? last_coded { get; set; }
+    public int? last_aggregation_id { get; set; }
+    public DateTime? last_aggregated { get; set; }
 
-    // constructor when a revision data can be expected (not always there)
-    public ObjectFileRecord(int? _source_id, string? _sd_id, string?_remote_url, int? _last_saf_id,
-                                          DateTime? _last_revised, string? _local_path)
+
+    // Constructor when a revision date can be expected (not always there).
+    
+    public ObjectFileRecord(string? _sd_oid, string?_remote_url, int? _last_dl_id,
+                              DateTime? _last_revised, string? _local_path)
     {
-        source_id = _source_id;
-        sd_id = _sd_id;
+        sd_oid = _sd_oid;
         remote_url = _remote_url;
-        last_saf_id = _last_saf_id;
+        last_dl_id = _last_dl_id;
         last_revised = _last_revised;
         download_status = 2;
         last_downloaded = DateTime.Now;
         local_path = _local_path;
     }
 
-    // constructor when a new file record required, when a pmid new to the system is found
-    public ObjectFileRecord(int? _source_id, string? _sd_id, string? _remote_url, int? _last_saf_id)
+    // Constructor when a new file record required, when a pmid new to the system is found.
+    
+    public ObjectFileRecord(string? _sd_oid, string? _remote_url, int? _last_dl_id)
     {
-        source_id = _source_id;
-        sd_id = _sd_id;
+        sd_oid = _sd_oid;
         remote_url = _remote_url;
-        last_saf_id = _last_saf_id;
+        last_dl_id = _last_dl_id;
         download_status = 0;
     }
 

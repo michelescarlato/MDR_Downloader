@@ -25,22 +25,22 @@ namespace MDR_Downloader.pubmed
         {
             using NpgsqlConnection conn = new(connString);
 
-            string sql_string = @"DROP TABLE IF EXISTS pp.pmids_by_source_total;
-                       CREATE TABLE IF NOT EXISTS pp.pmids_by_source_total(
+            string sql_string = @"DROP TABLE IF EXISTS mn.pmids_by_source_total;
+                       CREATE TABLE IF NOT EXISTS mn.pmids_by_source_total(
                         source_id int
                       , sd_sid varchar
                       , pmid int)";
             conn.Execute(sql_string);
 
-            sql_string = @"DROP TABLE IF EXISTS pp.distinct_pmids;
-                       CREATE TABLE IF NOT EXISTS pp.distinct_pmids(
+            sql_string = @"DROP TABLE IF EXISTS mn.distinct_pmids;
+                       CREATE TABLE IF NOT EXISTS mn.distinct_pmids(
                          identity int GENERATED ALWAYS AS IDENTITY
                        , group_id int
                        , pmid int)";
             conn.Execute(sql_string);
 
-            sql_string = @"DROP TABLE IF EXISTS pp.pmid_id_strings;
-                       CREATE TABLE IF NOT EXISTS pp.pmid_id_strings(
+            sql_string = @"DROP TABLE IF EXISTS mn.pmid_id_strings;
+                       CREATE TABLE IF NOT EXISTS mn.pmid_id_strings(
                        id_string varchar)";
             conn.Execute(sql_string);
         }
@@ -78,37 +78,37 @@ namespace MDR_Downloader.pubmed
         {
             using NpgsqlConnection conn = new(connString);
             
-            string sql_string = @"INSERT INTO pp.distinct_pmids(pmid)
+            string sql_string = @"INSERT INTO mn.distinct_pmids(pmid)
                           SELECT DISTINCT pmid
-                          FROM pp.pmids_by_source_total
+                          FROM mn.pmids_by_source_total
                           ORDER BY pmid;";
             conn.Execute(sql_string);
 
-            sql_string = @"Update pp.distinct_pmids SET group_id = identity / 100;";
+            sql_string = @"Update mn.distinct_pmids SET group_id = identity / 100;";
             conn.Execute(sql_string);
 
             // fill the id list (100 ids in each string).
 
-            sql_string = @"INSERT INTO pp.pmid_id_strings(
+            sql_string = @"INSERT INTO mn.pmid_id_strings(
                         id_string)
                         SELECT DISTINCT string_agg(pmid::varchar, ', ') 
                         OVER (PARTITION BY group_id) 
-                        from pp.distinct_pmids;";
+                        from mn.distinct_pmids;";
             conn.Execute(sql_string);
         }
 
         public IEnumerable<string> FetchSourcePMIDStrings()
         {
             using NpgsqlConnection conn = new(connString);
-            string sql_string = @"select id_string from pp.pmid_id_strings;";
+            string sql_string = @"select id_string from mn.pmid_id_strings;";
             return conn.Query<string>(sql_string);
         }
 
         public void DropPMIDSourceTempTables()
         {
             using NpgsqlConnection conn = new(connString);
-            string sql_string = @"DROP TABLE IF EXISTS pp.pmids_by_source_total;
-                    DROP TABLE IF EXISTS pp.distinct_pmids;";
+            string sql_string = @"DROP TABLE IF EXISTS mn.pmids_by_source_total;
+                    DROP TABLE IF EXISTS mn.distinct_pmids;";
             conn.Execute(sql_string);
         }
 

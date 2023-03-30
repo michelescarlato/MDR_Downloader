@@ -140,8 +140,7 @@ class ISRCTN_Controller : IDLController
     // By default the download is done in batches of 4 days. If the end date is included
     // in a batch, the batch is made up to the end date.
 
-    public async Task<DownloadResult> DownloadRecordsBetweenDates(string file_base, Options opts, int source_id
-        )
+    public async Task<DownloadResult> DownloadRecordsBetweenDates(string file_base, Options opts, int source_id)
     {
         DownloadResult res = new();
         ScrapingHelpers ch = new(_loggingHelper);
@@ -304,7 +303,7 @@ class ISRCTN_Controller : IDLController
                     {
                         string remote_url = "https://www.isrctn.com/" + s.sd_sid;
                         DateTime? last_updated = s.lastUpdated?.FetchDateTimeFromISO();
-                        bool added = _monDataLayer.UpdateStudyDownloadLog(source_id, s.sd_sid, remote_url, saf_id,
+                        bool added = _monDataLayer.UpdateStudyLog(s.sd_sid, remote_url, saf_id,
                                                 last_updated, full_path);
                         res.num_downloaded++;
                         if (added) res.num_added++;

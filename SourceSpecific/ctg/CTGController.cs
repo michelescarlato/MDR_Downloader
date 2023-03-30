@@ -273,7 +273,7 @@ class CTG_Controller : IDLController
                                     DateTime? last_updated = last_updated_string?.FetchDateTimeFromDateString();
                                     string remote_url = "https://clinicaltrials.gov/ct2/show/" + sd_sid;
 
-                                    bool added = _monDataLayer.UpdateStudyDownloadLog(source_id, sd_sid, remote_url, saf_id,
+                                    bool added = _monDataLayer.UpdateStudyLog(sd_sid, remote_url, saf_id,
                                         last_updated, full_path);
                                     res.num_downloaded++;
                                     if (added) res.num_added++;
@@ -343,7 +343,7 @@ class CTG_Controller : IDLController
                             DateTime? last_updated = last_updated_string?.FetchDateTimeFromDateString();
                             string remote_url = "https://clinicaltrials.gov/ct2/show/" + sd_sid;
 
-                            bool added = _monDataLayer.UpdateStudyDownloadLog(source_id, sd_sid, remote_url, saf_id,
+                            bool added = _monDataLayer.UpdateStudyLog(sd_sid, remote_url, saf_id,
                                                     last_updated, full_path);
                             res.num_downloaded++;
                             if (added) res.num_added++;

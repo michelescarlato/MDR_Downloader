@@ -56,7 +56,7 @@ public class BioLinccController : IDLController
         if (res.num_downloaded > 0)
         {
             _biolinccRepo.UpdateLinkStatus(); 
-            List<StudyFileRecord> file_list = _monDataLayer.FetchStudyIds(source.id).ToList();
+            List<StudyFileRecord> file_list = _monDataLayer.FetchStudyIds().ToList();
             await PostProcessDataAsync(file_list);
         }
         
@@ -121,7 +121,7 @@ public class BioLinccController : IDLController
                     // If record already downloaded recently, days_ago parameter may cause it
                     // to be ignored... (may be used if re-running after an error or object name update).
 
-                    if (days_ago is null || !_monDataLayer.Downloaded_recently(source_id, bb.sd_sid, (int)days_ago))
+                    if (days_ago is null || !_monDataLayer.Downloaded_recently(bb.sd_sid, (int)days_ago))
                     {
                         // Fetch the study record, as constructed by the biolincc_processor
                         // Assuming successful record creation, store the links between Biolincc
@@ -166,7 +166,7 @@ public class BioLinccController : IDLController
                                     _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
                                 }
 
-                                bool added = _monDataLayer.UpdateStudyDownloadLog(source_id, st.sd_sid, st.remote_url, opts.saf_id,
+                                bool added = _monDataLayer.UpdateStudyLog(st.sd_sid, st.remote_url, opts.saf_id,
                                                                   st.datasets_updated_date, full_path);
                                 res.num_downloaded++;
                                 if (added) res.num_added++;
@@ -197,7 +197,7 @@ public class BioLinccController : IDLController
         foreach (StudyFileRecord rec in fileList)
         {
             n++;
-            bool in_multiple_biolincc_group = _biolinccRepo.GetMultiLinkStatus(rec.sd_id);
+            bool in_multiple_biolincc_group = _biolinccRepo.GetMultiLinkStatus(rec.sd_sid);
             if (in_multiple_biolincc_group)
             { 
                 string filePath = rec.local_path ?? "";

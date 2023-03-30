@@ -2,7 +2,7 @@
   "profiles": {
     "MDR_Downloader": {
       "commandName": "Project",
-      "commandLineArgs": "-s 100115 -t 113 -f \"F:\\MDR_sources\\WHO\\20230313 ICTRP.csv\" "
+      "commandLineArgs": "-s 100120 -t 111 "
     }
   }
 } 

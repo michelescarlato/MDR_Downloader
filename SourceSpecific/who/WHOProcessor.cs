@@ -20,7 +20,7 @@ namespace MDR_Downloader.who
             r.sd_sid = sd_sid;
             int source_id = _wh.get_reg_source(sd_sid);
 
-            if (source_id == 100120 || source_id == 100123 || source_id == 100126)
+            if (source_id is 100120 or 100123 or 100126)
             {
                 // no need to process these - details input directly from registry
                 // (for CGT, ISRCTN, EU CTR).
@@ -262,7 +262,12 @@ namespace MDR_Downloader.who
                 }
             }
 
-            r.folder_name = _wh.get_folder(source_id);
+            r.db_name = _wh.get_db(source_id);
+
+            if (r.db_name == "")
+            {
+                int a = 1;
+            }
             r.secondary_ids = secondary_ids;
             r.study_features = study_features;
 

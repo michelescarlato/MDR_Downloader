@@ -69,14 +69,15 @@ class WHO_Controller : IDLController
                 {
                     // Write out study record as JSON, log the download.
 
-                    if (!string.IsNullOrEmpty(r.folder_name))
+                    if (!string.IsNullOrEmpty(r.db_name))
                     {
-                        if (!Directory.Exists(r.folder_name))
+                        string folder_name = @"F:\MDR_Data\" + r.db_name + @"\";
+                        if (!Directory.Exists(folder_name))
                         {
-                            Directory.CreateDirectory(r.folder_name);
+                            Directory.CreateDirectory(folder_name);
                         }
                         string file_name = r.sd_sid + ".json";
-                        string full_path = Path.Combine(r.folder_name, file_name);
+                        string full_path = Path.Combine(folder_name, file_name);
                         try
                         {
                             await using FileStream jsonStream = File.Create(full_path);
@@ -88,7 +89,7 @@ class WHO_Controller : IDLController
                             _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
                         }
 
-                        bool added = _monDataLayer.UpdateStudyDownloadLog(r.source_id, r.sd_sid, r.remote_url, (int)opts.saf_id!,
+                        bool added = _monDataLayer.UpdateWhoStudyLog(r.db_name, r.sd_sid, r.remote_url, (int)opts.saf_id!,
                                                             r.record_date?.FetchDateTimeFromISO(), full_path);
                         res.num_downloaded++;
                         if (added) res.num_added++;

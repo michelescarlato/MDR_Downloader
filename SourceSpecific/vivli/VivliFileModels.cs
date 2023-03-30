@@ -3,7 +3,7 @@
 namespace MDR_Downloader.vivli
 {
 
-    [Table("pp.studies")]
+    [Table("mn.studies")]
     public class VivliRecord
     {
         [ExplicitKey]
@@ -35,7 +35,7 @@ namespace MDR_Downloader.vivli
         public DateTime? date_updated { get; set; }
     }
 
-    [Table("pp.data_packages")]
+    [Table("mn.data_packages")]
     public class PackageRecord
     {
         [ExplicitKey] 
@@ -52,7 +52,7 @@ namespace MDR_Downloader.vivli
         public string? sec_anal_dois { get; set; }
     }
 
-    [Table("pp.data_objects")]
+    [Table("mn.data_objects")]
     public class ObjectRecord
     {
         public int id { get; set; }

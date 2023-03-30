@@ -19,10 +19,10 @@ namespace MDR_Downloader.vivli
         public void SetUpParameterTable()
         {
             using var conn = new NpgsqlConnection(connString);
-            string sql_string = "Drop table if exists pp.api_urls;";
+            string sql_string = "Drop table if exists mn.api_urls;";
             conn.Execute(sql_string);
 
-            sql_string = @"Create table pp.api_urls(
+            sql_string = @"Create table mn.api_urls(
                                     id int,
                                     name varchar,
                                     type varchar,
@@ -35,10 +35,10 @@ namespace MDR_Downloader.vivli
         public void SetUpStudiesTable()
         {
             using var conn = new NpgsqlConnection(connString);
-            string sql_string = "Drop table if exists pp.studies;";
+            string sql_string = "Drop table if exists mn.studies;";
             conn.Execute(sql_string);
 
-            sql_string = @"Create table pp.studies(
+            sql_string = @"Create table mn.studies(
                          id int,
                          vivli_id varchar,
                          study_title varchar,
@@ -72,10 +72,10 @@ namespace MDR_Downloader.vivli
         public void SetUpPackagesTable()
         {
             using var conn = new NpgsqlConnection(connString);
-            string sql_string = "Drop table if exists pp.data_packages;";
+            string sql_string = "Drop table if exists mn.data_packages;";
             conn.Execute(sql_string);
 
-            sql_string = @"Create table pp.data_packages(
+            sql_string = @"Create table mn.data_packages(
                          id int,
                          vivli_id varchar,
                          vivli_study_id varchar,
@@ -94,10 +94,10 @@ namespace MDR_Downloader.vivli
         public void SetUpDataObjectsTable()
         {
             using var conn = new NpgsqlConnection(connString);
-            string sql_string = "Drop table if exists pp.data_objects;";
+            string sql_string = "Drop table if exists mn.data_objects;";
             conn.Execute(sql_string);
 
-            sql_string = @"Create table pp.data_objects(
+            sql_string = @"Create table mn.data_objects(
                         id int,
                         package_id int,             
                         object_type varchar,
@@ -126,7 +126,7 @@ namespace MDR_Downloader.vivli
         public IEnumerable<VivliURL> FetchVivliApiUrLs()
         {
             using var conn = new NpgsqlConnection(connString);
-            string sql_string = @"Select * from  pp.api_urls";
+            string sql_string = @"Select * from  mn.api_urls";
                 //sql_string += @"  where type = 's';";
                 return conn.Query<VivliURL>(sql_string);
         }

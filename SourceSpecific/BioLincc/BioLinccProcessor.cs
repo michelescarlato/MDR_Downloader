@@ -621,7 +621,7 @@ public class BioLINCC_Processor
                                     }
                                     else
                                     {
-                                        _logging_helper.LogLine("!!!! Need to map " + doc_name + " in pp.document_types table !!!!");
+                                        _logging_helper.LogLine("!!!! Need to map " + doc_name + " in mn.document_types table !!!!");
                                         st.UnmatchedDocTypes.Add(doc_name);
                                     }
                                 }

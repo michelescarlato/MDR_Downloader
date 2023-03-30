@@ -106,8 +106,8 @@ public class PubMed_Controller : IDLController
     // that have been modified since the last similar download (represented by the cutoff date). 
     // This includes new records.
 
-    // The records found for each bank are stored in a table in the pp schema - pp.temp_by_bank_records.
-    // These are transferred in turn to the pp.pmids_with_bank_records table
+    // The records found for each bank are stored in a table in the pp schema - mn.temp_by_bank_records.
+    // These are transferred in turn to the mn.pmids_with_bank_records table
 
     // At the end of the loop through all banks the *distinct* pmid records are transferred to a list in memory.
     // The system loops through them - if the record exists it is replaced and the object source record
@@ -217,7 +217,7 @@ public class PubMed_Controller : IDLController
             // Establish tables and support objects to support
             // the PMIDs found in each source database with References.
             // Loop through those databases and deposit pmids in the
-            // pp.pmids_by_source_total table. This initial stage is not sensitive to a 
+            // mn.pmids_by_source_total table. This initial stage is not sensitive to a 
             // cutoff date as the last revised date is not known at this time
             // - has to be checked later.
 
@@ -230,7 +230,7 @@ public class PubMed_Controller : IDLController
             }
 
             // Groups the ids into lists of a 100 (max) each, in  
-            // pp.pmid_id_strings table.
+            // mn.pmid_id_strings table.
 
             _pubmedRepo.CreatePMID_IDStrings();
 
@@ -376,7 +376,7 @@ public class PubMed_Controller : IDLController
                                 {
                                     last_revised_datetime = new DateTime((int)year, (int)month, (int)day);
                                 }
-                                bool added = _monDataLayer.UpdateObjectDownloadLog(source.id, fob.sd_oid, remote_url, saf_id,
+                                bool added = _monDataLayer.UpdateObjectLog(fob.sd_oid, remote_url, saf_id,
                                                         last_revised_datetime, full_path);
                                 res.num_downloaded++;
                                 if (added) res.num_added++;

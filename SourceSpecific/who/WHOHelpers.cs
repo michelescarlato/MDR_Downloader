@@ -766,25 +766,25 @@ public class WHOHelpers
     }
 
 
-    public string get_folder(int source_id)
+    public string get_db(int source_id)
     {
         return source_id switch
         {
-            100116 => @"F:\MDR_Data\anzctr\",
-            100117 => @"F:\MDR_Data\rebec\",
-            100118 => @"F:\MDR_Data\chictr\",
-            100119 => @"F:\MDR_Data\cris\",
-            100121 => @"F:\MDR_Data\ctri\",
-            100122 => @"F:\MDR_Data\rpcec\",
-            100124 => @"F:\MDR_Data\drks\",
-            100125 => @"F:\MDR_Data\irct\",
-            100127 => @"F:\MDR_Data\jprn\",
-            100128 => @"F:\MDR_Data\pactr\",
-            100129 => @"F:\MDR_Data\rpuec\",
-            100130 => @"F:\MDR_Data\slctr\",
-            100131 => @"F:\MDR_Data\thctr\",
-            100132 => @"F:\MDR_Data\nntr\",
-            101989 => @"F:\MDR_Data\lebctr\",
+            100116 => "anzctr",
+            100117 => "rebec",
+            100118 => "chictr",
+            100119 => "cris",
+            100121 => "ctri",
+            100122 => "rpcec",
+            100124 => "drks",
+            100125 => "irct",
+            100127 => "jprn",
+            100128 => "pactr",
+            100129 => "rpuec",
+            100130 => "slctr",
+            100131 => "thctr",
+            100132 => "nntr",
+            101989 => "lebctr",
             _ => ""
         };
     }

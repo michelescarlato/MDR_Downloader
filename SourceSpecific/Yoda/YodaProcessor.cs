@@ -225,7 +225,7 @@ namespace MDR_Downloader.yoda
             {
                 // study is in Yoda but not registered elsewhere
                 // Details may be available from Yoda documents and
-                // manually added to local table pp.not_registered
+                // manually added to local table mn.not_registered
 
                 string protid = "", sponsor_code = "", pp_id;
                 if (!string.IsNullOrEmpty(st.sponsor_protocol_id))
@@ -256,7 +256,7 @@ namespace MDR_Downloader.yoda
                     pp_id = "Y-" + string.Concat(hashBytes.Select(x => x.ToString("X2"))).ToLower();
                 }
 
-                // does this record already exist in the pp.not_registered table?
+                // does this record already exist in the mn.not_registered table?
                 // if so get details, if not add it and log the fact that the
                 // table will need manually updating
 
@@ -264,7 +264,7 @@ namespace MDR_Downloader.yoda
                 if (details.title is null)
                 {
                     _repo.AddNewNotRegisteredRecord(pp_id, st.yoda_title!, sponsor_code, protid);
-                    _logging_helper.LogError("Further details required for " + st.yoda_title + " in pp.not_registered table, from " + st.remote_url);
+                    _logging_helper.LogError("Further details required for " + st.yoda_title + " in mn.not_registered table, from " + st.remote_url);
                 }
                 else
                 {

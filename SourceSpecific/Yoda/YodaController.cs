@@ -140,8 +140,8 @@ namespace MDR_Downloader.yoda
                     if (days_ago is not null)
                     {
                         int chk_days = (int)days_ago;
-                        if (_monDataLayer.Downloaded_recently(source_id, sm.sd_sid, chk_days) ||
-                            _monDataLayer.Downloaded_recentlywithlink(source_id, sm.details_link, chk_days))
+                        if (_monDataLayer.Downloaded_recently(sm.sd_sid, chk_days) ||
+                            _monDataLayer.Downloaded_recentlywithlink(sm.details_link, chk_days))
                         {
                             obtain_web_page = false;
                         }
@@ -177,7 +177,7 @@ namespace MDR_Downloader.yoda
                                                                ":: " + e.Message);
                                     }
 
-                                    bool added = _monDataLayer.UpdateStudyDownloadLog(source_id, st.sd_sid,
+                                    bool added = _monDataLayer.UpdateStudyLog(st.sd_sid,
                                         st.remote_url, (int)opts.saf_id!, null, full_path);
                                     res.num_downloaded++;
                                     if (added) res.num_added++;
