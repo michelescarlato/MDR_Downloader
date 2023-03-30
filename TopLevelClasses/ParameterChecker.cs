@@ -22,18 +22,15 @@ internal class ParameterChecker
         // parameters, processed as an instance of the Options class, and the source.
         // N.B. No log file is available yet - needs to be created in the error parser.
 
-
         var parsedArguments = Parser.Default.ParseArguments<Options>(args);
         if (parsedArguments.Errors.Any())
         {
             LogParseError(((NotParsed<Options>)parsedArguments).Errors);
             return new ParamsCheckResult(true, false, null, null);
         }
-        else
-        {
-            var opts = parsedArguments.Value; 
-            return CheckArgumentValuesAreValid(opts);  
-        }
+
+        var opts = parsedArguments.Value; 
+        return CheckArgumentValuesAreValid(opts);  
     }
 
     internal ParamsCheckResult CheckArgumentValuesAreValid(Options opts)
@@ -191,15 +188,15 @@ internal class ParameterChecker
                 }
             }
 
-            if (sf_type.requires_prev_saf_ids is true)
+            if (sf_type.requires_prev_dl_ids is true)
             {
                 if (opts.PreviousSearches?.Any() is true)
                 {
                     foreach (int i in opts.PreviousSearches)
                     {
-                        opts.previous_saf_ids += ", " + i.ToString();
+                        opts.previous_dl_ids += ", " + i.ToString();
                     }
-                    opts.previous_saf_ids = opts.previous_saf_ids![2..];
+                    opts.previous_dl_ids = opts.previous_dl_ids![2..];
                 }
                 else
                 {
@@ -264,10 +261,10 @@ public class Options
     [Option('s', "source", Required = true, HelpText = "Integer id of data source.")]
     public int SourceId { get; set; }
 
-    [Option('t', "sf_type_id", Required = true, HelpText = "Integer id representing type of search / fetch.")]
+    [Option('t', "dl_type_id", Required = true, HelpText = "Integer id representing type of download.")]
     public int FetchTypeId { get; set; }
 
-    public int? saf_id { get; set; }
+    public int? dl_id { get; set; }
 
     [Option('d', "cutoff_date", Required = false, HelpText = "Only data revised or added since this date will be considered")]
     public string? CutoffDateAsString { get; set; }
@@ -306,7 +303,7 @@ public class Options
     [Option('p', "previous_searches", Required = false, Separator = ',', HelpText = "One or more ids of the search(es) that will be used to retrieve the data")]
     public IEnumerable<int>? PreviousSearches { get; set; }
 
-    public string? previous_saf_ids { get; set; }
+    public string? previous_dl_ids { get; set; }
 
 }
 

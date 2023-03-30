@@ -166,7 +166,7 @@ public class BioLinccController : IDLController
                                     _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
                                 }
 
-                                bool added = _monDataLayer.UpdateStudyLog(st.sd_sid, st.remote_url, opts.saf_id,
+                                bool added = _monDataLayer.UpdateStudyLog(st.sd_sid, st.remote_url, opts.dl_id,
                                                                   st.datasets_updated_date, full_path);
                                 res.num_downloaded++;
                                 if (added) res.num_added++;

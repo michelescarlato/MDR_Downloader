@@ -178,7 +178,7 @@ namespace MDR_Downloader.yoda
                                     }
 
                                     bool added = _monDataLayer.UpdateStudyLog(st.sd_sid,
-                                        st.remote_url, (int)opts.saf_id!, null, full_path);
+                                        st.remote_url, (int)opts.dl_id!, null, full_path);
                                     res.num_downloaded++;
                                     if (added) res.num_added++;
 

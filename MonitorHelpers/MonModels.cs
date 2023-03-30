@@ -52,7 +52,7 @@ public class SFType
     public bool? requires_startandendnumbers { get; set; }
     public bool? requires_offsetandamountids { get; set; }
     public bool? requires_search_id { get; set; }
-    public bool? requires_prev_saf_ids { get; set; }
+    public bool? requires_prev_dl_ids { get; set; }
     public string? description { get; set; }
     public string? list_order { get; set; }
 }
@@ -74,7 +74,7 @@ public class SAFEvent
     public DateTime? cut_off_date { get; set; }
     public DateTime? end_date { get; set; }
     public int? filter_id { get; set; }
-    public string? previous_saf_ids { get; set; }
+    public string? previous_dl_ids { get; set; }
     public int? start_page{ get; set; }
     public int? end_page{ get; set; }
     public int? ids_offset{ get; set; }
@@ -85,14 +85,14 @@ public class SAFEvent
 
     public SAFEvent(Options _opts, int? _source_id)
     {
-        id = _opts.saf_id;
+        id = _opts.dl_id;
         source_id = _source_id;
         type_id = _opts.FetchTypeId;
         filefolder_path = _opts.FileName;
         cut_off_date = _opts.CutoffDate;
         end_date = _opts.EndDate;
         filter_id = _opts.FocusedSearchId;
-        previous_saf_ids = _opts.previous_saf_ids;
+        previous_dl_ids = _opts.previous_dl_ids;
         start_page = _opts.StartPage;
         end_page = _opts.EndPage;
         ids_offset = _opts.OffsetIds;

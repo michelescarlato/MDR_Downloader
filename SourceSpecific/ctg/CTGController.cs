@@ -55,18 +55,18 @@ class CTG_Controller : IDLController
         if (t == 111 && opts.CutoffDate is not null)
         {
             return await DownloadRevisedRecords(file_base, (DateTime)opts.CutoffDate, 
-                json_options, source.id, (int)opts.saf_id!);
+                json_options, source.id, (int)opts.dl_id!);
         }
         if (t == 142 && opts.OffsetIds is not null && opts.AmountIds is not null)
         {
             return await DownloadRecordsById(file_base, (int)opts.OffsetIds, (int)opts.AmountIds, 
-                json_options, source.id, (int)opts.saf_id!);
+                json_options, source.id, (int)opts.dl_id!);
         }
         if (t == 141 && !string.IsNullOrEmpty(opts.FileName) 
                      && opts.OffsetIds is not null && opts.AmountIds is not null)
         {
             return await ReexportBulkDownloadedRecords(file_base, opts.FileName, (int)opts.OffsetIds, (int)opts.AmountIds, 
-                    json_options, source.id, (int)opts.saf_id!);
+                    json_options, source.id, (int)opts.dl_id!);
         }
 
         _loggingHelper.LogError("Invalid parameters passed to download controller - unable to proceed");
@@ -85,7 +85,7 @@ class CTG_Controller : IDLController
     // which is returned at the end of the process.
 
     async Task<DownloadResult> DownloadRevisedRecords(string file_base, DateTime cutoff_date, JsonSerializerOptions json_options,
-                                                        int source_id, int saf_id)
+                                                        int source_id, int dl_id)
     {
         string year = cutoff_date.Year.ToString();
         string month = cutoff_date.Month.ToString("00");
@@ -141,7 +141,7 @@ class CTG_Controller : IDLController
             if (responseBody is not null)
             {
                 DownloadResult batch_res = await DownloadBatch(responseBody, file_base, json_options, 
-                    source_id, saf_id);
+                    source_id, dl_id);
                 res.num_checked += batch_res.num_checked;
                 res.num_downloaded += batch_res.num_downloaded;
                 res.num_added += batch_res.num_added;
@@ -172,7 +172,7 @@ class CTG_Controller : IDLController
 
 
     async Task<DownloadResult> DownloadRecordsById(string file_base, int offset, int amount,
-                                    JsonSerializerOptions json_options, int source_id, int saf_id)
+                                    JsonSerializerOptions json_options, int source_id, int dl_id)
     {
         ScrapingHelpers ch = new(_loggingHelper);
         DownloadResult res = new();
@@ -200,7 +200,7 @@ class CTG_Controller : IDLController
             if (responseBody is not null)
             {
                 DownloadResult batch_res = await DownloadBatch(responseBody, file_base, json_options, 
-                               source_id, saf_id);
+                               source_id, dl_id);
 
                 res.num_checked += batch_res.num_checked;
                 res.num_downloaded += batch_res.num_downloaded;
@@ -222,7 +222,7 @@ class CTG_Controller : IDLController
     // and which re-exports them using the local CTG model, i.e. with only relevant fields included.
 
     async Task<DownloadResult> ReexportBulkDownloadedRecords(string file_base, string source_parent_folder, int offset, int amount,
-                                                   JsonSerializerOptions json_options, int source_id, int saf_id)
+                                                   JsonSerializerOptions json_options, int source_id, int dl_id)
     {
         DownloadResult res = new();
 
@@ -273,7 +273,7 @@ class CTG_Controller : IDLController
                                     DateTime? last_updated = last_updated_string?.FetchDateTimeFromDateString();
                                     string remote_url = "https://clinicaltrials.gov/ct2/show/" + sd_sid;
 
-                                    bool added = _monDataLayer.UpdateStudyLog(sd_sid, remote_url, saf_id,
+                                    bool added = _monDataLayer.UpdateStudyLog(sd_sid, remote_url, dl_id,
                                         last_updated, full_path);
                                     res.num_downloaded++;
                                     if (added) res.num_added++;
@@ -305,7 +305,7 @@ class CTG_Controller : IDLController
     // and the numbers checked, downloaded and added as new are returned.
 
     private async Task<DownloadResult> DownloadBatch(string responseBody, string file_base, 
-            JsonSerializerOptions json_options, int source_id, int saf_id)
+            JsonSerializerOptions json_options, int source_id, int dl_id)
     {
         CTGRootobject? json_resp;
         DownloadResult res = new();
@@ -343,7 +343,7 @@ class CTG_Controller : IDLController
                             DateTime? last_updated = last_updated_string?.FetchDateTimeFromDateString();
                             string remote_url = "https://clinicaltrials.gov/ct2/show/" + sd_sid;
 
-                            bool added = _monDataLayer.UpdateStudyLog(sd_sid, remote_url, saf_id,
+                            bool added = _monDataLayer.UpdateStudyLog(sd_sid, remote_url, dl_id,
                                                     last_updated, full_path);
                             res.num_downloaded++;
                             if (added) res.num_added++;

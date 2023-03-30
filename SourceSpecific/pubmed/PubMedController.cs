@@ -173,7 +173,7 @@ public class PubMed_Controller : IDLController
                         string fetchUrl = fetchBaseURL + "&WebEnv=" + web_env + "&query_key=" + query_key.ToString();
                         fetchUrl += "&retstart=" + (i * retMax).ToString() + "&retmax=" + retMax.ToString();
                         fetchUrl += "&retmode=xml";
-                        await FetchPubMedRecordsAsync(fetchUrl, res, source, (int)opts.saf_id!, source.local_folder!);
+                        await FetchPubMedRecordsAsync(fetchUrl, res, source, (int)opts.dl_id!, source.local_folder!);
                         Thread.Sleep(300);
                     }
                     catch (HttpRequestException e)
@@ -273,7 +273,7 @@ public class PubMed_Controller : IDLController
                                     _loggingHelper.LogLine(fetchUrl);
                                     
                                     Thread.Sleep(200);
-                                    await FetchPubMedRecordsAsync(fetchUrl, res, source, (int)opts.saf_id!,
+                                    await FetchPubMedRecordsAsync(fetchUrl, res, source, (int)opts.dl_id!,
                                         source.local_folder!);
                                 }
                                 else
@@ -301,7 +301,7 @@ public class PubMed_Controller : IDLController
                                             fetchUrl = fetchBaseURL + "&WebEnv=" + web_env + "&query_key=" + query_key;
                                             fetchUrl += "&retmax=100&retmode=xml";
                                             Thread.Sleep(200);
-                                            await FetchPubMedRecordsAsync(fetchUrl, res, source, (int)opts.saf_id!,
+                                            await FetchPubMedRecordsAsync(fetchUrl, res, source, (int)opts.dl_id!,
                                                 source.local_folder!);
                                         }
                                     }
@@ -325,7 +325,7 @@ public class PubMed_Controller : IDLController
     }
 
 
-    public async Task FetchPubMedRecordsAsync(string fetch_URL, DownloadResult res, Source source, int saf_id, 
+    public async Task FetchPubMedRecordsAsync(string fetch_URL, DownloadResult res, Source source, int dl_id, 
         string file_base)
     {
         ScrapingHelpers ch = new(_loggingHelper);
@@ -376,7 +376,7 @@ public class PubMed_Controller : IDLController
                                 {
                                     last_revised_datetime = new DateTime((int)year, (int)month, (int)day);
                                 }
-                                bool added = _monDataLayer.UpdateObjectLog(fob.sd_oid, remote_url, saf_id,
+                                bool added = _monDataLayer.UpdateObjectLog(fob.sd_oid, remote_url, dl_id,
                                                         last_revised_datetime, full_path);
                                 res.num_downloaded++;
                                 if (added) res.num_added++;

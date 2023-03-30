@@ -12,7 +12,8 @@ class EUCTR_Controller : IDLController
     
     private readonly string _baseURL;
     private readonly JsonSerializerOptions? _json_options;
-    private readonly EUCTR_Processor _processor = new();
+    private readonly EUCTR_Processor _processor;
+    private readonly EUCTR_Helper _euctrHelper;
     private int _access_error_num;
     
     public EUCTR_Controller(IMonDataLayer monDataLayer, ILoggingHelper loggingHelper)
@@ -27,6 +28,9 @@ class EUCTR_Controller : IDLController
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             WriteIndented = true
         };
+        
+        _processor = new(loggingHelper);
+        _euctrHelper = new(loggingHelper);
     }
 
     public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
@@ -45,7 +49,7 @@ class EUCTR_Controller : IDLController
         // first ensure that the web site is up
         // and get total record numbers and total page numbers
         
-        int saf_id = (int)opts.saf_id!;    // will be non-null
+        int dl_id = (int)opts.dl_id!;    // will be non-null
         WebPage? initialPage = await ch.GetPageAsync(_baseURL + "1");
         if (initialPage is null)
         {
@@ -97,14 +101,14 @@ class EUCTR_Controller : IDLController
         }
 
         res = await LoopThroughDesignatedPagesAsync(opts.FetchTypeId, start_page, end_page, opts.SkipRecentDays, 
-                                                    source.id, saf_id, file_base);
+                                                    source.id, dl_id, file_base);
 
         return res;
     }
 
 
     private async Task<DownloadResult> LoopThroughDesignatedPagesAsync(int type_id, int start_page, int end_page, 
-                               int? days_ago, int source_id, int saf_id, string file_base)
+                               int? days_ago, int source_id, int dl_id, string file_base)
     {
         DownloadResult res = new DownloadResult();
         ScrapingHelpers ch = new(_loggingHelper);
@@ -181,53 +185,65 @@ class EUCTR_Controller : IDLController
                 {
                     if (s.do_download is true)
                     {
-                        Euctr_Record st = _processor.GetInfoFromSummary(s);
-                        if (st.details_url is null)
+                        Euctr_Record? st = _euctrHelper.GetInfoFromSummaryBox(s.details_box);
+                        if (st is null)
                         {
-                            _loggingHelper.LogError($"Problem in obtaining protocol details url from summary page, for {s.eudract_id}");
+                            _loggingHelper.LogError(
+                                $"Problem in obtaining summary details from summary page, for {s.eudract_id}");
                             CheckAccessErrorCount();
                         }
                         else
                         {
-                            Thread.Sleep(300);
-                            WebPage? detailsPage = await ch.GetPageAsync(st.details_url);
-                            if (detailsPage is null)
+                            if (string.IsNullOrEmpty(st.details_url))
                             {
-                                _loggingHelper.LogError($"Problem in navigating to protocol details page for {s.eudract_id}");
+                                _loggingHelper.LogError(
+                                    $"Problem in obtaining protocol details url from summary page, for {s.eudract_id}");
                                 CheckAccessErrorCount();
                             }
-                            else 
-                            { 
-                                st = _processor.ExtractProtocolDetails(st, detailsPage);
-
-                                // Then get results details if available
-
-                                if (st.results_url != null)
+                            else
+                            {
+                                Thread.Sleep(300);
+                                WebPage? detailsPage = await ch.GetPageAsync(st.details_url);
+                                if (detailsPage is null)
                                 {
-                                    Thread.Sleep(600);
-                                    WebPage? resultsPage = await ch.GetPageAsync(st.results_url);
-                                    if (resultsPage is not null)
-                                    {
-                                        st = _processor.ExtractResultDetails(st, resultsPage);
-                                    }
-                                    else
-                                    {
-                                        _loggingHelper.LogError($"Problem in navigating to result details, for {s.eudract_id}");
-                                        CheckAccessErrorCount();
-                                    }
+                                    _loggingHelper.LogError(
+                                        $"Problem in navigating to protocol details page for {s.eudract_id}");
+                                    CheckAccessErrorCount();
                                 }
-
-                                // Write out study record as json.
-                                // Update the source data record, modifying it or adding a new one.
-
-                                string full_path = await WriteOutFile(st, st.sd_sid, file_base);
-                                if (full_path != "error")
+                                else
                                 {
-                                    string? remote_url = st.details_url;
-                                    bool added = _monDataLayer.UpdateStudyLog(s.eudract_id, 
-                                        remote_url, saf_id, null, full_path);
-                                    res.num_downloaded++;
-                                    if (added) res.num_added++;
+                                    st = _processor.ExtractProtocolDetails(st, detailsPage);
+
+                                    // Then get results details if available
+
+                                    if (st.results_url != null)
+                                    {
+                                        Thread.Sleep(600);
+                                        WebPage? resultsPage = await ch.GetPageAsync(st.results_url);
+                                        if (resultsPage is not null)
+                                        {
+                                            st = _processor.ExtractResultDetails(st, resultsPage);
+                                        }
+                                        else
+                                        {
+                                            _loggingHelper.LogError(
+                                                $"Problem in navigating to result details, for {s.eudract_id}");
+                                            CheckAccessErrorCount();
+                                        }
+                                    }
+
+                                    // Write out study record as json.
+                                    // Update the source data record, modifying it or adding a new one.
+
+                                    string full_path = await WriteOutFile(st, st.sd_sid, file_base);
+                                    if (full_path != "error")
+                                    {
+                                        string? remote_url = st.details_url;
+                                        bool added = _monDataLayer.UpdateStudyLog(s.eudract_id,
+                                            remote_url, dl_id, null, full_path);
+                                        res.num_downloaded++;
+                                        if (added) res.num_added++;
+                                    }
                                 }
                             }
                         }

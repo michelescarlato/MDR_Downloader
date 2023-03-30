@@ -25,7 +25,7 @@ public class Downloader
         // Set up the search and fetch summary record for this download,
         // Open log file and log parameters, and establish appropriate controller class,
 
-        opts.saf_id = _monDataLayer.GetNextSearchFetchId();
+        opts.dl_id = _monDataLayer.GetNextSearchFetchId();
         SAFEvent saf = new(opts, source.id);
         _loggingHelper.OpenLogFile(opts.FileName, source.database_name!);
         _loggingHelper.LogCommandLineParameters(opts);
@@ -51,6 +51,10 @@ public class Downloader
             case 100123:
                 {
                     dl_controller = new EUCTR_Controller(_monDataLayer, _loggingHelper); break;
+                }
+            case 100159:
+                {
+                    dl_controller = new EMA_Controller(_monDataLayer, _loggingHelper); break;
                 }
             case 100115:
                 {

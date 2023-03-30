@@ -53,10 +53,10 @@ public class MonDataLayer : IMonDataLayer
     }
 
 
-    public SFType FetchTypeParameters(int sf_type_id)
+    public SFType FetchTypeParameters(int dl_type_id)
     {
         using NpgsqlConnection Conn = new(monConnString);
-        return Conn.Get<SFType>(sf_type_id);
+        return Conn.Get<SFType>(dl_type_id);
     }
 
 

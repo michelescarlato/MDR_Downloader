@@ -1,4 +1,5 @@
-﻿using HtmlAgilityPack;
+﻿using System.Text.RegularExpressions;
+using HtmlAgilityPack;
 using MDR_Downloader.Helpers;
 using ScrapySharp.Extensions;
 using ScrapySharp.Html;
@@ -9,6 +10,13 @@ namespace MDR_Downloader.euctr;
 
 public class EUCTR_Processor
 {
+    private readonly ILoggingHelper _loggingHelper;
+    
+    public EUCTR_Processor(ILoggingHelper loggingHelper)
+    {
+        _loggingHelper = loggingHelper;
+    }
+    
     public int GetListLength(WebPage homePage)
     {
         // gets the numbers of records found for the current search.
@@ -17,7 +25,7 @@ public class EUCTR_Processor
         string? results = total_link?.TrimmedContents();
         if (results is null)
         {
-            // log problem
+            _loggingHelper.LogError("Unable to obtain number of records on home page");
             return 0;
         }
         
@@ -36,13 +44,13 @@ public class EUCTR_Processor
         HtmlNode? pageContent = homePage.Find("div", By.Class("results")).FirstOrDefault();
         if (pageContent is null)
         {
-            // log problem
+            _loggingHelper.LogError("Unable to find results box on page");
             return null;
         }
         List<HtmlNode> studyBoxes = pageContent.CssSelect(".result").ToList();
         if (studyBoxes.Count == 0)
         {
-            // log problem
+            _loggingHelper.LogError("Unable to obtain list of summary boxes on page");
             return null;
         }
 
@@ -65,178 +73,7 @@ public class EUCTR_Processor
         return summaries;
     }
 
-
-    public Euctr_Record GetInfoFromSummary(Study_Summary s)
-    {
-        // Study summary contains the html node with the summary details.
-
-        string sd_sid = s.eudract_id;
-        Euctr_Record st = new(sd_sid);
-
-        HtmlNode box = s.details_box!;
-        HtmlNode[] studyDetails = box.Elements("tr").ToArray();
-        if (studyDetails.Length < 8)
-        {
-            // log problem
-            return st;   // empty record
-        }
-        
-        // Sponsor's id and the start date in the top row.
-
-        HtmlNode[] idDetails = studyDetails[0].CssSelect("td").ToArray();
-        if (idDetails.Length >= 3)
-        {
-            st.sponsor_id = idDetails[1].InnerValue();
-            st.start_date = idDetails[2].InnerValue();
-        }
-
-        // Sponsor name in second row - also extracted later from the details page.
-
-        st.sponsor_name = studyDetails[1].InnerValue();
-        if (st.sponsor_name is not null)
-        {
-            st.sponsor_name = st.sponsor_name.Replace("[...]", "");
-        }
-
-        // medical condition as a text description
-        st.medical_condition = studyDetails[3].InnerValue();
-
-        // Disease (MedDRA details) - five td elements in a fixed order, 
-        // if they are there at all appear in a nested table, class = 'meddra',
-        // which has at 2 least rows, the first with the headers (so row 0 can 
-        // be ignored, with 5 columns (td elements) in each row.
-
-        HtmlNode? meddraTable = studyDetails[4].CssSelect(".meddra").FirstOrDefault();
-        if (meddraTable is not null)
-        {
-            List<MeddraTerm> meddra_terms = new List<MeddraTerm>();
-            HtmlNode[] disDetails = meddraTable.Descendants("tr").ToArray();
-            for (int k = 1; k < disDetails.Length; k++)
-            {
-                MeddraTerm stm = new MeddraTerm();
-                HtmlNode[] meddraDetails = disDetails[k].Elements("td").ToArray();
-                stm.version = meddraDetails[0].InnerText?.Trim();
-                stm.soc_term = meddraDetails[1].InnerText?.Trim();
-                stm.code = meddraDetails[2].InnerText?.Trim();
-                stm.term = meddraDetails[3].InnerText?.Trim();
-                stm.level = meddraDetails[4].InnerText?.Trim();
-                meddra_terms.Add(stm);
-            }
-
-            st.meddra_terms = meddra_terms;
-        }
-
-        // population age and gender - 2 td elements in a fixed order.
-
-        HtmlNode[] popDetails = studyDetails[5].CssSelect("td").ToArray();
-        if (popDetails.Length >= 2)
-        {
-            st.population_age = popDetails[0].InnerValue();
-            st.gender = popDetails[1].InnerValue();
-        }
-
-        // Protocol links 
-        // These are often multiple and we need to consider the whole
-        // list to get the countries involved.
-
-        List<HtmlNode> links = studyDetails[6].CssSelect("a").ToList();
-        List<HtmlNode> statuses = studyDetails[6].CssSelect("span").ToList();
-        if (links.Count > 0)
-        {
-            char[] parentheses = { '(', ')' };
-            List<Country> countries = new List<Country>();
-
-            // Because of an additional initial 'Trial protocol:' span
-            // there should normally be links + 1 span (status) numbers.
-            // Status does not seem to be given for 'Outside EU/EEA'
-            // though this is usually (but not always) seems to be at the end of the list.
-            // If it is links and span numbers will be equal.
-            // first valid status found used as overall trial status
-
-            if (links.Count == statuses.Count - 1
-                || (links.Count == statuses.Count
-                    && studyDetails[6].InnerText.Contains("Outside EU/EEA")))
-            {
-                // get country names and study status
-                // For GB status no longer available for ongoing studies
-                // Status also generally not given for 'Outside EU/EEA'
-                // though this always seems to be at the end of the list
-
-                int status_diff = 1;
-                for (int j = 0; j < links.Count; j++)
-                {
-                    int status_num = 0;
-                    string country_code = links[j].InnerText;
-                    if (country_code == "Outside EU/EEA")
-                    {
-                        // The inclusion of the Outside EU/EEA puts the 
-                        // status list back into 'sync' with the country list.
-
-                        status_diff = 0;
-                    }
-                    else
-                    {
-                        string country_name = GetCountryName(country_code);
-                        if (country_name != "")
-                        {
-                            string study_status = statuses[j + status_diff].InnerText.Trim(parentheses);
-                            if (study_status != "GB - no longer in EU/EEA")
-                            {
-                                countries.Add(new Country(country_name, study_status));
-                                status_num++;
-                                if (status_num == 1)
-                                {
-                                    st.trial_status = study_status;
-                                }
-                            }
-                            else
-                            {
-                                countries.Add(new Country(country_name, null));
-                            }
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // Just get the country names.
-
-                foreach (var t in links)
-                {
-                    string country_code = t.InnerText;
-                    string country_name = GetCountryName(country_code);
-                    if (country_name != "")
-                    {
-                        countries.Add(new Country(country_name, ""));
-                    }
-                }
-            }
-
-            st.countries = countries;
-
-            // Only the first listed country used to obtain the protocol details and overall trial status
-
-            st.details_url = "https://www.clinicaltrialsregister.eu" + links[0].Attributes["href"].Value;
-        }
-
-        // Results link, if any.
-
-        HtmlNode? resultLink = studyDetails[7].CssSelect("a").FirstOrDefault();
-
-        if (resultLink is not null)
-        {
-            st.results_url = "https://www.clinicaltrialsregister.eu" + resultLink.Attributes["href"].Value;
-
-            // if results link present and Status not completed make status "Completed"
-            // (some entries may not have been updated)
-
-            if (st.trial_status != "Completed") st.trial_status = "Completed";
-        }
-
-        return st;
-    }
-
-
+    
     public Euctr_Record ExtractProtocolDetails(Euctr_Record st, WebPage detailsPage)
     {
         var summary = detailsPage.Find("table", By.Class("summary")).FirstOrDefault();
@@ -256,45 +93,51 @@ public class EUCTR_Processor
 
                 if (cells[0].InnerText.StartsWith("Date on "))
                 {
-                    st.entered_in_db = cells[1].InnerText;
+                    st.date_registration = cells[1].InnerText;
                     break;
                 }
             }
         }
-
+        
+        // Assume all studies are interventional - they always have been!
+        
+        st.study_type = "Interventional";
+        
+        // Use each section of the page to obtain the relevant data points
+        
         HtmlNode? identifiers = detailsPage.Find("table", By.Id("section-a")).FirstOrDefault();
         IEnumerable<HtmlNode>? identifier_rows = identifiers?.CssSelect("tbody tr");
         if (identifier_rows is not null)
         {
-            st.identifiers = GetStudyIdentifiers(identifier_rows);
+            GetStudyIdentifiers(st, identifier_rows); // Gets identifiers, also populates titles, member state.
         }
 
         HtmlNode? sponsor = detailsPage.Find("table", By.Id("section-b")).FirstOrDefault();
         IEnumerable<HtmlNode>? sponsor_rows = sponsor?.CssSelect("tbody tr");
         if (sponsor_rows is not null)
         {
-            st.sponsors = GetStudySponsors(sponsor_rows);
+            GetStudySponsors(st, sponsor_rows);
         }
 
         HtmlNode? imp_details = detailsPage.Find("table", By.Id("section-d")).FirstOrDefault();
         IEnumerable<HtmlNode>? imp_tables = imp_details?.CssSelect("tbody");
         if (imp_tables is not null)
         {
-            st.imps = GetStudyIMPs(imp_tables);
+            GetStudyIMPs(st, imp_tables);
         }
 
         HtmlNode? study_details = detailsPage.Find("table", By.Id("section-e")).FirstOrDefault();
         IEnumerable<HtmlNode>? details_rows = study_details?.CssSelect("tbody tr");
         if (details_rows is not null)
         {
-            st.features = GetStudyFeatures(details_rows, st, st.countries);
+            GetStudyFeatures(st, details_rows);
         }
 
         HtmlNode? population = detailsPage.Find("table", By.Id("section-f")).FirstOrDefault();
         IEnumerable<HtmlNode>? population_rows = population?.CssSelect("tbody tr");
         if (population_rows is not null)
         {
-            st.population = GetStudyPopulation(population_rows);
+           GetStudyPopulation(st, population_rows);
         }
 
         return st;
@@ -331,7 +174,7 @@ public class EUCTR_Processor
                     }
                     else if (fc_content == "First version publication date")
                     {
-                        st.results_first_date = cell_content;
+                        st.results_date_posted = cell_content;
                     }
                     else if (fc_content == "Summary report(s)")
                     {
@@ -349,9 +192,22 @@ public class EUCTR_Processor
     }
 
 
-    private List<DetailLine> GetStudyIdentifiers(IEnumerable<HtmlNode> identifier_rows)
+    private void GetStudyIdentifiers(Euctr_Record st, IEnumerable<HtmlNode> identifier_rows)
     {
-        List<DetailLine> study_identifiers = new List<DetailLine>();
+        // add in initial identifiers representing EUDRACT number and sponsor id
+
+        List<EMAIdentifier> ids = new() 
+            { new EMAIdentifier(11, "Trial Registry ID", st.sd_sid, 100123, "EU Clinical Trials Register") };
+        if (!string.IsNullOrEmpty(st.sponsors_id))
+        {
+            string sp_name = !string.IsNullOrEmpty(st.sponsor_name)
+                ? st.sponsor_name
+                : "No organisation name provided in source data";
+            ids.Add(new EMAIdentifier(14, "Sponsor ID", st.sponsors_id, null, sp_name));
+        }
+        
+        // get others from web page
+        
         foreach (HtmlNode row in identifier_rows)
         {
             var row_class = row.Attributes["class"];
@@ -359,10 +215,8 @@ public class EUCTR_Processor
             {
                 var cells = row.CssSelect("td").ToArray();
                 string code = cells[0].InnerText;
-                if (code != "A.6" && code != "A.7" && code != "A.8")
+                if (code == "A.1" || code.Contains("A.3") || code.Contains("A.5"))
                 {
-                    DetailLine line = new DetailLine(code, HttpUtility.HtmlDecode(cells[1].InnerText));
-                    List<item_value> values = new List<item_value>();
                     if (cells[2].CssSelect("table").Any())
                     {
                         HtmlNode? inner_table = cells[2].CssSelect("table").FirstOrDefault();
@@ -375,7 +229,10 @@ public class EUCTR_Processor
                                 if (inner_cell is not null)
                                 {
                                     string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
-                                    if (!string.IsNullOrEmpty(value)) values.Add(new item_value(value));
+                                    if (!string.IsNullOrEmpty(value))
+                                    {
+                                        ProcessIdentifier(code, value);
+                                    }
                                 }
                             }
                         }
@@ -383,26 +240,63 @@ public class EUCTR_Processor
                     else
                     {
                         string value = HttpUtility.HtmlDecode(cells[2].InnerText).Trim();
-                        if (!string.IsNullOrEmpty(value)) values.Add(new item_value(value));
-                    }
-
-                    if (values.Count > 0)
-                    {
-                        line.item_number = values.Count;
-                        line.item_values = values;
-                        study_identifiers.Add(line);
+                        if (!string.IsNullOrEmpty(value))
+                        {
+                            ProcessIdentifier(code, value);
+                        }
                     }
                 }
             }
         }
 
-        return study_identifiers;
+        void ProcessIdentifier(string code, string value)
+        {
+            if (code == "A.1")
+            {
+                st.member_state = value;
+            }
+            else if (code.Contains("A.3"))  // titles
+            {
+                // N.B. If more than one found only the first (usually English) one is used.
+                
+                if (code == "A.3" && string.IsNullOrEmpty(st.scientific_title))
+                {
+                    st.scientific_title = value;
+                }
+                else if (code == "A.3.1" && string.IsNullOrEmpty(st.public_title))
+                {
+                    st.public_title = value;
+                }
+                else if (code == "A.3.2"&& string.IsNullOrEmpty(st.acronym))
+                {
+                    st.acronym = value;
+                }
+            }
+            else if (code.Contains("A.5"))  // identifiers
+            {
+                if (code == "A.5.1")  // ISRCTN
+                {
+                    ids.Add(new EMAIdentifier(11, "Trial Registry ID", code, 100126, "ISRCTN"));
+                }
+                else  if (code == "A.5.2")  // NCT
+                {
+                    ids.Add(new EMAIdentifier(11, "Trial Registry ID", code, 100120, "ClinicalTrials.gov"));
+                }
+                else  if (code == "A.5.3")  // UTRN
+                {
+                    ids.Add(new EMAIdentifier(11, "Trial Registry ID", code, 100115, 
+                        "International Clinical Trials Registry Platform"));
+                }
+            }
+        }
+
+        st.identifiers = ids;
     }
 
-
-    private List<DetailLine> GetStudySponsors(IEnumerable<HtmlNode> sponsor_rows)
+    
+    private void GetStudySponsors(Euctr_Record st, IEnumerable<HtmlNode> sponsor_rows)
     {
-        List<DetailLine> study_sponsors = new List<DetailLine>();
+        List<EMAOrganisation> organisations = new();
         foreach (HtmlNode row in sponsor_rows)
         {
             var row_class = row.Attributes["class"];
@@ -410,10 +304,8 @@ public class EUCTR_Processor
             {
                 var cells = row.CssSelect("td").ToArray();
                 string code = cells[0].InnerText;
-                if (!code.Contains("B.5"))
+                if (code is "B.1.1" or "B.4.1")
                 {
-                    DetailLine line = new DetailLine(code, HttpUtility.HtmlDecode(cells[1].InnerText));
-                    List<item_value> values = new List<item_value>();
                     if (cells[2].CssSelect("table").Any())
                     {
                         HtmlNode? inner_table = cells[2].CssSelect("table").FirstOrDefault();
@@ -426,7 +318,11 @@ public class EUCTR_Processor
                                 if (inner_cell is not null)
                                 {
                                     string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
-                                    if (!string.IsNullOrEmpty(value)) values.Add(new item_value(value));
+                                    if (!string.IsNullOrEmpty(value)) 
+                                    {
+                       
+                                        ProcessSponsor(code, value);
+                                    }
                                 }
                             }
                         }
@@ -434,87 +330,138 @@ public class EUCTR_Processor
                     else
                     {
                         string value = HttpUtility.HtmlDecode(cells[2].InnerText).Trim();
-                        if (!string.IsNullOrEmpty(value)) values.Add(new item_value(value));
-                    }
-
-                    if (values.Count > 0)
-                    {
-                        line.item_number = values.Count;
-                        line.item_values = values;
-                        study_sponsors.Add(line);
+                        if (!string.IsNullOrEmpty(value)) 
+                        {
+                   
+                            ProcessSponsor(code, value);
+                        }
                     }
                 }
             }
         }
-        return study_sponsors;
+
+        void ProcessSponsor(string code, string value)
+        {
+            if (code == "B.1.1")
+            {
+                organisations.Add(new EMAOrganisation(54, "Trial Sponsor", value));
+            }
+            else if (code == "B.4.1")
+            {
+                organisations.Add(new EMAOrganisation(58, "Study Funder", value));
+            }
+        }
+
+        st.organisations = organisations;
     }
 
 
-    private List<ImpLine> GetStudyIMPs(IEnumerable<HtmlNode> imp_tables)
+    private void GetStudyIMPs(Euctr_Record st, IEnumerable<HtmlNode> imp_tables)
     {
-        List<ImpLine> study_imps = new List<ImpLine>();
-        int imp_num = 0;
+        List<EMAImp> imps = new();
+        EMAImp? current_imp = new(0);
         foreach (HtmlNode tbody in imp_tables)
         {
-            imp_num++;
             IEnumerable<HtmlNode>? imp_rows = tbody.CssSelect("tr");
             if (imp_rows is not null)
             {
                 foreach (HtmlNode row in imp_rows)
                 {
-                    var row_class = row.Attributes["class"];
-                    if (row_class is { Value: "tricell" })
+                    string? row_class = row.Attributes["class"].ToString();
+                    if (!string.IsNullOrEmpty(row_class) && row_class is "tricell" or "cellBlue")
                     {
+                        // for tricell the three cells are code, item name, item value
+                        // for cellBlue there is only 1 cell,and that holds a code / heading
+                        
                         var cells = row.CssSelect("td").ToArray();
                         string code = cells[0].InnerText;
-                        
-                        // just get various names (often duplicated).
-                        
-                        if (code is "D.2.1.1.1" or "D.3.1" or "D.3.8" or "D.3.9.1" or "D.3.9.3")
+                        if (row_class == "cellBlue")
                         {
-                            ImpLine line = new(imp_num, code, HttpUtility.HtmlDecode(cells[1].InnerText));
-                            List<item_value> values = new List<item_value>();
-                            if (cells[2].CssSelect("table").Any())
+                            if (Regex.Match(code, @"D\.IMP:\s\d{1,2}").Success)
                             {
-                                HtmlNode? inner_table = cells[2].CssSelect("table").FirstOrDefault();
-                                var inner_rows = inner_table?.CssSelect("tr").ToArray();
-                                if (inner_rows?.Any() is true)
+                                int current_imp_num = int.Parse(Regex.Match(code, @"\d{1,2}").Value);
+                                AddNewImp(current_imp_num);
+                            }
+                        }
+                        else
+                        {
+                            // Get various names.
+
+                            if (code is "D.2.1.1.1" or "D.3.1" or "D.3.8" or "D.3.9.1")
+                            {
+                                if (cells[2].CssSelect("table").Any())
                                 {
-                                    foreach (HtmlNode inner_row in inner_rows)
+                                    HtmlNode? inner_table = cells[2].CssSelect("table").FirstOrDefault();
+                                    var inner_rows = inner_table?.CssSelect("tr").ToArray();
+                                    if (inner_rows?.Any() is true)
                                     {
-                                        var inner_cell = inner_row.CssSelect("td").FirstOrDefault();
-                                        if (inner_cell is not null)
+                                        foreach (HtmlNode inner_row in inner_rows)
                                         {
-                                            string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
-                                            if (!string.IsNullOrEmpty(value)) values.Add(new item_value(value));
+                                            var inner_cell = inner_row.CssSelect("td").FirstOrDefault();
+                                            if (inner_cell is not null)
+                                            {
+                                                string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
+                                                if (current_imp is not null && !string.IsNullOrEmpty(value))
+                                                {
+                                                    ProcessImpDetails(code, value);
+                                                }
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            else
-                            {
-                                string value = HttpUtility.HtmlDecode(cells[2].InnerText).Trim();
-                                if (!string.IsNullOrEmpty(value)) values.Add(new item_value(value));
-                            }
-
-                            if (values.Count > 0)
-                            {
-                                line.item_number = values.Count;
-                                line.item_values = values;
-                                study_imps.Add(line);
+                                else
+                                {
+                                    string value = HttpUtility.HtmlDecode(cells[2].InnerText).Trim();
+                                    if (current_imp is not null &&  !string.IsNullOrEmpty(value))
+                                    {
+                                        ProcessImpDetails(code, value);
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
         }
-        return study_imps;
+
+        void AddNewImp(int imp_number)
+        {
+            current_imp = new EMAImp(imp_number);
+            imps.Add(current_imp);
+        }
+        
+        void ProcessImpDetails(string code, string value)
+        {
+            if (current_imp is not null && code == "D.2.1.1.1")  // Trade name
+            {
+                current_imp.trade_name = value;
+            }
+            else if (current_imp is not null && code == "D.3.1") // Product Name
+            {
+                current_imp.product_name = value;
+            }
+            else if (current_imp is not null && code == "D.3.8") // INN
+            {
+                current_imp.inn = value;
+            }
+            else if (current_imp is not null && code == "D.3.9.1") // CAS number
+            {
+                current_imp.cas_number = value;
+            }
+        }
+
+        if (imps.Count > 1)
+        {
+            st.imp_topics = imps.Where(i => i.imp_num > 0).ToList();
+        }
     }
 
 
-    private List<DetailLine> GetStudyFeatures(IEnumerable<HtmlNode> details_rows, Euctr_Record st, List<Country>? summary_countries)
+    private void GetStudyFeatures(Euctr_Record st, IEnumerable<HtmlNode> details_rows)
     {
-        List<DetailLine> study_features = new List<DetailLine>();
+        List<EMACondition> conditions = new();
+        List<EMAFeature> features = new();
+        
         foreach (HtmlNode row in details_rows)
         {
             var row_class = row.Attributes["class"];
@@ -525,10 +472,9 @@ public class EUCTR_Processor
 
                 // condition under study and study objectives
 
-                if (code.Contains("E.1.1") || code.Contains("E.2"))
+                if (code is "E.1.1" or "E.2.1" or "E.3" or "E.4" or "E.5.1"
+                           || code.Contains("E.7") || code.Contains("E.8"))
                 {
-                    DetailLine line = new DetailLine(code, HttpUtility.HtmlDecode(cells[1].InnerText));
-                    List<item_value> values = new List<item_value>();
                     if (cells[2].CssSelect("table").Any())
                     {
                         HtmlNode? inner_table = cells[2].CssSelect("table").FirstOrDefault();
@@ -544,7 +490,7 @@ public class EUCTR_Processor
                                     if (!string.IsNullOrEmpty(value))
                                     {
                                         value = value.CompressSpaces()!;
-                                        values.Add(new item_value(value));
+                                        ProcessFeature(code, value);
                                     }
                                 }
                             }
@@ -556,149 +502,109 @@ public class EUCTR_Processor
                         if (!string.IsNullOrEmpty(value))
                         {
                             value = value.CompressSpaces()!;
-                            values.Add(new item_value(value.Replace("|", "\n")));
-                        }
-                    }
-
-                    if (values.Count > 0)
-                    {
-                        line.item_number = values.Count;
-                        line.item_values = values;
-                        study_features.Add(line);
-                    }
-                }
-                
-                // E.3 and E.4 are inclusion - exclusion criteria
-                
-                if (code is "E.3" or "E.4")
-                {
-                    string? criteria = null;
-                    if (cells[2].CssSelect("table").Any())
-                    {
-                        HtmlNode? inner_table = cells[2].CssSelect("table").FirstOrDefault();
-                        var inner_rows = inner_table?.CssSelect("tr").ToArray();
-                        if (inner_rows?.Any() is true)
-                        {
-                            HtmlNode inner_row = inner_rows[0];     // Just the English one required
-                            {
-                                HtmlNode? inner_cell = inner_row.CssSelect("td").FirstOrDefault();
-                                if (inner_cell is not null)
-                                {
-                                    string? cell_html = inner_cell.InnerHtml.ReplaceHtmlTags();
-                                    if (!string.IsNullOrEmpty(cell_html))
-                                    {
-                                        criteria = HttpUtility.HtmlDecode(cell_html).CompressSpaces();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        string? cell_html = cells[2].InnerHtml.ReplaceHtmlTags();
-                        if (!string.IsNullOrEmpty(cell_html))
-                        {
-                            criteria = HttpUtility.HtmlDecode(cell_html).CompressSpaces();
-                        }
-                    }
-
-                    if (code == "E.3")
-                    {
-                        st.inclusion_criteria = criteria;
-                    }
-                    else
-                    {
-                        st.exclusion_criteria = criteria;
-                    }
-
-                }
-
-                // study design features
-
-                if (code.Contains("E.6") || code.Contains("E.7")
-                    || code.Contains("E.8.1") || code.Contains("E.8.2"))
-                {
-                    DetailLine line = new DetailLine(code, HttpUtility.HtmlDecode(cells[1].InnerText));
-                    List<item_value> values = new List<item_value>();
-                    if (cells[2].CssSelect("table").Any())
-                    {
-                        HtmlNode? inner_table = cells[2].CssSelect("table").FirstOrDefault();
-                        var inner_rows = inner_table?.CssSelect("tr").ToArray();
-                        if (inner_rows?.Any() is true)
-                        {
-                            foreach (HtmlNode inner_row in inner_rows)
-                            {
-                                var inner_cell = inner_row.CssSelect("td").FirstOrDefault();
-                                if (inner_cell is not null)
-                                {
-                                    string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
-                                    if (value.ToLower() == "yes") values.Add(new item_value(value));
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        string value = HttpUtility.HtmlDecode(cells[2].InnerText).Trim();
-                        if (value.ToLower() == "yes") values.Add(new item_value(value));
-                    }
-
-                    if (values.Count > 0)
-                    {
-                        line.item_number = values.Count;
-                        line.item_values = values;
-                        study_features.Add(line);
-                    }
-                }
-
-                if (code == "E.8.6.3")
-                {
-                    // May have a list of one or more countries in an internal table
-
-                    HtmlNode? inner_table = cells[2].CssSelect("table").FirstOrDefault();
-                    var inner_rows = inner_table?.CssSelect("tr").ToArray();
-                    if (inner_rows?.Any() is true)
-                    {
-                        foreach (HtmlNode inner_row in inner_rows)
-                        {
-                            var inner_cell = inner_row.CssSelect("td").FirstOrDefault();
-                            if (inner_cell is not null)
-                            {
-                                string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
-                                bool add_country = true;
-                                if (summary_countries is not null)
-                                {
-                                    foreach (Country c in summary_countries)
-                                    {
-                                        if (c.name == value)
-                                        {
-                                            add_country = false;
-                                            break;
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    summary_countries = new List<Country>();
-                                }
-
-                                if (add_country)
-                                {
-                                    summary_countries.Add(new Country(value, null));
-                                }
-                            }
+                            value = value.Replace("|", "\n");
+                            ProcessFeature(code, value);
                         }
                     }
                 }
             }
         }
-        return study_features;
+        
+        void ProcessFeature(string code, string value)
+        {
+            if (code == "E.3")
+            {
+                st.inclusion_criteria = value;
+            }
+            else if (code == "E.4")
+            {
+                st.exclusion_criteria = value;
+            }
+            else if (code == "E.1.1")  // condition under study
+            {
+                conditions.Add(new EMACondition(value));
+            }
+            else if (code == "E.2.1")  // primary objectives
+            {
+                st.primary_objectives = value;
+            }
+            else if (code == "E.5.1")  // primary end-points
+            {
+                st.primary_endpoints = value;
+            }
+            else if (code.Contains("E.7") || code.Contains("E.8"))
+            {
+                Tuple<int, string, int, string> new_feature = code switch
+                {
+                    "E.7.1" => new Tuple<int, string, int, string>(20, "phase", 110, "Phase 1"),
+                    "E.7.2" => new Tuple<int, string, int, string>(20, "phase", 120, "Phase 2"),
+                    "E.7.3" => new Tuple<int, string, int, string>(20, "phase", 130, "Phase 3"),
+                    "E.7.4" => new Tuple<int, string, int, string>(20, "phase", 135, "Phase 4"),
+                    "E.8.1.1" => new Tuple<int, string, int, string>(22, "allocation type", 205, "Randomised"),
+                    "E.8.1.2" => new Tuple<int, string, int, string>(24, "masking", 500, "None (Open Label)"),
+                    "E.8.1.3" => new Tuple<int, string, int, string>(24, "masking", 505, "Single"),
+                    "E.8.1.4" => new Tuple<int, string, int, string>(24, "masking", 510, "Double"),
+                    "E.8.1.5" => new Tuple<int, string, int, string>(23, "intervention model", 305,
+                        "Parallel assignment"),
+                    "E.8.1.6" => new Tuple<int, string, int, string>(23, "intervention model", 310,
+                        "Crossover assignment"),
+                    _ => new Tuple<int, string, int, string>(0, "", 0, ""),
+                };
+
+                if (new_feature.Item1 != 0)
+                {
+                    features.Add(new EMAFeature(new_feature.Item1, new_feature.Item2,
+                        new_feature.Item3, new_feature.Item4));
+                }
+            }
+            else if (code == "E.8.6.3")  // countries
+            {
+                bool add_country = true;
+                if (st.countries is not null)
+                {
+                    foreach (EMACountry c in st.countries)
+                    {
+                        if (c.country_name == value)
+                        {
+                            add_country = false;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    st.countries = new List<EMACountry>();
+                }
+
+                if (add_country)
+                {
+                    st.countries.Add(new EMACountry(value, null));
+                }
+            }
+
+            st.conditions = conditions;
+            st.features = features;
+        }
     }
-
-
-    private List<DetailLine> GetStudyPopulation(IEnumerable<HtmlNode> population_rows)
+    
+ 
+    private void GetStudyPopulation(Euctr_Record st, IEnumerable<HtmlNode> population_rows)
     {
-        List<DetailLine> study_population = new List<DetailLine>();
+        Dictionary<string, bool> pop_groups = new()
+        {
+            { "includes_under18", false },
+            { "includes_in_utero", false },
+            { "includes_preterm", false },
+            { "includes_newborns", false },
+            { "includes_infants", false },
+            { "includes_children", false },
+            { "includes_ados", false },
+            { "includes_adults", false },
+            { "includes_elderly", false },
+            { "includes_women", false },
+            { "includes_men", false },
+        };
+
         foreach (HtmlNode row in population_rows)
         {
             var row_class = row.Attributes["class"];
@@ -708,8 +614,6 @@ public class EUCTR_Processor
                 string code = cells[0].InnerText;
                 if (code.Contains("F.1") || code.Contains("F.2"))
                 {
-                    DetailLine line = new DetailLine(code, HttpUtility.HtmlDecode(cells[1].InnerText));
-                    List<item_value> values = new List<item_value>();
                     if (cells[2].CssSelect("table").Any())
                     {
                         HtmlNode? inner_table = cells[2].CssSelect("table").FirstOrDefault();
@@ -722,7 +626,10 @@ public class EUCTR_Processor
                                 if (inner_cell is not null)
                                 {
                                     string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
-                                    if (value.ToLower() == "yes") values.Add(new item_value(value));
+                                    if (value.ToLower() == "yes")
+                                    {
+                                        UpdatePopDictionary(code);
+                                    }
                                 }
                             }
                         }
@@ -730,57 +637,135 @@ public class EUCTR_Processor
                     else
                     {
                         string value = HttpUtility.HtmlDecode(cells[2].InnerText).Trim();
-                        if (value.ToLower() == "yes") values.Add(new item_value(value));
-                    }
-
-                    if (values.Count > 0)
-                    {
-                        line.item_number = values.Count;
-                        line.item_values = values;
-                        study_population.Add(line);
+                        if (value.ToLower() == "yes")
+                        {
+                            UpdatePopDictionary(code);
+                        }
                     }
                 }
             }
         }
-        return study_population;
-    }
+        
+        // get gender eligibility information
 
-
-    private string GetCountryName(string country_code)
-    {
-        return country_code switch
+        if (pop_groups["includes_men"] && pop_groups["includes_women"])
         {
-            "ES" => "Spain",
-            "PT" => "Portugal",
-            "IE" => "Ireland",
-            "GB" => "United Kingdom",
-            "FR" => "France",
-            "BE" => "Belgium",
-            "NL" => "Netherlands",
-            "LU" => "Luxembourg",
-            "DE" => "Germany",
-            "LI" => "Liechtenstein",
-            "IT" => "Italy",
-            "SE" => "Sweden",
-            "NO" => "Norway",
-            "FI" => "Finland",
-            "IS" => "Iceland",
-            "EE" => "Estonia",
-            "LV" => "Latvia",
-            "LT" => "Lithuania",
-            "AT" => "Austria",
-            "PL" => "Poland",
-            "HU" => "Hungary",
-            "RO" => "Romania",
-            "BG" => "Bulgaria",
-            "CZ" => "Czechia",
-            "SK" => "Slovakia",
-            "SI" => "Slovenia",
-            "HR" => "Croatia",
-            "GR" => "Greece",
-            "CY" => "Cyprus",
-            "MT" => "Malta",
-            _ => "??"
-        };
+            st.gender = "All";
+        }
+        else if (pop_groups["includes_women"])
+        {
+            st.gender = "Female";
+        }
+        else if (pop_groups["includes_men"])
+        {
+            st.gender = "Male";
+        }
+        else
+        {
+            st.gender = "Not provided";
+        }
+        
+        if (!pop_groups["includes_under18"])
+        {
+            // No children or adolescents included. If 'elderly' are included no age maximum is presumed.
+
+            if (pop_groups["includes_adults"] && pop_groups["includes_elderly"])
+            {
+                st.minage = "18";
+            }
+            else if (pop_groups["includes_adults"])
+            {
+                st.minage = "18";
+                st.maxage = "64";
+            }
+            else if (pop_groups["includes_elderly"])
+            {
+                st.minage = "65";
+            }
+        }
+        else
+        {
+            // Some under 18s included. First discount the situation where under-18s,
+            // adults and elderly are all included corresponds to no age restrictions
+
+            if (pop_groups["includes_under18"] && pop_groups["includes_adults"] && pop_groups["includes_elderly"])
+            {
+                // Leave min and max ages blank
+            }
+            else
+            {
+                // First try and obtain a minimum age. Start with the youngest included and work up.
+
+                if (pop_groups["includes_in_utero"] || pop_groups["includes_preterm"] ||
+                    pop_groups["includes_newborns"])
+                {
+                    st.minage = "0 (days)";
+                }
+                else if (pop_groups["includes_infants"])
+                {
+                    st.minage = "28 (days)";
+                }
+                else if (pop_groups["includes_children"])
+                {
+                    st.minage = "2";
+                }
+                else if (pop_groups["includes_ados"])
+                {
+                    st.minage = "12";
+                }
+
+                // Then try and obtain a maximum age. Start with the oldest included and work down.
+
+                if (pop_groups["includes_adults"])
+                {
+                    st.maxage = "64";
+                }
+                else if (pop_groups["includes_ados"])
+                {
+                    st.maxage = "17";
+                }
+                else if (pop_groups["includes_children"])
+                {
+                    st.maxage = "11";
+                }
+                else if (pop_groups["includes_infants"])
+                {
+                    st.maxage = "23 (months)";
+                }
+                else if (pop_groups["includes_newborns"])
+                {
+                    st.maxage = "27 (days)";
+                }
+                else if (pop_groups["includes_in_utero"] || pop_groups["includes_preterm"])
+                {
+                    st.maxage = "0 (days)";
+                }
+            }
+        }
+        
+        // local function used to indicate which population flags are true.
+        
+        void UpdatePopDictionary(string code)
+        {
+            string group_type = code switch
+            {
+                "F.1.1" => "includes_under18",
+                "F.1.1.1" => "includes_in_utero",
+                "F.1.1.2" => "includes_preterm",
+                "F.1.1.3" => "includes_newborns",
+                "F.1.1.4" => "includes_infants",
+                "F.1.1.5" => "includes_children",
+                "F.1.1.6" => "includes_ados",
+                "F.1.2" => "includes_adults",
+                "F.1.3" => "includes_elderly",
+                "F.2.1" => "includes_women",
+                "F.2.2" => "includes_men",
+                _ => ""
+            };
+            if (group_type != "")
+            {
+                pop_groups[group_type] = true;
+            }
+        }
     }
 }

@@ -89,7 +89,7 @@ public class LoggingHelper : ILoggingHelper
         LogLine("****** DOWNLOAD ******");
         summary_string = $"\nRecord of Download :\n";
         LogHeader("Set up");
-        LogLine($"Download event Id is {opts.saf_id}");
+        LogLine($"Download event Id is {opts.dl_id}");
         LogLine("");
         LogLine($"Source_id is {opts.SourceId}");
         summary_string += $"\nSource_id is {opts.SourceId}";

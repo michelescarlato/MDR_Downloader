@@ -21,13 +21,13 @@ class WHO_Controller : IDLController
     public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
     {
         // WHO processing unusual in that it is from a csv file
-        // The program loops through the file and creates an XML file from each row
+        // The program loops through the file and creates a JSON file from each row
         // It then distributes it to the correct source folder for 
         // later harvesting.
 
         // In some cases the file will be one of a set created from a large
         // 'all data' download, in other cases it will be a weekly update file
-        // In both cases any existing XML files of the same name should be overwritten.
+        // In both cases any existing JSON files of the same name should be overwritten.
 
         DownloadResult res = new();
         string? file_base = source.local_folder;
@@ -89,7 +89,7 @@ class WHO_Controller : IDLController
                             _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
                         }
 
-                        bool added = _monDataLayer.UpdateWhoStudyLog(r.db_name, r.sd_sid, r.remote_url, (int)opts.saf_id!,
+                        bool added = _monDataLayer.UpdateWhoStudyLog(r.db_name, r.sd_sid, r.remote_url, (int)opts.dl_id!,
                                                             r.record_date?.FetchDateTimeFromISO(), full_path);
                         res.num_downloaded++;
                         if (added) res.num_added++;
