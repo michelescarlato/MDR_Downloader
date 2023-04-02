@@ -1,4 +1,5 @@
-﻿using ScrapySharp.Network;
+﻿using System.Security.Authentication;
+using ScrapySharp.Network;
 using System.Text;
 using System.Text.Json;
 
@@ -13,8 +14,15 @@ public class ScrapingHelpers
     public ScrapingHelpers(ILoggingHelper logging_helper)
     {
         _logging_helper = logging_helper;
+        
+        // attempted hack around connection issues
+        HttpClientHandler clientHandler = new HttpClientHandler();
+        // clientHandler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true;
+        // webClient = new HttpClient(clientHandler);
+        clientHandler.SslProtocols = SslProtocols.Tls12;
+        //clientHandler.
+        
         webClient = new HttpClient();
-
         browser = new()
         {
             AllowAutoRedirect = true,
@@ -24,7 +32,7 @@ public class ScrapingHelpers
     }
 
  
-    public async Task<WebPage?> GetPagWithRetriesAsync(string url, int pause, string sid)
+    public async Task<WebPage?> GetPageWithRetriesAsync(string url, int pause, string sid)
     {
         int j = 0;
         WebPage? found_page = null;

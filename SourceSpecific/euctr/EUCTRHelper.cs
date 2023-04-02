@@ -1,8 +1,6 @@
 ﻿using HtmlAgilityPack;
 using ScrapySharp.Extensions;
-using ScrapySharp.Html;
-using ScrapySharp.Network;
-using System.Web;
+
 using MDR_Downloader.Helpers;
 
 namespace MDR_Downloader.euctr;
@@ -161,7 +159,7 @@ public class EUCTR_Helper
                     string country_name = GetCountryName(country_code);
                     if (country_name != "")
                     {
-                        countries.Add(new EMACountry(country_name, ""));
+                        countries.Add(new EMACountry(country_name, null));
                     }
                 }
             }
@@ -206,6 +204,7 @@ public class EUCTR_Helper
             "DE" => "Germany",
             "LI" => "Liechtenstein",
             "IT" => "Italy",
+            "DK" => "Denmark",
             "SE" => "Sweden",
             "NO" => "Norway",
             "FI" => "Finland",

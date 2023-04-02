@@ -88,7 +88,7 @@ namespace MDR_Downloader.yoda
             {
                 // yoda site appears to be having intermittent problems, therefore attempt access up to three times
                 
-                WebPage? searchPage = await ch.GetPagWithRetriesAsync(baseURL + i, 1000, "page " + i);
+                WebPage? searchPage = await ch.GetPageWithRetriesAsync(baseURL + i, 1000, "page " + i);
                 if (searchPage is not null)
                 {
                     List<Summary> page_study_list = yoda_processor.GetStudyInitialDetails(searchPage);
@@ -149,7 +149,7 @@ namespace MDR_Downloader.yoda
                     
                     if (obtain_web_page)
                     {
-                        WebPage? studyPage = await ch.GetPagWithRetriesAsync(sm.details_link, 1000, sm.sd_sid);
+                        WebPage? studyPage = await ch.GetPageWithRetriesAsync(sm.details_link, 1000, sm.sd_sid);
                         if (studyPage is not null)
                         {
                             res.num_checked++;

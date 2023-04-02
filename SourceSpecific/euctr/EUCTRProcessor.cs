@@ -359,7 +359,7 @@ public class EUCTR_Processor
     private void GetStudyIMPs(Euctr_Record st, IEnumerable<HtmlNode> imp_tables)
     {
         List<EMAImp> imps = new();
-        EMAImp? current_imp = new(0);
+        EMAImp? current_imp = new(0);    // Instantiated to keep the compiler happy but not added to imps list
         foreach (HtmlNode tbody in imp_tables)
         {
             IEnumerable<HtmlNode>? imp_rows = tbody.CssSelect("tr");
@@ -367,55 +367,52 @@ public class EUCTR_Processor
             {
                 foreach (HtmlNode row in imp_rows)
                 {
-                    string? row_class = row.Attributes["class"].ToString();
-                    if (!string.IsNullOrEmpty(row_class) && row_class is "tricell" or "cellBlue")
+                    var cells = row.CssSelect("td").ToArray();
+                    if (cells.Length == 1 && cells[0].Attributes["class"].Value == "cellBlue")
+                    {
+                        string code = cells[0].InnerText;
+                        if (Regex.Match(code, @"D\.IMP:\s\d{1,2}").Success)
+                        {
+                            int current_imp_num = int.Parse(Regex.Match(code, @"\d{1,2}").Value);
+                            AddNewImp(current_imp_num);
+                        }
+                    }
+                    else if (cells.Length == 3 && row.Attributes["class"].Value == "tricell")
                     {
                         // for tricell the three cells are code, item name, item value
-                        // for cellBlue there is only 1 cell,and that holds a code / heading
-                        
-                        var cells = row.CssSelect("td").ToArray();
-                        string code = cells[0].InnerText;
-                        if (row_class == "cellBlue")
-                        {
-                            if (Regex.Match(code, @"D\.IMP:\s\d{1,2}").Success)
-                            {
-                                int current_imp_num = int.Parse(Regex.Match(code, @"\d{1,2}").Value);
-                                AddNewImp(current_imp_num);
-                            }
-                        }
-                        else
-                        {
-                            // Get various names.
 
-                            if (code is "D.2.1.1.1" or "D.3.1" or "D.3.8" or "D.3.9.1")
+                        string code = cells[0].InnerText;
+                        
+                        // Get various names.
+
+                        if (code is "D.2.1.1.1" or "D.3.1" or "D.3.8" or "D.3.9.1")
+                        {
+                            if (cells[2].CssSelect("table").Any())
                             {
-                                if (cells[2].CssSelect("table").Any())
+                                HtmlNode? inner_table = cells[2].CssSelect("table").FirstOrDefault();
+                                var inner_rows = inner_table?.CssSelect("tr").ToArray();
+                                if (inner_rows?.Any() is true)
                                 {
-                                    HtmlNode? inner_table = cells[2].CssSelect("table").FirstOrDefault();
-                                    var inner_rows = inner_table?.CssSelect("tr").ToArray();
-                                    if (inner_rows?.Any() is true)
+                                    foreach (HtmlNode inner_row in inner_rows)
                                     {
-                                        foreach (HtmlNode inner_row in inner_rows)
+                                        var inner_cell = inner_row.CssSelect("td").FirstOrDefault();
+                                        if (inner_cell is not null)
                                         {
-                                            var inner_cell = inner_row.CssSelect("td").FirstOrDefault();
-                                            if (inner_cell is not null)
+                                            string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
+                                            if (current_imp is not null && !string.IsNullOrEmpty(value))
                                             {
-                                                string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
-                                                if (current_imp is not null && !string.IsNullOrEmpty(value))
-                                                {
-                                                    ProcessImpDetails(code, value);
-                                                }
+                                                ProcessImpDetails(code, value);
                                             }
                                         }
                                     }
                                 }
-                                else
+                            }
+                            else
+                            {
+                                string value = HttpUtility.HtmlDecode(cells[2].InnerText).Trim();
+                                if (current_imp is not null &&  !string.IsNullOrEmpty(value))
                                 {
-                                    string value = HttpUtility.HtmlDecode(cells[2].InnerText).Trim();
-                                    if (current_imp is not null &&  !string.IsNullOrEmpty(value))
-                                    {
-                                        ProcessImpDetails(code, value);
-                                    }
+                                    ProcessImpDetails(code, value);
                                 }
                             }
                         }
@@ -449,11 +446,7 @@ public class EUCTR_Processor
                 current_imp.cas_number = value;
             }
         }
-
-        if (imps.Count > 1)
-        {
-            st.imp_topics = imps.Where(i => i.imp_num > 0).ToList();
-        }
+        st.imp_topics = imps;
     }
 
 
@@ -509,7 +502,7 @@ public class EUCTR_Processor
                 }
             }
         }
-        
+
         void ProcessFeature(string code, string value)
         {
             if (code == "E.3")
@@ -520,45 +513,23 @@ public class EUCTR_Processor
             {
                 st.exclusion_criteria = value;
             }
-            else if (code == "E.1.1")  // condition under study
+            else if (code == "E.1.1") // condition under study
             {
                 conditions.Add(new EMACondition(value));
             }
-            else if (code == "E.2.1")  // primary objectives
+            else if (code == "E.2.1") // primary objectives
             {
                 st.primary_objectives = value;
             }
-            else if (code == "E.5.1")  // primary end-points
+            else if (code == "E.5.1") // primary end-points
             {
                 st.primary_endpoints = value;
             }
-            else if (code.Contains("E.7") || code.Contains("E.8"))
+            else if (code == "E.8.6.3") // countries
             {
-                Tuple<int, string, int, string> new_feature = code switch
-                {
-                    "E.7.1" => new Tuple<int, string, int, string>(20, "phase", 110, "Phase 1"),
-                    "E.7.2" => new Tuple<int, string, int, string>(20, "phase", 120, "Phase 2"),
-                    "E.7.3" => new Tuple<int, string, int, string>(20, "phase", 130, "Phase 3"),
-                    "E.7.4" => new Tuple<int, string, int, string>(20, "phase", 135, "Phase 4"),
-                    "E.8.1.1" => new Tuple<int, string, int, string>(22, "allocation type", 205, "Randomised"),
-                    "E.8.1.2" => new Tuple<int, string, int, string>(24, "masking", 500, "None (Open Label)"),
-                    "E.8.1.3" => new Tuple<int, string, int, string>(24, "masking", 505, "Single"),
-                    "E.8.1.4" => new Tuple<int, string, int, string>(24, "masking", 510, "Double"),
-                    "E.8.1.5" => new Tuple<int, string, int, string>(23, "intervention model", 305,
-                        "Parallel assignment"),
-                    "E.8.1.6" => new Tuple<int, string, int, string>(23, "intervention model", 310,
-                        "Crossover assignment"),
-                    _ => new Tuple<int, string, int, string>(0, "", 0, ""),
-                };
-
-                if (new_feature.Item1 != 0)
-                {
-                    features.Add(new EMAFeature(new_feature.Item1, new_feature.Item2,
-                        new_feature.Item3, new_feature.Item4));
-                }
-            }
-            else if (code == "E.8.6.3")  // countries
-            {
+                // necessary to do this more specific case 
+                // before the more general 'contains' below
+                
                 bool add_country = true;
                 if (st.countries is not null)
                 {
@@ -581,7 +552,35 @@ public class EUCTR_Processor
                     st.countries.Add(new EMACountry(value, null));
                 }
             }
+            else if (code.Contains("E.7") || code.Contains("E.8"))
+            {
+                if (value.ToLower() == "yes")
+                {
+                    Tuple<int, string, int, string> new_feature = code switch
+                    {
+                        "E.7.1" => new Tuple<int, string, int, string>(20, "phase", 110, "Phase 1"),
+                        "E.7.2" => new Tuple<int, string, int, string>(20, "phase", 120, "Phase 2"),
+                        "E.7.3" => new Tuple<int, string, int, string>(20, "phase", 130, "Phase 3"),
+                        "E.7.4" => new Tuple<int, string, int, string>(20, "phase", 135, "Phase 4"),
+                        "E.8.1.1" => new Tuple<int, string, int, string>(22, "allocation type", 205, "Randomised"),
+                        "E.8.1.2" => new Tuple<int, string, int, string>(24, "masking", 500, "None (Open Label)"),
+                        "E.8.1.3" => new Tuple<int, string, int, string>(24, "masking", 505, "Single"),
+                        "E.8.1.4" => new Tuple<int, string, int, string>(24, "masking", 510, "Double"),
+                        "E.8.1.5" => new Tuple<int, string, int, string>(23, "intervention model", 305,
+                            "Parallel assignment"),
+                        "E.8.1.6" => new Tuple<int, string, int, string>(23, "intervention model", 310,
+                            "Crossover assignment"),
+                        _ => new Tuple<int, string, int, string>(0, "", 0, ""),
+                    };
 
+                    if (new_feature.Item1 != 0)
+                    {
+                        features.Add(new EMAFeature(new_feature.Item1, new_feature.Item2,
+                            new_feature.Item3, new_feature.Item4));
+                    }
+                }
+            }
+            
             st.conditions = conditions;
             st.features = features;
         }

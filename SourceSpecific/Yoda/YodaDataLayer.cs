@@ -17,12 +17,12 @@ namespace MDR_Downloader.yoda
         }
 
 
-        public SponsorDetails FetchSponsorFromNCT(string nct_id)
+        public string? FetchSponsorFromNCT(string nct_id)
         {
             using var conn = new NpgsqlConnection(_ctg_connString);
-            string sql_string = "Select organisation_id as org_id, organisation_name as org_name from ad.study_organisations ";
+            string sql_string = "Select organisation_name from ad.study_organisations ";
             sql_string += "where sd_sid = '" + nct_id + "' and contrib_type_id = 54;";
-            return conn.QueryFirstOrDefault<SponsorDetails>(sql_string);
+            return conn.QueryFirstOrDefault<string>(sql_string);
         }
 
 
@@ -35,12 +35,12 @@ namespace MDR_Downloader.yoda
         }
 
         
-        public SponsorDetails FetchSponsorFromISRCTN(string isrctn_id)
+        public string? FetchSponsorFromISRCTN(string isrctn_id)
         {
             using var conn = new NpgsqlConnection(_isrctn_connString);
-            string sql_string = "Select organisation_id as org_id, organisation_name as org_name from ad.study_organisations ";
+            string sql_string = "Select organisation_name from ad.study_organisations ";
             sql_string += "where sd_sid = '" + isrctn_id + "' and contrib_type_id = 54;";
-            return conn.QueryFirstOrDefault<SponsorDetails>(sql_string);
+            return conn.QueryFirstOrDefault<string>(sql_string);
         }
 
 

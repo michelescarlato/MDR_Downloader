@@ -2,7 +2,7 @@
   "profiles": {
     "MDR_Downloader": {
       "commandName": "Project",
-      "commandLineArgs": "-s 100159 -t 103 -f \"F:\\MDR_Sources\\EMA\\ema 20230219.xml\" "
-    }
+      "commandLineArgs": "-s 101901 -t 102"
+    } 
   }
 } 

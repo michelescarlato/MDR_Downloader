@@ -1,8 +1,5 @@
 ﻿using HtmlAgilityPack;
-using System.Xml.Serialization;
-
 namespace MDR_Downloader.euctr;
-
 
 public class Euctr_Record
 {
@@ -56,14 +53,8 @@ public class Euctr_Record
     public List<EMACondition>? conditions{ get; set; }
     public List<EMAImp>? imp_topics { get; set; }
     public List<EMAOrganisation>? organisations { get; set; }
-    public List<EMAPerson>? people { get; set; }
-    
     public List<MeddraTerm>? meddra_terms { get; set; }
-    //public List<DetailLine>? sponsors { get; set; }
-    //public List<ImpLine>? imps { get; set; }
-    //public List<DetailLine>? features { get; set; }
-    //public List<DetailLine>? population { get; set; }
-    // public List<Country>? countries { get; set; }
+
 
     public Euctr_Record(string _sd_sid)
     {
@@ -100,11 +91,8 @@ public class MeddraTerm
 
 public class EMACountry
 {
-    public string? country_name;
-    public string? status;
-    
-    public EMACountry()
-    { }
+    public string? country_name { get; set; }
+    public string? status { get; set; }
 
     public EMACountry(string? _country_name, string? _status)
     {
@@ -112,6 +100,7 @@ public class EMACountry
         status = _status;
     }
 }
+
 
 public class EMAIdentifier
 {
@@ -218,15 +207,5 @@ public class EMAOrganisation
     }
 }
 
-public class EMAPerson
-{
-    //public Contact[]? contacts { get; set; }  // very often organisations
-    public string? given_name { get; set; }
-    public string? family_name { get; set; }
-    public string? full_name { get; set; }
-    public int? person_role_id { get; set; }
-    public string? person_role { get; set; }
-    public string? affiliation { get; set; }
-}
 
 

@@ -51,13 +51,14 @@ namespace MDR_Downloader.yoda
         public string? csr_link { get; set; }
     }
 
+    /*
     public class SponsorDetails
     {
         public int? org_id { get; set; }
         public string? org_name { get; set; }
         public string? prot_id { get; set; }
     }
-
+*/
 
     public class StudyDetails
     {

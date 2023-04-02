@@ -175,9 +175,8 @@ namespace MDR_Downloader.yoda
             // First obtain the data from the other sources...
 
             string? reg_id = st.registry_id;
-            SponsorDetails? sponsor = null;
             StudyDetails? sd = null;
-
+            string? sponsor_name = "";
             bool isRegistered = sm.sd_sid.StartsWith("Y-");
             if (isRegistered)
             {
@@ -186,13 +185,13 @@ namespace MDR_Downloader.yoda
                     if (reg_id.StartsWith("NCT"))
                     {
                         // use nct_id to get sponsor id and name
-                        sponsor = _repo.FetchSponsorFromNCT(reg_id);
+                        sponsor_name = _repo.FetchSponsorFromNCT(reg_id);
                         sd = _repo.FetchStudyDetailsFromNCT(reg_id);
                         study_identifiers.Add(new Identifier(reg_id, 11, "Trial Registry ID", 100120, "ClinicalTrials.gov"));
                     }
                     else if (reg_id.StartsWith("ISRCTN"))
                     {
-                        sponsor = _repo.FetchSponsorFromISRCTN(reg_id);
+                        sponsor_name = _repo.FetchSponsorFromISRCTN(reg_id);
                         sd = _repo.FetchStudyDetailsFromISRCTN(reg_id);
                         study_identifiers.Add(new Identifier(reg_id, 11, "Trial Registry ID", 100126, "ISRCTN"));
                     }
@@ -200,14 +199,13 @@ namespace MDR_Downloader.yoda
                 // Insert the data if available
                 // Otherwise add as a new record to be manually completed
 
-                if (sponsor == null)
+                if (string.IsNullOrEmpty(sponsor_name))
                 {
                     _logging_helper.LogError("No sponsor found for " + st.yoda_title + ", at " + st.remote_url);
                 }
                 else
                 {
-                    st.sponsor_id = sponsor.org_id ?? 0;
-                    st.sponsor = sponsor.org_name ?? "";
+                    st.sponsor = sponsor_name;
                 }
 
                 if (sd == null)

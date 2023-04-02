@@ -50,7 +50,7 @@ class EUCTR_Controller : IDLController
         // and get total record numbers and total page numbers
         
         int dl_id = (int)opts.dl_id!;    // will be non-null
-        WebPage? initialPage = await ch.GetPageAsync(_baseURL + "1");
+        WebPage? initialPage = await ch. GetPageWithRetriesAsync(_baseURL + "1", 500, "page 1");
         if (initialPage is null)
         {
             _loggingHelper.LogError("Unable to open initial summary page (web site may be down), so unable to proceed");
@@ -77,6 +77,7 @@ class EUCTR_Controller : IDLController
         if (opts.FetchTypeId == 145)
         {
             // by default start at the beginning, but can be over-written by StartPage parameter
+            
             opts.StartPage ??= 0;
             start_page = (int)opts.StartPage;
             end_page = total_summary_pages;
@@ -119,7 +120,7 @@ class EUCTR_Controller : IDLController
             // Go to the summary page indicated by current value of i
             // Each page has up to 20 listed studies. Get a list of their Ids.
 
-            WebPage? summaryPage = await ch.GetPageAsync(_baseURL + i.ToString());
+            WebPage? summaryPage = await ch.GetPageWithRetriesAsync(_baseURL + i, 600, "summary " + i);
             if (summaryPage is null)
             {
                 _loggingHelper.LogError($"Unable to reach summary data page {i} - skipping this page");
@@ -185,7 +186,7 @@ class EUCTR_Controller : IDLController
                 {
                     if (s.do_download is true)
                     {
-                        Euctr_Record? st = _euctrHelper.GetInfoFromSummaryBox(s.details_box);
+                        Euctr_Record? st = _euctrHelper.GetInfoFromSummaryBox(s.details_box!);
                         if (st is null)
                         {
                             _loggingHelper.LogError(
@@ -203,7 +204,7 @@ class EUCTR_Controller : IDLController
                             else
                             {
                                 Thread.Sleep(300);
-                                WebPage? detailsPage = await ch.GetPageAsync(st.details_url);
+                                WebPage? detailsPage = await ch.GetPageWithRetriesAsync(st.details_url, 500, st.sd_sid);
                                 if (detailsPage is null)
                                 {
                                     _loggingHelper.LogError(
