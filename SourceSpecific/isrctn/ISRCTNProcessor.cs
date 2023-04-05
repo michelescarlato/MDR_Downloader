@@ -316,9 +316,8 @@ public class ISRCTN_Processor
                         ScrapingHelpers ch = new(logging_helper);
                         Thread.Sleep(500);
                         
-                        // ReSharper disable once RedundantAssignment (to study_page)
                         // The initial web page access results in a blocking page
-                        // The second access is required to actually access the page.
+                        // A second access is required to actually access the page.
                         
                         WebPage? study_page = await ch.GetPageWithRetriesAsync(details_url, 100, st.sd_sid);
                         if (study_page is not null)

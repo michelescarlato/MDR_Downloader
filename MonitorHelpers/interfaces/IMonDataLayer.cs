@@ -25,5 +25,5 @@ public interface IMonDataLayer
         int? dl_id, DateTime? last_revised_date, string? full_path);
 
     public bool Downloaded_recently(string sd_sid, int days_ago);
-    public bool Downloaded_recentlywithlink(string sd_sid, int days_ago);
+    public bool Downloaded_recently_with_link(string sd_sid, int days_ago);
 }

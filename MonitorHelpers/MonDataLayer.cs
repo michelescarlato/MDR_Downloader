@@ -111,32 +111,32 @@ public class MonDataLayer : IMonDataLayer
         return (int)Conn.Insert(saf);
     }
 
-    private bool UpdateStudyFileRec(StudyFileRecord file_record, string db_name = "")
+    private void UpdateStudyFileRec(StudyFileRecord file_record, string db_name = "")
     {
         string connString = db_name == "" ? thisDBconnString 
             : _credentials.GetConnectionString(db_name); 
         using NpgsqlConnection conn = new(connString);
-        return conn.Update(file_record);
+        conn.Update(file_record);
     }
    
-    private bool UpdateObjectFileRec(ObjectFileRecord file_record)
+    private void UpdateObjectFileRec(ObjectFileRecord file_record)
     {
         using NpgsqlConnection conn = new(thisDBconnString);
-        return conn.Update(file_record);
+        conn.Update(file_record);
     }
 
-    private int InsertStudyFileRec(StudyFileRecord file_record, string db_name = "")
+    private void InsertStudyFileRec(StudyFileRecord file_record, string db_name = "")
     {
         string connString = db_name == "" ? thisDBconnString 
             : _credentials.GetConnectionString(db_name); 
         using NpgsqlConnection conn = new(connString);
-        return (int)conn.Insert(file_record);
+        conn.Insert(file_record);
     }
    
-    private int InsertObjectFileRec(ObjectFileRecord file_record)
+    private void InsertObjectFileRec(ObjectFileRecord file_record)
     {
         using NpgsqlConnection conn = new(thisDBconnString);
-        return (int)conn.Insert(file_record);
+        conn.Insert(file_record);
     }
             
     public bool UpdateWhoStudyLog(string db_name, string sd_sid, string? remote_url,
@@ -254,9 +254,9 @@ public class MonDataLayer : IMonDataLayer
         using NpgsqlConnection conn = new(thisDBconnString);
         return conn.Query<int>(sql_string).FirstOrDefault() > 0;
     }
+     
     
-    
-    public bool Downloaded_recentlywithlink(string details_link, int days_ago)
+    public bool Downloaded_recently_with_link(string details_link, int days_ago)
     {
         string sql_string = $@"select id from mn.source_data 
                                where last_downloaded::date >= now()::date - {days_ago} 

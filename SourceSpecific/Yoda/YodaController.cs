@@ -37,7 +37,6 @@ namespace MDR_Downloader.yoda
                 Directory.CreateDirectory(folder_path);  // ensure folder is present
             }
 
-            int source_id = source.id;
             int? days_ago = opts.SkipRecentDays;
             var json_options = new JsonSerializerOptions()
             {
@@ -46,8 +45,8 @@ namespace MDR_Downloader.yoda
             };
 
             // Get list of studies from the Yoda start page.
-
             //string baseURL = "https://yoda.yale.edu/trials-search?amp%3Bpage=0&page=";
+            
             string baseURL = "https://yoda.yale.edu/trials-search?page=";
             int search_page_limit;
             WebPage? firstPage = await ch.GetPageAsync(baseURL);
@@ -141,7 +140,7 @@ namespace MDR_Downloader.yoda
                     {
                         int chk_days = (int)days_ago;
                         if (_monDataLayer.Downloaded_recently(sm.sd_sid, chk_days) ||
-                            _monDataLayer.Downloaded_recentlywithlink(sm.details_link, chk_days))
+                            _monDataLayer.Downloaded_recently_with_link(sm.details_link, chk_days))
                         {
                             obtain_web_page = false;
                         }

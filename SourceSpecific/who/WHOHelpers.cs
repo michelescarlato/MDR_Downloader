@@ -760,6 +760,7 @@ public class WHOHelpers
                 _ when tid.StartsWith("TCTR") => 100131,
                 _ when tid.StartsWith("NL") || tid.StartsWith("NTR") => 100132,
                 _ when tid.StartsWith("LBCTR") => 101989,
+                _ when tid.StartsWith("ITMCTR") => 109108,
                 _ => 0
             };
         }
@@ -785,6 +786,7 @@ public class WHOHelpers
             100131 => "thctr",
             100132 => "nntr",
             101989 => "lebctr",
+            109108 => "itmctr",
             _ => ""
         };
     }
