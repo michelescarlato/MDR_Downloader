@@ -12,5 +12,5 @@ public interface ILoggingHelper
         public void LogParseError(string header, string errorNum, string errorType);
         public void LogCodeError(string header, string errorMessage, string? stackTrace);
         public void CloseLog();
-        public void LogRes(SAFEvent saf);
+        public void LogRes(DLEvent dl);
 }

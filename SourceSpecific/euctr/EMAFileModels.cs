@@ -77,7 +77,7 @@ public class Main
     public string? url { get; set; }
     public string? study_type { get; set; }
     public string? study_design { get; set; }
-    public string? phaseField { get; set; }
+    public string? phase { get; set; }
     public string? hc_freetext { get; set; }
     public string? i_freetext { get; set; }
     public string? results_actual_enrolment { get; set; }

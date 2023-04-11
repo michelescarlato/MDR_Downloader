@@ -25,8 +25,8 @@ public class Downloader
         // Set up the search and fetch summary record for this download,
         // Open log file and log parameters, and establish appropriate controller class,
 
-        opts.dl_id = _monDataLayer.GetNextSearchFetchId();
-        SAFEvent saf = new(opts, source.id);
+        opts.dl_id = _monDataLayer.GetNextDownloadId();
+        DLEvent dl = new(opts, source.id);
         _loggingHelper.OpenLogFile(opts.FileName, source.database_name!);
         _loggingHelper.LogCommandLineParameters(opts);
         IDLController? dl_controller = null;
@@ -76,15 +76,15 @@ public class Downloader
             // 'ObtainData' routine with parameters.
             
             SourceController sc = new(dl_controller);
-            saf = await sc.ObtainDataFromSourceAsync(opts, source, saf);        
-            _loggingHelper.LogRes(saf);
+            dl = await sc.ObtainDataFromSourceAsync(opts, source, dl);        
+            _loggingHelper.LogRes(dl);
         }
         
         // Store the saf log record (unless specifically requested not to).
         
         if (opts.NoLogging is not true)
         {
-            _monDataLayer.InsertSAFEventRecord(saf);
+            _monDataLayer.UpdateDLEventRecord(dl);
         }
         _loggingHelper.CloseLog();
     }

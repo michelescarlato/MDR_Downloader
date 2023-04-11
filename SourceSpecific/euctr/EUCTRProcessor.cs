@@ -103,6 +103,9 @@ public class EUCTR_Processor
         
         st.study_type = "Interventional";
         
+        // Construct search url - provided in EMA file but not in web page
+        st.search_url = @"https://www.clinicaltrialsregister.eu/ctr-search/search?query=eudract_number:/" + st.sd_sid;
+        
         // Use each section of the page to obtain the relevant data points
         
         HtmlNode? identifiers = detailsPage.Find("table", By.Id("section-a")).FirstOrDefault();
@@ -143,55 +146,7 @@ public class EUCTR_Processor
         return st;
     }
 
-
-    public Euctr_Record ExtractResultDetails(Euctr_Record st, WebPage resultsPage)
-    {
-        var pdfLInk = resultsPage.Find("a", By.Id("downloadResultPdf")).FirstOrDefault();
-
-        if (pdfLInk != null)
-        {
-            st.results_pdf_link = pdfLInk.Attributes["href"].Value;
-        }
-
-        HtmlNode? result_div = resultsPage.Find("div", By.Id("resultContent")).FirstOrDefault();
-        var result_rows = result_div?.SelectNodes("table[1]/tr")?.ToArray();
-        if (result_rows is not null)
-        {
-            foreach (var row in result_rows)
-            {
-                HtmlNode? first_cell = row.SelectSingleNode("td[1]");
-                string? fc_content = first_cell.TrimmedContents();
-                if (fc_content is not null)
-                {
-                    string? cell_content = first_cell.SelectSingleNode("following-sibling::td[1]").TrimmedContents();
-                    if (fc_content == "Results version number")
-                    {
-                        st.results_version = cell_content;
-                    }
-                    else if (fc_content == "This version publication date")
-                    {
-                        st.results_revision_date = cell_content;
-                    }
-                    else if (fc_content == "First version publication date")
-                    {
-                        st.results_date_posted = cell_content;
-                    }
-                    else if (fc_content == "Summary report(s)")
-                    {
-                        HtmlNode? following_cell = first_cell.SelectSingleNode("following-sibling::td[1]/a[1]");
-                        if (following_cell is not null)
-                        {
-                            st.results_summary_link = following_cell.Attributes["href"].Value;
-                            st.results_summary_name = following_cell.TrimmedContents();
-                        }
-                    } 
-                }
-            }
-        }
-        return st;
-    }
-
-
+    
     private void GetStudyIdentifiers(Euctr_Record st, IEnumerable<HtmlNode> identifier_rows)
     {
         // add in initial identifiers representing EUDRACT number and sponsor id
@@ -267,7 +222,7 @@ public class EUCTR_Processor
                 {
                     st.public_title = value;
                 }
-                else if (code == "A.3.2"&& string.IsNullOrEmpty(st.acronym))
+                else if (code == "A.3.2" && string.IsNullOrEmpty(st.acronym))
                 {
                     st.acronym = value;
                 }
@@ -276,15 +231,15 @@ public class EUCTR_Processor
             {
                 if (code == "A.5.1")  // ISRCTN
                 {
-                    ids.Add(new EMAIdentifier(11, "Trial Registry ID", code, 100126, "ISRCTN"));
+                    ids.Add(new EMAIdentifier(11, "Trial Registry ID", value, 100126, "ISRCTN"));
                 }
                 else  if (code == "A.5.2")  // NCT
                 {
-                    ids.Add(new EMAIdentifier(11, "Trial Registry ID", code, 100120, "ClinicalTrials.gov"));
+                    ids.Add(new EMAIdentifier(11, "Trial Registry ID", value, 100120, "ClinicalTrials.gov"));
                 }
                 else  if (code == "A.5.3")  // UTRN
                 {
-                    ids.Add(new EMAIdentifier(11, "Trial Registry ID", code, 100115, 
+                    ids.Add(new EMAIdentifier(11, "Trial Registry ID", value, 100115, 
                         "International Clinical Trials Registry Platform"));
                 }
             }
@@ -320,7 +275,6 @@ public class EUCTR_Processor
                                     string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
                                     if (!string.IsNullOrEmpty(value)) 
                                     {
-                       
                                         ProcessSponsor(code, value);
                                     }
                                 }
@@ -332,7 +286,6 @@ public class EUCTR_Processor
                         string value = HttpUtility.HtmlDecode(cells[2].InnerText).Trim();
                         if (!string.IsNullOrEmpty(value)) 
                         {
-                   
                             ProcessSponsor(code, value);
                         }
                     }
@@ -517,11 +470,11 @@ public class EUCTR_Processor
             {
                 conditions.Add(new EMACondition(value));
             }
-            else if (code == "E.2.1") // primary objectives
+            else if (code == "E.2.1" && string.IsNullOrEmpty(st.primary_objectives)) // primary objectives
             {
                 st.primary_objectives = value;
             }
-            else if (code == "E.5.1") // primary end-points
+            else if (code == "E.5.1" && string.IsNullOrEmpty(st.primary_endpoints)) // primary end-points
             {
                 st.primary_endpoints = value;
             }
@@ -640,6 +593,23 @@ public class EUCTR_Processor
                         {
                             UpdatePopDictionary(code);
                         }
+                    }
+                }
+
+                if (code == "F.4.1")   // single country total enrolment target
+                {
+                    string value = HttpUtility.HtmlDecode(cells[2].InnerText).Trim();
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        st.target_size = value;
+                    }
+                }
+                if (code == "F.4.2.2")   // whole study total enrolment target
+                {
+                    string value = HttpUtility.HtmlDecode(cells[2].InnerText).Trim();
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        st.target_size = value;
                     }
                 }
             }

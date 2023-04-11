@@ -223,7 +223,7 @@ class EUCTR_Controller : IDLController
                                         WebPage? resultsPage = await ch.GetPageAsync(st.results_url);
                                         if (resultsPage is not null)
                                         {
-                                            st = _processor.ExtractResultDetails(st, resultsPage);
+                                            st = _euctrHelper.ExtractResultDetails(st, resultsPage);
                                         }
                                         else
                                         {

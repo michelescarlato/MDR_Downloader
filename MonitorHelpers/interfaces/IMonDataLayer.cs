@@ -8,12 +8,12 @@ public interface IMonDataLayer
     public Source? FetchSourceParameters(int source_id);
     public DateTime? ObtainLastDownloadDate(int source_id);
     public DateTime? ObtainLastDownloadDateWithFilter(int source_id, int filter_id);
-    public SFType FetchTypeParameters(int sftype_id);
-    public int GetNextSearchFetchId();
+    public DLType FetchTypeParameters(int sftype_id);
+    public int GetNextDownloadId();
     public StudyFileRecord? FetchStudyFileRecord(string sd_id, string db_name);
     public ObjectFileRecord? FetchObjectFileRecord(string sd_id);
     public IEnumerable<StudyFileRecord> FetchStudyIds();
-    public int InsertSAFEventRecord(SAFEvent saf);
+    public bool UpdateDLEventRecord(DLEvent dl);
 
     public bool UpdateStudyLog(string sd_sid, string? remote_url,
         int? dl_id, DateTime? last_revised_date, string? full_path);

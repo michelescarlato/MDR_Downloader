@@ -263,11 +263,6 @@ namespace MDR_Downloader.who
             }
 
             r.db_name = _wh.get_db(source_id);
-
-            if (r.db_name == "")
-            {
-                int a = 1;
-            }
             r.secondary_ids = secondary_ids;
             r.study_features = study_features;
 

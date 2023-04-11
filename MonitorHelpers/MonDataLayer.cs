@@ -53,19 +53,24 @@ public class MonDataLayer : IMonDataLayer
     }
 
 
-    public SFType FetchTypeParameters(int dl_type_id)
+    public DLType FetchTypeParameters(int dl_type_id)
     {
         using NpgsqlConnection Conn = new(monConnString);
-        return Conn.Get<SFType>(dl_type_id);
+        return Conn.Get<DLType>(dl_type_id);
     }
 
 
-    public int GetNextSearchFetchId()
+    public int GetNextDownloadId()
     {
         using NpgsqlConnection Conn = new(monConnString);
         string sql_string = "select max(id) from sf.dl_events ";
         int last_id = Conn.ExecuteScalar<int>(sql_string);
-        return last_id + 1;
+        int new_id = last_id + 1;
+        
+        // create the new record
+        sql_string = $"Insert into sf.dl_events(id) values ({new_id})";
+        Conn.Execute(sql_string);
+        return new_id;
     }
     
 
@@ -105,10 +110,16 @@ public class MonDataLayer : IMonDataLayer
         return Conn.Query<StudyFileRecord>(sql_string);
     }
 
-    public int InsertSAFEventRecord(SAFEvent saf)
+    public bool UpdateDLEventRecord(DLEvent dl)
     {
+        // Occasionally a simple insert of a new record at the end of a download process can result 
+        // in an error - if a long running DL takes place at the same time as a pre-scheduled one.
+        // In that case the id originally set up will have already been used.
+        // To get round that a new DL record should be created at the beginning of each DL, 
+        // and then updated with the dl details at the end.
+        
         using NpgsqlConnection Conn = new(monConnString);
-        return (int)Conn.Insert(saf);
+        return Conn.Update(dl);
     }
 
     private void UpdateStudyFileRec(StudyFileRecord file_record, string db_name = "")

@@ -232,23 +232,23 @@ public class LoggingHelper : ILoggingHelper
         Console.WriteLine(message);
     }
 
-    public void LogRes(SAFEvent saf)
+    public void LogRes(DLEvent dl)
     {
         LogHeader("Download Result");
-        LogLine("Source Id: " + saf.source_id);
-        LogLine("Download Event Id: " + saf.id);
-        LogLine("Start time: " + saf.time_started);
-        LogLine("End time: " + saf.time_ended);
-        LogLine("Records checked: " + saf.num_records_checked);
-        LogLine("Records downloaded: " + saf.num_records_downloaded);
-        LogLine("Records added: " + saf.num_records_added);
+        LogLine("Source Id: " + dl.source_id);
+        LogLine("Download Event Id: " + dl.id);
+        LogLine("Start time: " + dl.time_started);
+        LogLine("End time: " + dl.time_ended);
+        LogLine("Records checked: " + dl.num_records_checked);
+        LogLine("Records downloaded: " + dl.num_records_downloaded);
+        LogLine("Records added: " + dl.num_records_added);
         
         summary_string += $"\n\nDownload Result:";
-        summary_string += $"\nDownload Event Id: {saf.id}";
-        summary_string += $"\nStart time: {saf.time_started}";
-        summary_string += $"\nEnd time: {saf.time_ended}";
-        summary_string += $"\nRecords checked: {saf.num_records_checked}";
-        summary_string += $"\nRecords downloaded: {saf.num_records_downloaded}";
-        summary_string += $"\nRecords added: {saf.num_records_added}";
+        summary_string += $"\nDownload Event Id: {dl.id}";
+        summary_string += $"\nStart time: {dl.time_started}";
+        summary_string += $"\nEnd time: {dl.time_ended}";
+        summary_string += $"\nRecords checked: {dl.num_records_checked}";
+        summary_string += $"\nRecords downloaded: {dl.num_records_downloaded}";
+        summary_string += $"\nRecords added: {dl.num_records_added}";
     }
 }

@@ -2,5 +2,5 @@
 
 public interface ISourceController
 {
-    public Task<SAFEvent> ObtainDataFromSourceAsync(Options opts, Source source, SAFEvent saf);
+    public Task<DLEvent> ObtainDataFromSourceAsync(Options opts, Source source, DLEvent dl);
 }

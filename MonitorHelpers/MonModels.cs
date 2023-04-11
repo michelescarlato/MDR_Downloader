@@ -41,7 +41,7 @@ public class Source
 
 
 [Table("sf.dl_types")]
-public class SFType
+public class DLType
 {
     public int id { get; set; }
     public string? name { get; set; }
@@ -59,7 +59,7 @@ public class SFType
 
 
 [Table("sf.dl_events")]
-public class SAFEvent
+public class DLEvent
 {
     [ExplicitKey]
     public int? id { get; set; }
@@ -81,9 +81,9 @@ public class SAFEvent
     public int? ids_amount { get; set; }
     public string? comments { get; set; }
 
-    public SAFEvent() { }
+    public DLEvent() { }
 
-    public SAFEvent(Options _opts, int? _source_id)
+    public DLEvent(Options _opts, int? _source_id)
     {
         id = _opts.dl_id;
         source_id = _source_id;

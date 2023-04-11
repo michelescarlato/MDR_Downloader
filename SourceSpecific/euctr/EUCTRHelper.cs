@@ -1,6 +1,7 @@
 ﻿using HtmlAgilityPack;
 using ScrapySharp.Extensions;
-
+using ScrapySharp.Html;
+using ScrapySharp.Network;
 using MDR_Downloader.Helpers;
 
 namespace MDR_Downloader.euctr;
@@ -117,7 +118,6 @@ public class EUCTR_Helper
                 int status_diff = 1;
                 for (int j = 0; j < links.Count; j++)
                 {
-                    int status_num = 0;
                     string country_code = links[j].InnerText;
                     if (country_code == "Outside EU/EEA")
                     {
@@ -132,19 +132,9 @@ public class EUCTR_Helper
                         if (country_name != "")
                         {
                             string study_status = statuses[j + status_diff].InnerText.Trim(parentheses);
-                            if (study_status != "GB - no longer in EU/EEA")
-                            {
-                                countries.Add(new EMACountry(country_name, study_status));
-                                status_num++;
-                                if (status_num == 1)
-                                {
-                                    st.trial_status = study_status;
-                                }
-                            }
-                            else
-                            {
-                                countries.Add(new EMACountry(country_name, null));
-                            }
+                            countries.Add(study_status != "GB - no longer in EU/EEA"
+                                ? new EMACountry(country_name, study_status)
+                                : new EMACountry(country_name, null));
                         }
                     }
                 }
@@ -163,10 +153,29 @@ public class EUCTR_Helper
                     }
                 }
             }
-
             st.countries = countries;
+            
+            // Need to try and establish the overall trial status.
+            
+            if (st.countries.Count > 0)
+            {
+                foreach (EMACountry ec in st.countries)
+                {
+                    if (ec.status is not null)
+                    {
+                        string this_status = ec.status.ToLower();
+                        if (this_status == "ongoing")
+                        {
+                            st.trial_status = "Ongoing";
+                            break;   // one 'ongoing' sets the status whatever the other values
+                        }
+                        st.trial_status = ec.status;   // otherwise use the last non-null one
+                    }
+                }
+            }
 
-            // Only the first listed country used to obtain the protocol details and overall trial status
+            // Only the first listed country used to obtain the protocol details and overall trial status.
+            // Although this may be overwritten buy an EMA file's details.
 
             st.details_url = "https://www.clinicaltrialsregister.eu" + links[0].Attributes["href"].Value;
         }
@@ -187,7 +196,54 @@ public class EUCTR_Helper
 
         return st;
     }
+    
+    
+    public Euctr_Record ExtractResultDetails(Euctr_Record st, WebPage resultsPage)
+    {
+        var pdfLInk = resultsPage.Find("a", By.Id("downloadResultPdf")).FirstOrDefault();
 
+        if (pdfLInk != null)
+        {
+            st.results_pdf_link = pdfLInk.Attributes["href"].Value;
+        }
+
+        HtmlNode? result_div = resultsPage.Find("div", By.Id("resultContent")).FirstOrDefault();
+        var result_rows = result_div?.SelectNodes("table[1]/tr")?.ToArray();
+        if (result_rows is not null)
+        {
+            foreach (var row in result_rows)
+            {
+                HtmlNode? first_cell = row.SelectSingleNode("td[1]");
+                string? fc_content = first_cell.TrimmedContents();
+                if (fc_content is not null)
+                {
+                    string? cell_content = first_cell.SelectSingleNode("following-sibling::td[1]").TrimmedContents();
+                    if (fc_content == "Results version number")
+                    {
+                        st.results_version = cell_content;
+                    }
+                    else if (fc_content == "This version publication date")
+                    {
+                        st.results_revision_date = cell_content;
+                    }
+                    else if (fc_content == "First version publication date")
+                    {
+                        st.results_date_posted = cell_content;
+                    }
+                    else if (fc_content == "Summary report(s)")
+                    {
+                        HtmlNode? following_cell = first_cell.SelectSingleNode("following-sibling::td[1]/a[1]");
+                        if (following_cell is not null)
+                        {
+                            st.results_summary_link = following_cell.Attributes["href"].Value;
+                            st.results_summary_name = following_cell.TrimmedContents();
+                        }
+                    } 
+                }
+            }
+        }
+        return st;
+    }
 
     private string GetCountryName(string country_code)
     {

@@ -1,14 +1,9 @@
-﻿using HtmlAgilityPack;
-using MDR_Downloader.Helpers;
-using ScrapySharp.Extensions;
-using ScrapySharp.Html;
-using ScrapySharp.Network;
-
+﻿using MDR_Downloader.Helpers;
 namespace MDR_Downloader.isrctn;
 
 public class ISRCTN_Processor
 {
-    public async Task<Study?> GetFullDetails(FullTrial ft, ILoggingHelper logging_helper)
+    public Study? GetFullDetails(FullTrial ft, ILoggingHelper logging_helper)
     {
         Study st = new();
 
@@ -275,8 +270,8 @@ public class ISRCTN_Processor
         var ops = tr.outputs;
         if (ops?.Any() is true)
         {
-            bool local_urls_collected = false;
-            Dictionary<string, string>? output_urls = null;
+            //bool local_urls_collected = false;
+            //Dictionary<string, string>? output_urls = null;
 
             foreach (var v in ops)
             {
@@ -288,9 +283,7 @@ public class ISRCTN_Processor
                 
                 if (sop.artefactType == "LocalFile")
                 {
-                    // First check it is in the attached files list and public.
-                    // (Not all listed local outputs are in the attached files
-                    // list - though the great majority are).
+                    // Check it is in the attached files list and public.
 
                     if (attachedFiles?.Any() is true)
                     {
@@ -299,10 +292,13 @@ public class ISRCTN_Processor
                             if (sop.fileId == af.id) 
                             {
                                 sop.localFilePublic = af.@public;
+                                sop.localFileURL = af.downloadUrl;
                                 break;
                             }
                         }
                     }
+                    
+                    /*
 
                     // need to go to the page to get the url for any local file
                     // (Not available in the API data)
@@ -390,6 +386,7 @@ public class ISRCTN_Processor
 
                             local_urls_collected = true;
                         }
+                        
                     }
 
                     if (output_urls?.Any() is true)
@@ -407,6 +404,7 @@ public class ISRCTN_Processor
                             }
                         }
                     }
+                    */
                 }
 
                 outputs.Add(sop);

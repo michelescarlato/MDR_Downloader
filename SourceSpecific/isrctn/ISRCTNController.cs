@@ -101,8 +101,7 @@ class ISRCTN_Controller : IDLController
                         await ch.GetAPIResponseWithRetriesAsync(url, 1000, cut_off_date.ToString("dd/MM/yyyy"));
                     if (responseBodyAsString is not null)
                     {
-                        DownloadResult batch_res = await DownloadBatch(responseBodyAsString, file_base, source_id,
-                               dl_id);
+                        DownloadResult batch_res = await DownloadBatch(responseBodyAsString, file_base, dl_id);
                         res.num_checked += batch_res.num_checked;
                         res.num_downloaded += batch_res.num_downloaded;
                         res.num_added += batch_res.num_added;
@@ -115,8 +114,7 @@ class ISRCTN_Controller : IDLController
                     DateTime date_to_check = cut_off_date;
                     while (date_to_check.Date <= DateTime.Now.Date)
                     {
-                        DownloadResult day_res = await DownloadStudiesFromSingleDay(date_to_check, file_base, 
-                            source_id, dl_id);
+                        DownloadResult day_res = await DownloadStudiesFromSingleDay(date_to_check, file_base, dl_id);
                         res.num_checked += day_res.num_checked;
                         res.num_downloaded += day_res.num_downloaded;
                         res.num_added += day_res.num_added;
@@ -196,7 +194,7 @@ class ISRCTN_Controller : IDLController
                                 date_GE.ToString("dd/MM/yyyy") + " to " + date_LT.ToString("dd/MM/yyyy"));
                         if (responseBodyAsString is not null)
                         {
-                            DownloadResult batch_res = await DownloadBatch(responseBodyAsString, file_base, source_id, dl_id);
+                            DownloadResult batch_res = await DownloadBatch(responseBodyAsString, file_base, dl_id);
                             res.num_checked += batch_res.num_checked;
                             res.num_downloaded += batch_res.num_downloaded;
                             res.num_added += batch_res.num_added;
@@ -215,7 +213,7 @@ class ISRCTN_Controller : IDLController
                         DateTime date_to_check = date_GE;
                         while (date_to_check.Date < date_LT)
                         {
-                            DownloadResult day_res = await DownloadStudiesFromSingleDay(date_to_check, file_base, source_id, dl_id);
+                            DownloadResult day_res = await DownloadStudiesFromSingleDay(date_to_check, file_base, dl_id);
                             res.num_checked += day_res.num_checked;
                             res.num_downloaded += day_res.num_downloaded;
                             res.num_added += day_res.num_added;
@@ -240,8 +238,7 @@ class ISRCTN_Controller : IDLController
     // First gets a single record to calculate total amount to be retrieved, and
     // then sets the limit in a following call to retrieve all records.
 
-    private async Task<DownloadResult> DownloadStudiesFromSingleDay(DateTime date_to_check, string file_base, 
-        int source_id, int dl_id)
+    private async Task<DownloadResult> DownloadStudiesFromSingleDay(DateTime date_to_check, string file_base, int dl_id)
     {
         DownloadResult res = new();
         ScrapingHelpers ch = new(_loggingHelper);
@@ -263,7 +260,7 @@ class ISRCTN_Controller : IDLController
                                                    date_to_check.ToString("dd/MM/yyyy"));
                 if (responseBodyAsString is not null)
                 {
-                    DownloadResult batch_res = await DownloadBatch(responseBodyAsString, file_base, source_id, dl_id);
+                    DownloadResult batch_res = await DownloadBatch(responseBodyAsString, file_base, dl_id);
                     res.num_checked += batch_res.num_checked;
                     res.num_downloaded += batch_res.num_downloaded;
                     res.num_added += batch_res.num_added;
@@ -277,8 +274,7 @@ class ISRCTN_Controller : IDLController
     // from an API call). The string first needs deserializing to the response object, and then each individual 
     // study needs to be transformed into the json file model, and saved as a json file in the appropriate folder.
 
-    private async Task<DownloadResult> DownloadBatch(string responseBodyAsString, string file_base, 
-                        int source_id, int dl_id)
+    private async Task<DownloadResult> DownloadBatch(string responseBodyAsString, string file_base, int dl_id)
     {
         DownloadResult res = new();
         allTrials? result = DeserializeXML<allTrials?>(responseBodyAsString, _loggingHelper);
@@ -295,7 +291,7 @@ class ISRCTN_Controller : IDLController
             foreach (FullTrial f in result.fullTrials)
             {
                 res.num_checked++;
-                Study? s = await isrctn_processor.GetFullDetails(f, _loggingHelper);
+                Study? s = isrctn_processor.GetFullDetails(f, _loggingHelper);
                 if (s is not null)
                 {
                     string full_path = await WriteOutFile(s, s.sd_sid, file_base);
