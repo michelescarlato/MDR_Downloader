@@ -20,8 +20,13 @@ public class PMSource
 
 public class PMIDBySource
 {
+    public int? source_id { get; set; }
     public string? sd_sid { get; set; }
-    public int? pmid { get; set; }
+    public string? pmid { get; set; }
+    public string? citation { get; set; }
+    public string? doi { get; set; }
+    public int? type_id { get; set; }
+    public string? comments { get; set; }
 }
 
 public class CopyHelpers
@@ -30,9 +35,14 @@ public class CopyHelpers
     // see https://github.com/PostgreSQLCopyHelper/PostgreSQLCopyHelper for details
 
     public readonly PostgreSQLCopyHelper<PMIDBySource> source_ids_helper =
-            new PostgreSQLCopyHelper<PMIDBySource>("pp", "pmids_by_source_total")
+            new PostgreSQLCopyHelper<PMIDBySource>("mn", "pmid_studies_total")
+                .MapInteger("source_id", x => x.source_id)
                 .MapVarchar("sd_sid", x => x.sd_sid)
-                .MapInteger("pmid", x => x.pmid);
+                .MapVarchar("pmid", x => x.pmid)
+                .MapVarchar("citation", x => x.citation)
+                .MapVarchar("doi", x => x.doi)
+                .MapInteger("type_id", x => x.type_id)
+                .MapVarchar("comments", x => x.comments);
 }
 
 

@@ -176,39 +176,39 @@ public class WHOHelpers
         foreach (string s in ids)
         {
             char[] chars_to_lose = { ' ', '\'', '‘', '’', ';' };
-            string s1 = s.Trim(chars_to_lose);
-            if (s1.Length >= 4 && s1 != sd_sid)
+            string secid = s.Trim(chars_to_lose);
+            if (secid.Length >= 3 && secid != sd_sid)
             {
-                string s2 = s1.ToLower();
-                if (Regex.Match(s2, @"\d").Success   // has to include at least 1 number
-                    && !(s2.StartsWith("none"))
-                    && !(s2.StartsWith("nil"))
-                    && !(s2.StartsWith("not "))
-                    && !(s2.StartsWith("date"))
-                    && !(s2.StartsWith("version"))
-                    && !(s2.StartsWith("??")))
+                string secid_low = secid.ToLower();
+                if (Regex.Match(secid_low, @"\d").Success   // has to include at least 1 number
+                    && !(secid_low.StartsWith("none"))
+                    && !(secid_low.StartsWith("nil"))
+                    && !(secid_low.StartsWith("not "))
+                    && !(secid_low.StartsWith("date"))
+                    && !(secid_low.StartsWith("version"))
+                    && !(secid_low.StartsWith("??")))
                 {
-                    SecIdBase? sec_id_base = GetSecondIdDetails(s1, sd_sid);
-                    if (sec_id_base is not null)
+                    SecIdBase sec_id_base = GetSecondIdDetails(secid, sd_sid);
+                    
+                    // Has this id been added before?
+                        
+                    bool add_id = true;
+                    if (existing_ids.Count > 0)
                     {
-                        // has this id been added before?
-                        bool add_id = true;
-                        if (existing_ids.Count > 0)
+                        foreach (Secondary_Id sec_id in existing_ids)
                         {
-                            foreach (Secondary_Id sec_id in existing_ids)
+                            if (sec_id_base.processed_id == sec_id.processed_id)
                             {
-                                if (sec_id_base.processed_id == sec_id.processed_id)
-                                {
-                                    add_id = false;
-                                    break;
-                                }
+                                add_id = false;
+                                break;
                             }
                         }
-                        if (add_id)
-                        {
-                            existing_ids.Add(new Secondary_Id(source_field, s1,
-                            sec_id_base.processed_id, sec_id_base.sec_id_source));
-                        }
+                    }
+                    if (add_id)
+                    {
+                        existing_ids.Add(new Secondary_Id(source_field, secid,
+                        sec_id_base.processed_id, sec_id_base.sec_id_source,
+                        sec_id_base.sec_id_type_id, sec_id_base.sec_id_type));
                     }
                 }
             }
@@ -218,25 +218,23 @@ public class WHOHelpers
     }
      
 
-    public SecIdBase? GetSecondIdDetails(string sec_id, string sd_sid)
+    public SecIdBase GetSecondIdDetails(string sec_id, string sd_sid)
     {
         string? interim_id, processed_id = null;
         int? sec_id_source = null;
-
+        int? sec_id_type_id = null;
+        
         if (sec_id.Contains("NCT"))
         {
             interim_id = sec_id.Replace("NCT ", "NCT");
             interim_id = interim_id.Replace("NCTNumber", "");
-            if (Regex.Match(interim_id, @"NCT[0-9]{8}").Success)
+            if (Regex.Match(interim_id, @"NCT[0-9]{8}").Success && 
+            processed_id != "NCT11111111" && processed_id != "NCT99999999" 
+            && processed_id !=  "NCT12345678" && processed_id != "NCT87654321")
             {
                 processed_id = Regex.Match(interim_id, @"NCT[0-9]{8}").Value;
                 sec_id_source = 100120;
-            }
-            if (processed_id is "NCT11111111" or "NCT99999999" or "NCT12345678" or "NCT87654321")
-            {
-                // remove these 
-                processed_id = null;
-                sec_id_source = null;
+                sec_id_type_id = 11;
             }
         }
 
@@ -244,13 +242,7 @@ public class WHOHelpers
         {
             processed_id = Regex.Match(sec_id, @"[0-9]{4}-[0-9]{6}-[0-9]{2}").Value;
             sec_id_source = 100123;
-
-            if (processed_id == "--------------")
-            {
-                // remove these 
-                processed_id = null;
-                sec_id_source = null;
-            }
+            sec_id_type_id = 11;
         }
 
         else if (sec_id.Contains("ISRCTN"))
@@ -265,6 +257,7 @@ public class WHOHelpers
             {
                 processed_id = Regex.Match(interim_id, @"ISRCTN[0-9]{8}").Value;
                 sec_id_source = 100126;
+                sec_id_type_id = 11;
             }
         }
 
@@ -272,12 +265,14 @@ public class WHOHelpers
         {
             processed_id = Regex.Match(sec_id, @"ACTRN[0-9]{14}").Value;
             sec_id_source = 100116;
+            sec_id_type_id = 11;
         }
 
         else if (Regex.Match(sec_id, @"DRKS[0-9]{8}").Success)
         {
             processed_id = Regex.Match(sec_id, @"DRKS[0-9]{8}").Value;
             sec_id_source = 100124;
+            sec_id_type_id = 11;
         }
 
         else if (Regex.Match(sec_id, @"CTRI/[0-9]{4}/[0-9]{2,3}/[0-9]{6}").Success)
@@ -285,30 +280,35 @@ public class WHOHelpers
             processed_id = Regex.Match(sec_id, @"CTRI/[0-9]{4}/[0-9]{2,3}/[0-9]{6}").Value;
             processed_id = processed_id.Replace('/', '-');  // internal representation for CTRI
             sec_id_source = 100121;
+            sec_id_type_id = 11;
         }
 
         else if (Regex.Match(sec_id, @"1111-[0-9]{4}-[0-9]{4}").Success)
         {
             processed_id = "U" + Regex.Match(sec_id, @"1111-[0-9]{4}-[0-9]{4}").Value;
             sec_id_source = 100115;
+            sec_id_type_id = 11;
         }
 
         else if (Regex.Match(sec_id, @"UMIN[0-9]{9}").Success || Regex.Match(sec_id, @"UMIN-CTR[0-9]{9}").Success)
         {
             processed_id = "JPRN-UMIN" + Regex.Match(sec_id, @"[0-9]{9}").Value;
             sec_id_source = 100127;
+            sec_id_type_id = 11;
         }
 
         else if (Regex.Match(sec_id, @"jRCTs[0-9]{9}").Success)
         {
             processed_id = "JPRN-jRCTs" + Regex.Match(sec_id, @"[0-9]{9}").Value;
             sec_id_source = 100127;
+            sec_id_type_id = 11;
         }
 
         else if (Regex.Match(sec_id, @"jRCT[0-9]{10}").Success)
         {
             processed_id = "JPRN-jRCT" + Regex.Match(sec_id, @"[0-9]{10}").Value;
             sec_id_source = 100127;
+            sec_id_type_id = 11;
         }
 
         else if (sec_id.StartsWith("JPRN"))
@@ -317,11 +317,13 @@ public class WHOHelpers
             {
                 processed_id = "JPRN-UMIN" + Regex.Match(sec_id, @"[0-9]{8}").Value;
                 sec_id_source = 100127;
+                sec_id_type_id = 11;
             }
             else
             {
                 processed_id = sec_id;
                 sec_id_source = 100127;
+                sec_id_type_id = 11;
             }
         }
         
@@ -329,102 +331,137 @@ public class WHOHelpers
         {
             sec_id_source = 100117;
             processed_id = sec_id;
+            sec_id_type_id = 11;
         }
         
         else if (sec_id.StartsWith("ChiCTR"))
         {
             sec_id_source = 100118;
             processed_id = sec_id;
+            sec_id_type_id = 11;
         }
 
         else if (sec_id.StartsWith("ChiMCTR"))
         {
             sec_id_source = 104545;   
             processed_id = sec_id;
+            sec_id_type_id = 11;
         }
 
         else if (sec_id.StartsWith("KCT"))
         {
             sec_id_source = 100119;
             processed_id = sec_id;
+            sec_id_type_id = 11;
         }
         
         else if (sec_id.StartsWith("RPCEC"))
         {
             sec_id_source = 100122;
             processed_id = sec_id;
+            sec_id_type_id = 11;
         }
         
         else if (sec_id.StartsWith("DRKS"))
         {
             sec_id_source = 100124;
             processed_id = sec_id;
+            sec_id_type_id = 11;
         }
         
         else if (sec_id.StartsWith("IRCT"))
         {
             sec_id_source = 100125;
             processed_id = sec_id;
+            sec_id_type_id = 11;
         }
         
         else if (sec_id.StartsWith("PACTR"))
         {
             sec_id_source = 100128;
             processed_id = sec_id;
+            sec_id_type_id = 11;
         }
         
         else if (sec_id.StartsWith("PER"))
         {
             sec_id_source = 100129;
             processed_id = sec_id;
+            sec_id_type_id = 11;
         }
         
         else if (sec_id.StartsWith("SLCTR"))
         {
             sec_id_source = 100130;
             processed_id = sec_id;
+            sec_id_type_id = 11;
         }
        
         else if (sec_id.StartsWith("TCTR"))
         {
             sec_id_source = 100131;
             processed_id = sec_id;
+            sec_id_type_id = 11;
         }
         
-        else if (sec_id.StartsWith("NL") || sec_id.StartsWith("NTR"))
+        // Avoid Dutch CCMO numbers, which also start with NL, by regex tests
+        
+        else if (sec_id.StartsWith("NL") && Regex.Match(sec_id, @"^NL\d{1,4}$").Success)
         {
             sec_id_source = 100132;
             processed_id = sec_id;
+            sec_id_type_id = 11;
+        }
+        
+        else if (sec_id.StartsWith("NTR") && Regex.Match(sec_id, @"^NTR\d{1,4}$").Success)
+        {
+            sec_id_source = 100132;
+            processed_id = sec_id;
+            sec_id_type_id = 45;      // obsolete dutch registry id
         }
         
         else if (sec_id.StartsWith("LBCTR"))
         {
             sec_id_source = 101989;
             processed_id = sec_id;
+            sec_id_type_id = 11;
         }
-
 
         if (sd_sid.StartsWith("RBR"))
         {
             // Extract Brazilian ethics Ids
+            
             if (Regex.Match(sec_id, @"[0-9]{8}.[0-9].[0-9]{4}.[0-9]{4}").Success)
             {
-                processed_id = Regex.Match(sec_id, @"[0-9]{8}.[0-9].[0-9]{4}.[0-9]{4}").Value;
                 sec_id_source = 102000;  // Brazilian regulatory authority, ANVISA
-                // number is an ethics approval submission id
+                processed_id = Regex.Match(sec_id, @"[0-9]{8}.[0-9].[0-9]{4}.[0-9]{4}").Value;
+                sec_id_type_id = 41;
             }
 
             if (Regex.Match(sec_id, @"[0-9].[0-9]{3}.[0-9]{3}").Success)
             {
-                processed_id = Regex.Match(sec_id, @"[0-9].[0-9]{3}.[0-9]{3}").Value;
                 sec_id_source = 102001;  // Brazilian ethics committee approval number
+                processed_id = Regex.Match(sec_id, @"[0-9].[0-9]{3}.[0-9]{3}").Value;
+                sec_id_type_id = 12;
             }
         }
 
-        return processed_id is not null ? new SecIdBase(processed_id, sec_id_source) : null;
+        string? sec_id_type = sec_id_type_id switch
+        {
+            11 => "Trial Registry ID",
+            45 => "Obsolete NTR number",
+            41 => "Regulatory Body ID",
+            12 => "Ethics Review ID",
+            _ => null
+        };
+       
+        // Return the source / processed id process if discovery successful,
+        // otherwise return the original secondary id without any source.
+        
+        return processed_id is not null 
+            ? new SecIdBase(processed_id, sec_id_source, sec_id_type_id, sec_id_type) 
+            : new SecIdBase(sec_id, null, null, null) ;
     }
-
-
 
     public string GetStatus(string study_status)
     {

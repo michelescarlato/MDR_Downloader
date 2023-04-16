@@ -109,7 +109,7 @@ public class EMAProcessor
         {
             foreach (string ss in secspons)
             {
-                if (!already_in_org_list(ss))
+                if (!string.IsNullOrEmpty(ss) && !already_in_org_list(ss))
                 {
                     ed.organisations.Add(new EMAOrganisation(54, "Trial Sponsor", ss));
                 }
@@ -120,7 +120,7 @@ public class EMAProcessor
         {
             foreach (string ss in srceSupp)
             {
-                if (!already_in_org_list(ss))
+                if (!string.IsNullOrEmpty(ss) && !already_in_org_list(ss))
                 {
                     ed.organisations.Add(new EMAOrganisation(58, "Study Funder", ss));
                 }

@@ -203,6 +203,8 @@ public class Secondary_Id
     public string? sec_id { get; set; }
     public string? processed_id { get; set; }
     public int? sec_id_source { get; set; }
+    public int? sec_id_type_id { get; set; }
+    public string? sec_id_type { get; set; }
 
     public Secondary_Id(string? _source_field, string? _sec_id,
                         string? _processed_id, int? _sec_id_source)
@@ -211,6 +213,17 @@ public class Secondary_Id
         sec_id = _sec_id;
         processed_id = _processed_id;
         sec_id_source = _sec_id_source;
+    }
+    
+    public Secondary_Id(string? _source_field, string? _sec_id,
+        string? _processed_id, int? _sec_id_source, int? _sec_id_type_id, string? _sec_id_type)
+    {
+        source_field = _source_field;
+        sec_id = _sec_id;
+        processed_id = _processed_id;
+        sec_id_source = _sec_id_source;
+        sec_id_type_id = _sec_id_type_id;
+        sec_id_type = _sec_id_type;
     }
 
     public Secondary_Id()
@@ -222,11 +235,21 @@ public class SecIdBase
 {
     public string? processed_id { get; set; }
     public int? sec_id_source { get; set; }
-
+    public int? sec_id_type_id { get; set; }
+    public string? sec_id_type { get; set; }
+    
     public SecIdBase(string? _processed_id, int? _sec_id_source)
     {
         processed_id = _processed_id;
         sec_id_source = _sec_id_source;
+    }
+    
+    public SecIdBase(string? _processed_id, int? _sec_id_source, int? _sec_id_type_id, string? _sec_id_type)
+    {
+        processed_id = _processed_id;
+        sec_id_source = _sec_id_source;
+        sec_id_type_id = _sec_id_type_id;
+        sec_id_type = _sec_id_type;
     }
 
     public SecIdBase()

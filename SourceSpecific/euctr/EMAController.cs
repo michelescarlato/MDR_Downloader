@@ -94,6 +94,11 @@ public class EMA_Controller : IDLController
                     bool added = _monDataLayer.UpdateStudyLog(euctr_record.sd_sid, euctr_record.details_url, 
                         dl_id, null, full_path);     
                     res.num_downloaded++;
+                    if (res.num_downloaded % 20 == 0)
+                    {
+                        _loggingHelper.LogLine(
+                            $"{res.num_checked} studies checked, {res.num_downloaded} downloaded");
+                    }
                     if (added) res.num_added++;
                 }
             }

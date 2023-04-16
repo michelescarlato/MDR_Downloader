@@ -178,8 +178,9 @@ public class StudyAttachedFile
     {
     }
 
-    public StudyAttachedFile(string? _description, string? _name, string? _id, bool? _public)
+    public StudyAttachedFile(string? _downloadUrl , string? _description, string? _name, string? _id, bool? _public)
     {
+        downloadUrl = _downloadUrl;
         description = _description;
         name = _name;
         id = _id;
@@ -266,8 +267,8 @@ public class StudyFunder
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
-[XmlRoot(Namespace = "https://www.67bricks.com/isrctn", IsNullable = false)]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
+[XmlRoot(Namespace = "http://www.67bricks.com/isrctn", IsNullable = false)]
 public class allTrials
 {
     [XmlElement("fullTrial")]
@@ -280,7 +281,7 @@ public class allTrials
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class FullTrial
 {
     public Trial? trial { get; set; }
@@ -298,7 +299,7 @@ public class FullTrial
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class Trial
 {
     [XmlAttribute]
@@ -328,7 +329,7 @@ public class Trial
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class Isrctn
 {
     [XmlAttribute] 
@@ -339,7 +340,7 @@ public class Isrctn
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class Description
 {
     public bool? acknowledgment { get; set; }
@@ -357,7 +358,7 @@ public class Description
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class ExternalRefs
 {
     public string? doi { get; set; }
@@ -370,7 +371,7 @@ public class ExternalRefs
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class Design
 {
     public string? studyDesign { get; set; }
@@ -387,7 +388,7 @@ public class Design
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class Participants
 {
     [XmlArrayItem("country", IsNullable = false)]
@@ -413,7 +414,7 @@ public class Participants
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class Centre
 {
     public string? name { get; set; }
@@ -427,7 +428,7 @@ public class Centre
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class Conditions
 {
     public Condition? condition { get; set; }
@@ -435,7 +436,7 @@ public class Conditions
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class Condition
 {
     public string? description { get; set; }
@@ -445,7 +446,7 @@ public class Condition
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class Interventions
 {
     public Intervention? intervention { get; set; }
@@ -453,7 +454,7 @@ public class Interventions
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class Intervention
 {
     public string? description { get; set; }
@@ -464,7 +465,7 @@ public class Intervention
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class Results
 {
     public string? publicationPlan { get; set; }
@@ -484,7 +485,7 @@ public class Results
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class Output
 {
     public string? description { get; set; }
@@ -521,7 +522,7 @@ public class Output
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class LocalFile
 {
     [XmlAttribute]
@@ -543,7 +544,7 @@ public class LocalFile
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class ExternalLink
 {
     [XmlAttribute]
@@ -553,7 +554,7 @@ public class ExternalLink
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class Parties
 {
     [XmlElement("funderId")]
@@ -569,7 +570,7 @@ public class Parties
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class AttachedFile
 {
     [XmlAttribute]
@@ -583,7 +584,7 @@ public class AttachedFile
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class Contact
 {
     [XmlAttribute]
@@ -601,7 +602,7 @@ public class Contact
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class ContactDetails
 {
     public string? address { get; set; }
@@ -616,7 +617,7 @@ public class ContactDetails
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class Sponsor
 {
     [XmlAttribute]
@@ -633,7 +634,7 @@ public class Sponsor
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class SponsorContactDetails
 {
     public string? address { get; set; }
@@ -648,7 +649,7 @@ public class SponsorContactDetails
 
 [Serializable]
 [DesignerCategory("code")]
-[XmlType(AnonymousType = true, Namespace = "https://www.67bricks.com/isrctn")]
+[XmlType(AnonymousType = true, Namespace = "http://www.67bricks.com/isrctn")]
 public class Funder
 {
     [XmlAttribute]

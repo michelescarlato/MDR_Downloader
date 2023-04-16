@@ -5,14 +5,11 @@ using MDR_Downloader.Helpers;
 
 namespace MDR_Downloader.pubmed;
 
-// Pubmed searches and file downloads are often associated with filters...
-// 10001	"PubMed CTG"	"PubMed abstracts with references to ClinicalTrials.gov entries"
-// 10002	"PubMed COVID"	"PubMed abstracts found on searches related to COVID-19 (SARS, MERS etc.)"
-// and especially...
+// Pubmed searches and file downloads are often associated with filters, especially...
 // 10003	"PubMed Registries"	"PubMed abstracts with references to any trial registry"
 // 10004	"Pubmed - Study References"	"Identifies PubMed references in Study sources that have not yet been downloaded"
 
-// Pubmed data has two sources - the study references in certain databases
+// This is because Pubmed data has two sources - the study references in certain databases
 // and the pubmed records themselves - specifically those that have a reference to a 'databank' 
 // (trial registry in this context)
 
@@ -51,7 +48,6 @@ public class PubMed_Controller : IDLController
 
     public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
     {
-        
         // API key belongs to NCBI user 'ECRINarthur' 
         // stored in appsettings.json and accessed via the logging repo.
         var apiKey = "&api_key=" + _monDataLayer.PubmedAPIKey;
@@ -71,7 +67,7 @@ public class PubMed_Controller : IDLController
 
         // If opts.FetchTypeId == 114 date_string is constructed, giving
         // min and max dates. If opts.FetchTypeId == 121 date_string remains "".
-
+        
         if (opts.FetchTypeId == 114)
         {
             string today = DateTime.Now.ToString("yyyy/MM/dd");
@@ -81,7 +77,7 @@ public class PubMed_Controller : IDLController
                 date_string = "&mindate=" + cutoff + "&maxdate=" + today + "&datetype=mdat";
             }
         }
-
+        
         if (opts.FocusedSearchId == 10003)
         {
             // Download articles with references to trial registries, that
@@ -89,7 +85,7 @@ public class PubMed_Controller : IDLController
 
             res = await ProcessPMIDsListFromBanksAsync(opts, source, date_string);
         }
-
+        
         if (opts.FocusedSearchId == 10004)
         {
             // Download pmids listed as references in other sources,
@@ -100,7 +96,6 @@ public class PubMed_Controller : IDLController
 
         return res;
     }
-
 
     // Normally, the 'databank' pmid records will be identified by an initial search, but include only those 
     // that have been modified since the last similar download (represented by the cutoff date). 
@@ -132,11 +127,6 @@ public class PubMed_Controller : IDLController
         {
             // Use databank details to construct search string
             // if no cutoff date (t = 121) date_string is "".
-
-            if (s.nlm_abbrev != "PACTR")
-            {
-                continue; // temp for testing
-            }
 
             string search_term = "&term=" + s.nlm_abbrev + "[SI]" + date_string;
             string searchUrl = searchBaseURL + search_term + "&usehistory=y";
@@ -170,11 +160,12 @@ public class PubMed_Controller : IDLController
                     try
                     {
                         // Retrieve the articles as nodes.
-                        string fetchUrl = fetchBaseURL + "&WebEnv=" + web_env + "&query_key=" + query_key.ToString();
-                        fetchUrl += "&retstart=" + (i * retMax).ToString() + "&retmax=" + retMax.ToString();
+                        
+                        string fetchUrl = fetchBaseURL + "&WebEnv=" + web_env + "&query_key=" + query_key;
+                        fetchUrl += "&retstart=" + (i * retMax) + "&retmax=" + retMax;
                         fetchUrl += "&retmode=xml";
                         await FetchPubMedRecordsAsync(fetchUrl, res, source, (int)opts.dl_id!, source.local_folder!);
-                        Thread.Sleep(300);
+                        Thread.Sleep(500);
                     }
                     catch (HttpRequestException e)
                     {
@@ -214,18 +205,16 @@ public class PubMed_Controller : IDLController
 
         try
         {
-            // Establish tables and support objects to support
-            // the PMIDs found in each source database with References.
-            // Loop through those databases and deposit pmids in the
-            // mn.pmids_by_source_total table. This initial stage is not sensitive to a 
-            // cutoff date as the last revised date is not known at this time
-            // - has to be checked later.
+            // Establish tables and support objects to support the PMIDs found in each source database
+            // with References. Loop through those databases and deposit pmids in the mn.pmids_by_source_total
+            // table. This initial stage is not sensitive to a cutoff date as the last revised date is not
+            // known at this time - has to be checked later.
 
             _pubmedRepo.SetUpTempPMIDsBySourceTables();
             IEnumerable<Source> sources = _pubmedRepo.FetchSourcesWithReferences();
             foreach (Source s in sources)
             {
-                IEnumerable<PMIDBySource> references = _pubmedRepo.FetchSourceReferences(s.database_name!);
+                IEnumerable<PMIDBySource> references = _pubmedRepo.FetchSourceReferences(s.database_name!, s.id);
                 _pubmedRepo.StorePmidsBySource(helper.source_ids_helper, references);
             }
 
@@ -355,10 +344,6 @@ public class PubMed_Controller : IDLController
                         FullObject? fob = pubmed_processor.ProcessData(article);
                         if (fob is not null && !string.IsNullOrEmpty(fob.sd_oid))
                         {
-                            // Not clear at the moment why this line was originally here - to investigate!
-                            
-                            // ObjectFileRecord? file_record = _mon_data_layer.FetchObjectFileRecord(fob.sd_oid!, source.id);
-
                             // ?? Here insert a lookup - for PMIDs originating in data sources - 
                             // always do after the ones originating from data banks - 
                             // that allows us to see the exact type of data object that is being added 
@@ -458,7 +443,7 @@ public class PubMed_Controller : IDLController
         // Mainly Required if we add extraction of abstracts - unable to do
         // so at the moment because of copyright restrictions.
         // There may be better ways of handling this problem!
-        // But also need for a few titles
+        // But also needed for a few titles
 
         inputString = inputString.Replace("<i>", "&lt;i&gt;");
         inputString = inputString.Replace("</i>", "&lt;/i&gt;");

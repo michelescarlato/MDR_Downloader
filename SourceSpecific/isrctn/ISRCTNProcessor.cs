@@ -263,7 +263,7 @@ public class ISRCTN_Processor
         {
             foreach (var v in afs)
             {
-                attachedFiles.Add(new StudyAttachedFile(v.description, v.name, v.id, v.@public));
+                attachedFiles.Add(new StudyAttachedFile(v.downloadUrl, v.description, v.name, v.id, v.@public));
             }
         }
 

@@ -19,7 +19,7 @@ namespace MDR_Downloader.who
             string sd_sid = sr.TrialID.Replace("/", "-").Replace(@"\", "-").Replace(".", "-").Trim();
             r.sd_sid = sd_sid;
             int source_id = _wh.get_reg_source(sd_sid);
-
+            
             if (source_id is 100120 or 100123 or 100126)
             {
                 // no need to process these - details input directly from registry
@@ -29,7 +29,7 @@ namespace MDR_Downloader.who
             }
             if (sd_sid == "null")
             {
-                // Seems to happen with one Dutch trial.
+                // Seems to happen, or has happened in the past, with one Dutch trial.
 
                 return null;
             }
@@ -38,6 +38,40 @@ namespace MDR_Downloader.who
 
             r.source_id = source_id;
             r.record_date = sr.last_updated.AsISODate();
+            
+            List<Secondary_Id> secondary_ids = new List<Secondary_Id>();
+            string? sec_ids = sr.SecondaryIDs.Tidy();
+            if (!string.IsNullOrEmpty(sec_ids))
+            {
+                secondary_ids = _wh.SplitAndAddIds(secondary_ids, sd_sid, sec_ids, "secondary ids");
+            }
+            
+            if (source_id is 100132 && sd_sid.StartsWith("NTR"))
+            {
+                // For the Dutch trials there is confusion over the sd_sid, which
+                // should all be NL numbers, but older trials are presented by WHO as 
+                // NTR trials, with the NL as a secondary id. In fact it is the other way round!
+                // Though all about to be superseded anyway by the new dutch trial registry...
+
+                if (secondary_ids.Any())
+                {
+                    foreach (Secondary_Id sec_id in secondary_ids)
+                    {
+                        if (sec_id.processed_id is not null 
+                            &&  Regex.Match(sec_id.processed_id!, @"^NL\d{1,4}$").Success)
+                        {
+                            string new_sd_sid = sec_id.processed_id;
+                            sec_id.processed_id = sd_sid;  // change he secondary id to the old sd_sid
+                            sec_id.sec_id = sd_sid;
+                            sec_id.sec_id_type_id = 45;
+                            sec_id.sec_id_type = "Obsolete NTR number";
+                            sd_sid = new_sd_sid;
+                            r.sd_sid = sd_sid;
+                            break;
+                        }
+                    }
+                }
+            }
 
             r.public_title = sr.public_title.Tidy().ReplaceUnicodes();
             r.scientific_title = sr.Scientific_title.Tidy().ReplaceUnicodes();
@@ -59,14 +93,6 @@ namespace MDR_Downloader.who
             r.primary_sponsor = sr.Primary_sponsor.Tidy();
             r.secondary_sponsors = sr.Secondary_sponsors.Tidy();
             r.source_support = sr.Source_Support.Tidy();
-
-            List<Secondary_Id> secondary_ids = new List<Secondary_Id>();
-
-            string? sec_ids = sr.SecondaryIDs.Tidy();
-            if (!string.IsNullOrEmpty(sec_ids))
-            {
-                _wh.SplitAndAddIds(secondary_ids, sd_sid, sec_ids, "secondary ids");
-            }
 
             string? study_type = sr.study_type.Tidy();
             if (study_type is not null)
@@ -218,7 +244,7 @@ namespace MDR_Downloader.who
             r.bridging_flag = sr.Bridging_flag.Tidy();
             if (!string.IsNullOrEmpty(r.bridging_flag) && r.bridging_flag != r.sd_sid)
             {
-                _wh.SplitAndAddIds(secondary_ids, r.sd_sid, r.bridging_flag, "bridging flag");
+                secondary_ids = _wh.SplitAndAddIds(secondary_ids, r.sd_sid, r.bridging_flag, "bridging flag");
             }
 
             r.bridged_type = sr.Bridged_type.Tidy();
@@ -226,7 +252,7 @@ namespace MDR_Downloader.who
             r.childs = sr.Childs.Tidy();
             if (!string.IsNullOrEmpty(r.childs))
             {
-                _wh.SplitAndAddIds(secondary_ids, r.sd_sid, r.childs, "bridged child recs");
+                secondary_ids = _wh.SplitAndAddIds(secondary_ids, r.sd_sid, r.childs, "bridged child recs");
             }
 
             r.type_enrolment = sr.type_enrolment.Tidy();

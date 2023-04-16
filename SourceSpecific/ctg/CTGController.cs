@@ -129,7 +129,7 @@ class CTG_Controller : IDLController
                    ? (int)nums_studies_found! / 20
                    : ((int)nums_studies_found! / 20) + 1;
 
-        for (int i = 1260; i < loop_count; i++)    // ****************temp start 'higher up'
+        for (int i = 0; i < loop_count; i++)    
         {
             Thread.Sleep(800);
             min_rank = (i * 20) + 1;
