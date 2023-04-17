@@ -126,10 +126,11 @@ public class EMA_Controller : IDLController
         }
         catch(Exception e)
         {
-            logging_helper.LogCodeError("Error when de-serialising " + inputString, e.Message, e.StackTrace);
+            string error_heading = "Error when de-serialising ";
+            error_heading += inputString.Length >= 750 ? inputString[..750] : inputString;
+            logging_helper.LogCodeError(error_heading, e.Message, e.StackTrace);
             return default;
         }
-
         return instance;
     }
     

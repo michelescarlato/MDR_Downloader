@@ -251,7 +251,8 @@ class EUCTR_Controller : IDLController
                     }
                 }
             }
-            _loggingHelper.LogLine($"Page {i} processed: {res.num_checked} studies checked, {res.num_downloaded} downloaded");
+            string feedback = $"Page {i} done: {res.num_checked} studies checked, {res.num_downloaded} downloaded";
+            _loggingHelper.LogLine(feedback);
         }
 
         return res;

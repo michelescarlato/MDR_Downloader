@@ -132,6 +132,14 @@ public class PubMed_Processor
                 SupplMeshList.Add(new SupplMeshTerm(s.Type, s.UI, s.Value));
             }
         }
+        
+        if (citation.OtherIDs is not null && citation.OtherIDs.Length > 0)
+        {
+            foreach (var s in citation.OtherIDs)
+            {
+                AdditionalIds.Add(new AdditionalId(s.Source, s.Value));
+            }
+        }
 
         if (citation.KeywordList is not null)
         {
@@ -185,11 +193,6 @@ public class PubMed_Processor
         {
             ArticleEDates.AddRange(article.ArticleDates.Select(ad => new ArticleEDate(ad.DateType, 
                                                                       ad.Year, ad.Month, ad.Day)));
-        }
-
-        if (article.OtherIDs is not null && article.OtherIDs.Length > 0)
-        {
-            AdditionalIds.AddRange(article.OtherIDs.Select(t => new AdditionalId(t.Source, t.Value)));
         }
 
         if (article.ELocationIDs is not null && article.ELocationIDs.Length > 0)

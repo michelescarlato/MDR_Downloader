@@ -29,13 +29,26 @@ public class PMIDBySource
     public string? comments { get; set; }
 }
 
+public class BankPmid
+{
+    public int? source_id { get; set; }
+    public string? pmid { get; set; }
+
+    public BankPmid(int? _source_id, string? _pmid)
+    {
+        source_id = _source_id;
+        pmid = _pmid;
+    }
+}
+
+
 public class CopyHelpers
 {
     // defines the copy helpers required.
     // see https://github.com/PostgreSQLCopyHelper/PostgreSQLCopyHelper for details
 
-    public readonly PostgreSQLCopyHelper<PMIDBySource> source_ids_helper =
-            new PostgreSQLCopyHelper<PMIDBySource>("mn", "pmid_studies_total")
+    public readonly PostgreSQLCopyHelper<PMIDBySource> dbrefs_ids_helper =
+            new PostgreSQLCopyHelper<PMIDBySource>("mn", "dbrefs_all")
                 .MapInteger("source_id", x => x.source_id)
                 .MapVarchar("sd_sid", x => x.sd_sid)
                 .MapVarchar("pmid", x => x.pmid)
@@ -43,6 +56,12 @@ public class CopyHelpers
                 .MapVarchar("doi", x => x.doi)
                 .MapInteger("type_id", x => x.type_id)
                 .MapVarchar("comments", x => x.comments);
+
+    public readonly PostgreSQLCopyHelper<BankPmid> pnbank_ids_helper =
+        new PostgreSQLCopyHelper<BankPmid>("mn", "pmbanks_all")
+            .MapInteger("source_id", x => x.source_id)
+            .MapVarchar("pmid", x => x.pmid);
+
 }
 
 
@@ -71,8 +90,6 @@ public class FullObject
     public string? medlineDate { get; set; }
     public string? pubModel { get; set; }
 
-    public string? journalIssnType { get; set; }
-    public string? journalIssn { get; set; }
     public string? journalVolume { get; set; }
     public string? journalIssue { get; set; }
     public string? journalCitedMedium { get; set; }

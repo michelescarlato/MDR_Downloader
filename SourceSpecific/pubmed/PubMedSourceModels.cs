@@ -46,6 +46,8 @@ public class Citation
 
     public Chemical[]? ChemicalList { get; set; }
     public CommentsCorrections[]? CommentsCorrectionsList { get; set; }
+    [XmlElement("OtherID")]
+    public OtherID[]? OtherIDs { get; set; }
     public MeshHeading[]? MeshHeadingList { get; set; }
     public SupplMeshName[]? SupplMeshList { get; set; }
     public KeywordList? KeywordList { get; set; }
@@ -92,9 +94,6 @@ public class CitationArticle
     [XmlElement("ELocationID")]
     public ELocationID[]? ELocationIDs { get; set; }
 
-    [XmlElement("OtherID")]
-    public OtherId[]? OtherIDs { get; set; }
-
     public AuthorList? AuthorList { get; set; }
     public PublicationType[]? PublicationTypeList { get; set; }
 
@@ -118,7 +117,7 @@ public class Journal
     public string? ISOAbbreviation { get; set; }   
     public JournalIssue? JournalIssue { get; set; }
     
-    [XmlElement("JournalISSN", IsNullable = false)]
+    [XmlElement("ISSN", IsNullable = false)]
     public JournalISSN[]? ISSN { get; set; }
 }
 
@@ -330,7 +329,7 @@ public class MedlineJournalInfo
 [Serializable]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
-public class OtherId
+public class OtherID
 {
     [XmlAttribute]
     public string Source { get; set; } = null!;
