@@ -40,6 +40,14 @@ internal class ParameterChecker
 
         try
         {
+            // If the 'pubmed publishers' option (-P) is selected set s = 100135, t = 302
+            // whatever the values passed
+            if (opts.PubMedPubs is true)
+            {
+                opts.SourceId = 100135;
+                opts.FetchTypeId = 302;
+            }
+            
             // First check source id is valid. 
 
             Source? source = _mon_data_layer.FetchSourceParameters(opts.SourceId);
@@ -302,8 +310,13 @@ public class Options
 
     [Option('p', "previous_searches", Required = false, Separator = ',', HelpText = "One or more ids of the search(es) that will be used to retrieve the data")]
     public IEnumerable<int>? PreviousSearches { get; set; }
-
+    
     public string? previous_dl_ids { get; set; }
+    
+    [Option('P', "pubmed_publishers", Required = false, Separator = ',', HelpText = "Downloads publisher data from NLM for use by PubMed routines")]
+    public bool? PubMedPubs { get; set; }
+    
+  
 
 }
 

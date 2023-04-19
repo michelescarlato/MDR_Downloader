@@ -310,6 +310,60 @@ public class PubMed_Processor
         return b;
     }
 
+    public PublisherObject? ProcessNLMData(NLMRecord rec)
+    {
+        PublisherObject p = new();
+        p.nlm_unique_id = rec.NlmUniqueID.ToString();
+
+        var t = rec.TitleMain;
+        if (t is not null)
+        {
+            p.title = t.Title.Value;
+        }
+
+        p.medline_ta = rec.MedlineTA;
+
+        var i = rec.PublicationInfo;
+        if (i is not null)
+        {
+            p.publication_country = i.Country;
+            var im = i.Imprint;
+            if (im is not null)
+            {
+                p.imprint_place = im.Place;
+                p.publisher = im.Entity;
+                p.date_issued = im.DateIssued;
+            }
+        }
+
+        var issn = rec.ISSN;
+        if (issn?.Any() is true)
+        {
+            int n = 0;
+            foreach (var iss in issn)
+            {
+                string separator = n == 0 ? "" : ", ";
+                p.issn_list += separator + iss.IssnType + ": " + iss.Value;
+                n++;
+            }
+        }
+
+        var notes = rec.GeneralNote;
+        if (notes?.Any() is true)
+        {
+            int n = 0;
+            foreach (var nt in notes)
+            {
+                string separator = n == 0 ? "" : "; ";
+                p.general_notes += separator + nt.Value.ReplaceUnicodes();
+                n++;
+            }
+        }
+        
+        return p;
+    }
+
+
 
 }
 

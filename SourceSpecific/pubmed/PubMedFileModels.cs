@@ -1,14 +1,7 @@
 ﻿using PostgreSQLCopyHelper;
+using Dapper.Contrib.Extensions;
 
 namespace MDR_Downloader.pubmed;
-
-public class FullDataObject
-{
-    public int? id { get; set; }
-    public string? default_name { get; set; }
-    public string? nlm_abbrev { get; set; }
-}
-
 
 public class PMSource
 {
@@ -42,6 +35,17 @@ public class BankPmid
 }
 
 
+public class JournalUID
+{
+    public string? uid { get; set; }
+
+    public JournalUID(int? _uid)
+    {
+        uid = _uid.ToString();
+    }
+}
+
+
 public class CopyHelpers
 {
     // defines the copy helpers required.
@@ -61,9 +65,27 @@ public class CopyHelpers
         new PostgreSQLCopyHelper<BankPmid>("mn", "pmbanks_all")
             .MapInteger("source_id", x => x.source_id)
             .MapVarchar("pmid", x => x.pmid);
+    
+    public readonly PostgreSQLCopyHelper<JournalUID> journal_uids_helper =
+        new PostgreSQLCopyHelper<JournalUID>("mn", "journal_uids")
+            .MapVarchar("uid", x => x.uid);
 
 }
 
+
+[Table("ctx.publishers")]
+public class PublisherObject
+{
+    public string?  nlm_unique_id  { get; set; }
+    public string?  title  { get; set; }
+    public string?  medline_ta { get; set; }
+    public string?  publication_country  { get; set; }
+    public string?  imprint_place { get; set; }
+    public string?  publisher { get; set; }
+    public string?  date_issued { get; set; }
+    public string?  issn_list { get; set; }
+    public string?  general_notes { get; set; }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // JSON Object
