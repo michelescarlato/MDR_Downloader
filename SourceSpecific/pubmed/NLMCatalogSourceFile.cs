@@ -18,12 +18,12 @@ public class NLMCatalogRecordSet
 [XmlType(AnonymousType = true)]
 public class NLMRecord
 {
-    public long NlmUniqueID { get; set; }
-    public DateCreated DateCreated { get; set; }
-    public DateRevised DateRevised { get; set; }
-    public DateAuthorized DateAuthorized { get; set; }
-    public DateCompleted DateCompleted { get; set; }
-    public DateRevisedMajor DateRevisedMajor { get; set; }
+    public string NlmUniqueID { get; set; }
+    public NLMDate DateCreated { get; set; }
+    public NLMDate DateRevised { get; set; }
+    public NLMDate DateAuthorized { get; set; }
+    public NLMDate DateCompleted { get; set; }
+    public NLMDate DateRevisedMajor { get; set; }
     public TitleMain? TitleMain { get; set; }
     public string MedlineTA { get; set; }
 
@@ -70,7 +70,17 @@ public class NLMRecord
     public string Status { get; set; }
 }
 
+[Serializable()]
+[DesignerCategory("code")]
+[XmlType(AnonymousType = true)]
+public class NLMDate
+{
+    public string Year { get; set; }
+    public string Month { get; set; }
+    public string Day { get; set; }
+}
 
+/*
 [Serializable()]
 [DesignerCategory("code")]
 [XmlType(AnonymousType = true)]
@@ -80,7 +90,6 @@ public class DateCreated
     public int Month { get; set; }
     public int Day { get; set; }
 }
-
 
 [Serializable()]
 [DesignerCategory("code")]
@@ -122,6 +131,7 @@ public class DateRevisedMajor
     public int Month { get; set; }
     public int Day { get; set; }
 }
+*/
 
 [Serializable()]
 [DesignerCategory("code")]
@@ -300,8 +310,8 @@ public class PublicationInfo
     public string Country { get; set; }
     public PublicationInfoPlaceCode PlaceCode { get; set; }
     public PublicationInfoImprint? Imprint { get; set; }
-    public int PublicationFirstYear { get; set; }
-    public int PublicationEndYear { get; set; }
+    public string PublicationFirstYear { get; set; }
+    public string PublicationEndYear { get; set; }
     public string DatesOfSerialPublication { get; set; }
     public PublicationInfoFrequency Frequency { get; set; }
 }
@@ -551,7 +561,7 @@ public class RecordOtherID
     public string source { get; set; }
    
     [XmlText()]
-    public int value { get; set; }
+    public string value { get; set; }
 }
 
 

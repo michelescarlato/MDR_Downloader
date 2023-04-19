@@ -578,7 +578,7 @@ public class PubMed_Controller : IDLController
             }
             
             int totalRecords = search_result.Count;
-            for (int j = 0; j < 2; j += 1000)    //*********************** TEMP
+            for (int j = 0; j < totalRecords; j += 1000)   
             {
                 searchUrl = searchNlmBaseURL + $"&term=%22Periodical%22[Publication%20Type]&retstart={j}&retmax=1000";
                 search_responseBody = await ch.GetAPIResponseWithRetriesAsync(searchUrl, 1000, "journal id query");
@@ -599,7 +599,7 @@ public class PubMed_Controller : IDLController
             }
 
             _pubmedRepo.CreateDJournal_IDStrings();
-            _pubmedRepo.TruncatePublisherTable();
+            _pubmedRepo.TruncatePeriodicalsTable();
             IEnumerable<string> id_strings = _pubmedRepo.FetchJournalIDStrings();
             
             // Take each string and post it to the Entry history server, getting back the web environment
@@ -675,7 +675,7 @@ public class PubMed_Controller : IDLController
                         // Assuming successful, returned object is stored in the database.
 
                         res.num_checked++;
-                        PublisherObject? p = pubmed_processor.ProcessNLMData(rec);
+                        Periodical? p = pubmed_processor.ProcessNLMData(rec);
                         if (p is not null)
                         {
                             _pubmedRepo.StorePublisherDetails(p);

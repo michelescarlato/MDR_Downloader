@@ -248,14 +248,14 @@ public class PubMedDataLayer
         return Conn.Query<string>(sql_string).FirstOrDefault();
     }
     
-    public void TruncatePublisherTable()
+    public void TruncatePeriodicalsTable()
     {
         using NpgsqlConnection conn = new(context_connString);
-        string sql_string = @"truncate table ctx.publishers";
+        string sql_string = @"truncate table ctx.periodicals";
         conn.Execute(sql_string);
     }
         
-    public void StorePublisherDetails(PublisherObject p)
+    public void StorePublisherDetails(Periodical p)
     {
         using NpgsqlConnection conn = new(context_connString);
         conn.Insert(p);

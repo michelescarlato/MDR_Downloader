@@ -73,18 +73,27 @@ public class CopyHelpers
 }
 
 
-[Table("ctx.publishers")]
-public class PublisherObject
+[Table("ctx.periodicals")]
+public class Periodical
 {
     public string?  nlm_unique_id  { get; set; }
     public string?  title  { get; set; }
+    public string?  eissn { get; set; }
+    public string?  pissn { get; set; }
+    public string?  xissn { get; set; }
+    public string?  publisher { get; set; }  
+    public int?  open_access { get; set; }
     public string?  medline_ta { get; set; }
     public string?  publication_country  { get; set; }
-    public string?  imprint_place { get; set; }
-    public string?  publisher { get; set; }
-    public string?  date_issued { get; set; }
-    public string?  issn_list { get; set; }
+    public string?  imprint_place { get; set; }    
+    public string?  date_issued { get; set; }    
+    public string?  full_imprint  { get; set; }
     public string?  general_notes { get; set; }
+
+    public Periodical(string? _nlm_unique_id)
+    {
+        nlm_unique_id = _nlm_unique_id;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

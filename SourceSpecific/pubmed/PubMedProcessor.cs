@@ -310,41 +310,251 @@ public class PubMed_Processor
         return b;
     }
 
-    public PublisherObject? ProcessNLMData(NLMRecord rec)
+    public Periodical? ProcessNLMData(NLMRecord rec)
     {
-        PublisherObject p = new();
-        p.nlm_unique_id = rec.NlmUniqueID.ToString();
+        Periodical p = new(rec.NlmUniqueID);
 
         var t = rec.TitleMain;
         if (t is not null)
         {
-            p.title = t.Title.Value;
+            string title = t.Title.Value;
+            if (!string.IsNullOrEmpty(title))
+            {
+                title = title.Replace("&amp;", "&");
+                title = title.Replace("&quot;", "");
+                p.title = title.Trim(' ', '.');
+            }
         }
-
+        
+        var issn = rec.ISSN;
+        if (issn?.Any() is true)
+        {
+            foreach (var iss in issn)
+            {
+                string eissn = "", pissn = "", xissn = "";
+                string issnType = iss.IssnType;
+                if (iss.IssnType == "Print")
+                {
+                    pissn = ", " + iss.Value.Replace("-", "");
+                }
+                else if (iss.IssnType == "Electronic")
+                {
+                    eissn = ", " + iss.Value.Replace("-", "");
+                }
+                else    // issn type usually "Undetermined"
+                {
+                    xissn = ", " + iss.Value.Replace("-", "");
+                }
+                p.pissn = pissn == "" ? null : pissn[2..];
+                p.eissn = eissn == "" ? null : eissn[2..];
+                p.xissn = xissn == "" ? null : xissn[2..];
+            }
+        }
+        
         p.medline_ta = rec.MedlineTA;
 
         var i = rec.PublicationInfo;
         if (i is not null)
         {
             p.publication_country = i.Country;
+            
             var im = i.Imprint;
             if (im is not null)
-            {
-                p.imprint_place = im.Place;
-                p.publisher = im.Entity;
-                p.date_issued = im.DateIssued;
-            }
-        }
+            {  
+               p.full_imprint = im.ImprintFull;
+               string? implace = im.Place;
+               if (!string.IsNullOrEmpty(implace))
+               {
+                   implace = implace.Replace("&amp;", "&");
+                   implace = implace.Replace("&quot;", "");
+                   implace = implace.Trim(' ', '[', ']', ':', ',', ';', '.');
+                   if (implace.EndsWith("etc"))
+                   {
+                       implace = implace[..^3];
+                   }
+                   implace = implace.Trim(' ', '[', ']', ':', ',', ';', '.');
+                   p.imprint_place = implace;
+               }
+               p.date_issued = im.DateIssued;
+               
+               string? pub = im.Entity;
+               if (!string.IsNullOrEmpty(pub))
+               {
+                   // trim string, remove fullstops, and make escaped characters normal or disappear.
 
-        var issn = rec.ISSN;
-        if (issn?.Any() is true)
-        {
-            int n = 0;
-            foreach (var iss in issn)
-            {
-                string separator = n == 0 ? "" : ", ";
-                p.issn_list += separator + iss.IssnType + ": " + iss.Value;
-                n++;
+                   pub = pub.Trim(' ', '[', ']', ':', ',', ';');
+                   pub = pub.Replace(".", "");
+                   pub = pub.Replace("&amp;", "&");
+                   pub = pub.Replace("&quot;", "");
+                   pub = pub.Replace("&lt;", "");
+                   pub = pub.Replace("&gt;", "");
+
+                   // drop right hand bits after any remaining semi-colon.
+
+                   if (pub.IndexOf(';') > -1)
+                   {
+                       pub = pub[..pub.IndexOf(';')];
+                   }
+
+                   // See if it is, or starts with, any of the 'meaningless' names
+                   // add_pub starts as true unless the name starts with 'El' or 'La'
+
+                   bool add_pub = !(pub.StartsWith("El ") || pub.StartsWith("La "));
+
+                   if (add_pub && pub.StartsWith("Le ")
+                               && !pub.StartsWith("Le Jacq") && !pub.StartsWith("Le François"))
+                   {
+                       add_pub = false;
+                   }
+
+                   if (add_pub &&
+                       (pub.StartsWith("O Instituto") || pub.StartsWith("O Hospital") || pub.StartsWith("O Centro")
+                        || pub.StartsWith("O Departamento") || pub.StartsWith("O Associação")))
+                   {
+                       add_pub = false;
+                   }
+
+                   if (add_pub && pub.StartsWith("The "))
+                   {
+                       if (pub.StartsWith("The Alcohol") || pub.StartsWith("The American") ||
+                           pub.StartsWith("The Australian") || pub.StartsWith("The Berkeley") ||
+                           pub.StartsWith("The Biochemical") || pub.StartsWith("The British") ||
+                           pub.StartsWith("The Japan") || pub.StartsWith("The Korean") ||
+                           pub.StartsWith("The Kenya") || pub.StartsWith("The Dougmar"))
+                       {
+                           add_pub = true;
+                       }
+                       else if (pub.StartsWith("The Eastern") || pub.StartsWith("The Egyptian") ||
+                                pub.StartsWith("The European") || pub.StartsWith("The Finnish") ||
+                                pub.StartsWith("The Health") || pub.StartsWith("The H Edgar") ||
+                                pub.StartsWith("The Iconoclast") || pub.StartsWith("The American") ||
+                                pub.StartsWith("The Penicillin") || pub.StartsWith("The Pan African"))
+                       {
+                           add_pub = true;
+                       }
+                       else if (pub.StartsWith("The Pysch") || pub.StartsWith("The Phys") ||
+                                pub.StartsWith("The Lancet") || pub.StartsWith("The Medical") ||
+                                pub.StartsWith("The Menninger") || pub.StartsWith("The Methodist") ||
+                                pub.StartsWith("The National Association") || pub.StartsWith("The Royal") ||
+                                pub.StartsWith("The Resident") || pub.StartsWith("The South") ||
+                                pub.StartsWith("The Southern") || pub.StartsWith("The University of"))
+                       {
+                           add_pub = true;
+                       }
+                       else
+                       {
+                           add_pub = false;
+                       }
+                   }
+
+                   if (pub is "sn" or "sl" or "publisher not identified")
+                   {
+                       add_pub = false;
+                   }
+
+                   if (add_pub)
+                   {
+                       if (pub.StartsWith("Published "))
+                       {
+                           // simplify these if possible
+
+                           pub = pub.Replace("Published and distributed by ", "");
+                           pub = pub.Replace("Published on behalf of the ", "");
+                           pub = pub.Replace("Published and maintained by ", "");
+                           pub = pub.Replace("Published at the offices of the Society ", "");
+                           pub = pub.Replace("Published by authority of the ", "");
+                           pub = pub.Replace("Published by the ", "");
+                           pub = pub.Replace("Published by ", "");
+                           pub = pub.Replace("Published for the ", "");
+                           pub = pub.Replace("Published for ", "");
+
+                           // often still have a second part with the publisher named at the end
+
+                           int by_pos = pub.LastIndexOf("by ", StringComparison.Ordinal);
+                           if (by_pos > -1)
+                           {
+                               pub = pub[(by_pos + 2)..];
+                           }
+                       }
+                       
+                       // Trim odd beginnings and ends
+                       // and abbreviations for 'company'
+
+                       if (pub.StartsWith("OOO "))
+                       {
+                           pub = pub[4..];
+                       }
+                       if (pub.EndsWith("etc") || pub.EndsWith("ect"))
+                       {
+                           pub = pub[..^3];
+                       }
+                       pub = pub.Trim(' ', '[', ']', ':', ',', ';');
+                       
+                       if (pub.EndsWith(" et Cie") || pub.EndsWith(" et cie"))
+                       {
+                           pub = pub[..^7];
+                       }
+                       if (pub.EndsWith(" S L U"))
+                       {
+                           pub = pub[..^6];
+                       }    
+                       if (pub.EndsWith(" GmbH"))
+                       {
+                           pub = pub[..^5];
+                       }                           
+                       if (pub.EndsWith(" Inc") || pub.EndsWith(" inc")
+                           || pub.EndsWith(" Ltd") || pub.EndsWith(" LTD")
+                           || pub.EndsWith(" B V") || pub.EndsWith(" S A")
+                           || pub.EndsWith(" LLC") || pub.EndsWith(" SAS")
+                           || pub.EndsWith(" SLU") || pub.EndsWith(" A/S")
+                           || pub.EndsWith(" Cie") )
+                       {
+                           pub = pub[..^4];
+                       }
+                       if (pub.EndsWith(" Co") || pub.EndsWith(" SL")
+                          || pub.EndsWith(" BV") || pub.EndsWith(" SA")
+                          || pub.EndsWith(" AG") || pub.EndsWith(" S A"))
+                       {
+                           pub = pub[..^3];
+                       }                           
+                       pub = pub.Trim(' ', '[', ']', ':', ',', ';');
+                       
+                       // Expand some abbreviations for greater consistency
+                       
+                       pub = pub.Replace("HMSO", "H M Stationery Office");
+                       pub = pub.Replace("Assn", "Association");
+                       pub = pub.Replace("Pub ", "Publishing ");
+                       if (pub.EndsWith(" Pub"))
+                       {
+                           pub = pub[..^4] + " Publishing";
+                       }
+                       pub = pub.Replace("Off ", "Office ");
+                       if (pub.EndsWith(" Off"))
+                       {
+                           pub = pub[..^4] + " Office";
+                       }
+                       pub = pub.Replace("Corp ", "Corporation ");
+                       if (pub.EndsWith(" Corp"))
+                       {
+                           pub = pub[..^5] + " Corporation";
+                       }
+                       pub = pub.Replace("Univ ", "University ");
+                       if (pub.EndsWith(" Univ"))
+                       {
+                           pub = pub[..^5] + " University";
+                       }
+                       
+                       // Make this change to reflect an organisational change (from about 2005)
+                       // that is still not reflected in most of the available source data
+
+                       if (pub.Contains("Lippincott"))
+                       {
+                           pub = "Wolters Kluwer Health";
+                       }
+                       
+                       p.publisher = pub;
+                   }
+               }
             }
         }
 
