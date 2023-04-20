@@ -110,8 +110,8 @@ public class EMAIdentifier
     public int? identifier_type_id { get; set; }
     public string? identifier_type { get; set; }
     public string? identifier_value { get; set; }
-    public int? identifier_org_id { get; set; }
-    public string? identifier_org { get; set; }
+    public int? source_id { get; set; }
+    public string? source { get; set; }
 
     public EMAIdentifier(int? identifierTypeId, string? identifierType, 
                         string? identifierValue, int? identifierOrgId, string? identifierOrg)
@@ -119,8 +119,8 @@ public class EMAIdentifier
         identifier_type_id = identifierTypeId;
         identifier_type = identifierType;
         identifier_value = identifierValue;
-        identifier_org_id = identifierOrgId;
-        identifier_org = identifierOrg;
+        source_id = identifierOrgId;
+        source = identifierOrg;
     }
 }
 
