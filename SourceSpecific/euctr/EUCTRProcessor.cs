@@ -151,14 +151,14 @@ public class EUCTR_Processor
     {
         // add in initial identifiers representing EUDRACT number and sponsor id
 
-        List<EMAIdentifier> ids = new() 
-            { new EMAIdentifier(11, "Trial Registry ID", st.sd_sid, 100123, "EU Clinical Trials Register") };
+        List<Identifier> ids = new() 
+            { new Identifier(11, "Trial Registry ID", st.sd_sid, 100123, "EU Clinical Trials Register") };
         if (!string.IsNullOrEmpty(st.sponsors_id))
         {
             string sp_name = !string.IsNullOrEmpty(st.sponsor_name)
                 ? st.sponsor_name
                 : "No organisation name provided in source data";
-            ids.Add(new EMAIdentifier(14, "Sponsor ID", st.sponsors_id, null, sp_name));
+            ids.Add(new Identifier(14, "Sponsor ID", st.sponsors_id, null, sp_name));
         }
         
         // get others from web page
@@ -231,15 +231,15 @@ public class EUCTR_Processor
             {
                 if (code == "A.5.1")  // ISRCTN
                 {
-                    ids.Add(new EMAIdentifier(11, "Trial Registry ID", value, 100126, "ISRCTN"));
+                    ids.Add(new Identifier(11, "Trial Registry ID", value, 100126, "ISRCTN"));
                 }
                 else  if (code == "A.5.2")  // NCT
                 {
-                    ids.Add(new EMAIdentifier(11, "Trial Registry ID", value, 100120, "ClinicalTrials.gov"));
+                    ids.Add(new Identifier(11, "Trial Registry ID", value, 100120, "ClinicalTrials.gov"));
                 }
-                else  if (code == "A.5.3")  // UTRN
+                else  if (code == "A.5.3")  // WHO universal number
                 {
-                    ids.Add(new EMAIdentifier(11, "Trial Registry ID", value, 100115, 
+                    ids.Add(new Identifier(11, "Trial Registry ID", value, 100115, 
                         "International Clinical Trials Registry Platform"));
                 }
             }

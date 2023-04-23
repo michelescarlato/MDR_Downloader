@@ -48,7 +48,7 @@ public class Euctr_Record
     public string? results_IPD_description { get; set; }
     
     public List<EMACountry>? countries { get; set; }
-    public List<EMAIdentifier>? identifiers { get; set; }
+    public List<Identifier>? identifiers { get; set; }
     public List<EMAFeature>? features { get; set; }
     public List<EMACondition>? conditions{ get; set; }
     public List<EMAImp>? imp_topics { get; set; }
@@ -102,25 +102,22 @@ public class EMACountry
 }
 
 
-public class EMAIdentifier
+public class Identifier
 {
-    //public string? utrn { get; set; } 
-    //public Secondary_id[]? secondary_ids { get; set; }
-    
     public int? identifier_type_id { get; set; }
     public string? identifier_type { get; set; }
     public string? identifier_value { get; set; }
-    public int? source_id { get; set; }
-    public string? source { get; set; }
+    public int? identifier_org_id { get; set; }
+    public string? identifier_org { get; set; }
 
-    public EMAIdentifier(int? identifierTypeId, string? identifierType, 
+    public Identifier(int? identifierTypeId, string? identifierType, 
                         string? identifierValue, int? identifierOrgId, string? identifierOrg)
     {
         identifier_type_id = identifierTypeId;
         identifier_type = identifierType;
         identifier_value = identifierValue;
-        source_id = identifierOrgId;
-        source = identifierOrg;
+        identifier_org_id = identifierOrgId;
+        identifier_org = identifierOrg;
     }
 }
 

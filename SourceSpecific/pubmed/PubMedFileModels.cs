@@ -20,6 +20,7 @@ public class PMIDBySource
     public string? doi { get; set; }
     public int? type_id { get; set; }
     public string? comments { get; set; }
+    public DateTime? datetime_of_data_fetch { get; set; }
 }
 
 public class BankPmid
@@ -59,7 +60,8 @@ public class CopyHelpers
                 .MapVarchar("citation", x => x.citation)
                 .MapVarchar("doi", x => x.doi)
                 .MapInteger("type_id", x => x.type_id)
-                .MapVarchar("comments", x => x.comments);
+                .MapVarchar("comments", x => x.comments)
+                .MapTimeStampTz("datetime_of_data_fetch", x => x.datetime_of_data_fetch);
 
     public readonly PostgreSQLCopyHelper<BankPmid> pnbank_ids_helper =
         new PostgreSQLCopyHelper<BankPmid>("mn", "pmbanks_all")

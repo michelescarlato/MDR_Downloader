@@ -28,13 +28,15 @@ public class PubMedDataLayer
 
         string sql_string = @"DROP TABLE IF EXISTS mn.dbrefs_all;
                    CREATE TABLE mn.dbrefs_all(
-                    source_id int
+                    id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY    
+                  , source_id int
                   , sd_sid varchar
                   , pmid varchar
                   , citation varchar
                   , doi varchar
                   , type_id int
-                  , comments varchar)";
+                  , comments varchar
+                  , datetime_of_data_fetch timestamptz)";
         conn.Execute(sql_string);
 
         sql_string = @"DROP TABLE IF EXISTS mn.dbrefs_distinct_pmids;
@@ -117,9 +119,12 @@ public class PubMedDataLayer
         string db_conn_string = _credentials.GetConnectionString(db_name);
         using NpgsqlConnection conn = new(db_conn_string);
         string sql_string = $@"SELECT {source_id} as source_id,
-                    sd_sid, pmid, citation, doi,
-                    coalesce(type_id, 12) as type_id, comments
-                    from ad.study_references ";
+                    r.sd_sid, r.pmid, r.citation, r.doi,
+                    coalesce(r.type_id, 12) as type_id, r.comments, 
+                    s.datetime_of_data_fetch
+                    from ad.study_references r 
+                    inner join ad.studies s 
+                    on r.sd_sid = s.sd_sid";
         return conn.Query<PMIDBySource>(sql_string);
     }
     

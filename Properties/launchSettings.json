@@ -2,7 +2,7 @@
   "profiles": {
     "MDR_Downloader": {
       "commandName": "Project",
-      "commandLineArgs": "-s 100135 -t 302 -P"
+      "commandLineArgs": "-s 100135 -t 114 -q 10004"
     } 
   }
 }

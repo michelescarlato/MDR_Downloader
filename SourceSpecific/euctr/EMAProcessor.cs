@@ -144,7 +144,7 @@ public class EMAProcessor
         
         // Add identifiers.
        
-        ed.identifiers = new List<EMAIdentifier>   // Initialise with the Eudract Id
+        ed.identifiers = new List<Identifier>   // Initialise with the Eudract Id
         {
             new (11, "Trial Registry ID", ed.sd_sid, 100123, "EU Clinical Trials Register")
         };
@@ -153,12 +153,12 @@ public class EMAProcessor
             string sp_name = !string.IsNullOrEmpty(ed.sponsor_name)
                 ? ed.sponsor_name
                 : "No organisation name provided in source data";
-            ed.identifiers.Add(new EMAIdentifier(14, "Sponsor ID", ed.sponsors_id, null, sp_name));
+            ed.identifiers.Add(new Identifier(14, "Sponsor ID", ed.sponsors_id, null, sp_name));
         }
         string? who_utn = mn.utrn;
         if (!string.IsNullOrEmpty(who_utn))
         {
-            ed.identifiers.Add(new EMAIdentifier(11, "Trial Registry ID", who_utn, 100115, 
+            ed.identifiers.Add(new Identifier(11, "Trial Registry ID", who_utn, 100115, 
                 "International Clinical Trials Registry Platform"));
         }
 
@@ -169,12 +169,12 @@ public class EMAProcessor
             {
                 if (secid.issuing_authority == "US NCT Number")
                 {
-                    ed.identifiers.Add(new EMAIdentifier(11, "Trial Registry ID", 
+                    ed.identifiers.Add(new Identifier(11, "Trial Registry ID", 
                         secid.sec_id, 100120, "ClinicalTrials.gov"));
                 }
                 if (secid.issuing_authority == "ISRCTN Number")
                 {
-                    ed.identifiers.Add(new EMAIdentifier(11, "Trial Registry ID", 
+                    ed.identifiers.Add(new Identifier(11, "Trial Registry ID", 
                         secid.sec_id, 100126, "ISRCTN"));
                 }
             }
