@@ -120,7 +120,7 @@ public class EMAProcessor
         {
             foreach (string ss in srceSupp)
             {
-                if (!string.IsNullOrEmpty(ss) && !already_in_org_list(ss))
+                if (!string.IsNullOrEmpty(ss))    // add even if the same as the sponsor
                 {
                     ed.organisations.Add(new EMAOrganisation(58, "Study Funder", ss));
                 }

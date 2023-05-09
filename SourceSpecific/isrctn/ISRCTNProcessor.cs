@@ -226,7 +226,7 @@ public class ISRCTN_Processor
                 identifiers.Add(new Identifier(11, "Trial Registry ID", ext_ref, 100120, "Clinicaltrials.gov"));
             }
 
-            ext_ref = er.protocolSerialNumber;
+            ext_ref = er.protocolSerialNumber;     // in fact covers many things!
             if (!string.IsNullOrEmpty(ext_ref) && ext_ref != "N/A" 
                                                && ext_ref != "Not Applicable" && ext_ref != "Nil known")
             {

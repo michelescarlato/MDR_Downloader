@@ -227,7 +227,6 @@ public class MonDataLayer : IMonDataLayer
         }
     }
 
-
     public bool UpdateObjectLog(string sd_oid, string? remote_url,
                      int? dl_id, DateTime? last_revised_date, string? full_path)
     {
