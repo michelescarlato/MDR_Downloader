@@ -8,6 +8,7 @@ public class LoggingHelper : ILoggingHelper
     private readonly string _summaryLogfileStartOfPath;
     private string _logfilePath = "";
     private string _summaryLogfilePath = "";
+    private string _testFilePath;
     private string summary_string = "";
     private StreamWriter? _sw;
 
@@ -20,9 +21,11 @@ public class LoggingHelper : ILoggingHelper
 
         _logfileStartOfPath = settings["logFilePath"] ?? "";
         _summaryLogfileStartOfPath = settings["summaryFilePath"] ?? "";
+        _testFilePath = settings["testFilePath"] ?? "";
     }
 
     public string LogFilePath => _logfilePath;  // Used to check if a log file exists.
+    public string TestFilePath => _testFilePath;
     
     public void OpenLogFile(string? sourceFileName, string databaseName)
     {

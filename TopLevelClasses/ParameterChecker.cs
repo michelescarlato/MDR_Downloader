@@ -287,11 +287,11 @@ public class Options
     [Option('f', "file_name", Required = false, HelpText = "Filename of csv file with data.")]
     public string? FileName { get; set; }
 
-    [Option('a', "amount for id based download", Required = false, HelpText = "Integer indicating the number of ids to be used in fetching data.")]
+    [Option('o', "offset for id based download", Required = false, HelpText = "Integer indicating the start line number of Id sets to be used in fetching data (ctg only).")]
+    public int? OffsetIds { get; set; }  
+    
+    [Option('a', "amount for id based download", Required = false, HelpText = "Integer indicating the number of lines of Id sets to be used (ctg only).")]
     public int? AmountIds { get; set; }
-
-    [Option('o', "offset for id based download", Required = false, HelpText = "Integer indicating the offset to use when interrogating the list of Ids.")]
-    public int? OffsetIds { get; set; }
 
     [Option('I', "skip_recent", Required = false, HelpText = "Integer id representing the number of days ago, to skip recent downloads (0 = today).")]
     public int? SkipRecentDays { get; set; }

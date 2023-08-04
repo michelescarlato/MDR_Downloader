@@ -303,7 +303,6 @@ public static class DateExtensions
             
             return interim_string;
         }
-
     }
 
 
@@ -325,22 +324,20 @@ public static class DateExtensions
             _ when time_string.Contains("min") => "Minutes",
             _ => "Other (" + time_string + ")"
         };
-
     }
-
+    
 
     public static DateTime? FetchDateTimeFromISO(this string iso_string)
     {
         // iso_string assumed to be in format yyyy-mm-dd.
         if (string.IsNullOrEmpty(iso_string))
-
         {
             return null;
         }
 
         if (iso_string.Length > 10)
         {
-            iso_string = iso_string[0..10];  // if date-time only interested in the date
+            iso_string = iso_string[..10];  // if date-time only interested in the date
         }
 
         int year = int.Parse(iso_string[0..4]);
@@ -357,7 +354,7 @@ public static class DateExtensions
             return null;
         }
 
-        // input date string is in the form of "<month name> day, year"
+        // input date string is in the ISO format of ""
         // or in some cases in the form "<month name> year"
         // split the string on the comma.
 
@@ -416,6 +413,7 @@ public static class DateExtensions
 
         return new SplitDate(year_num, month_num, day_num, date_as_string);
     }
+
 
 
     public static DateTime? FetchDateTimeFromDateString(this string dateString)

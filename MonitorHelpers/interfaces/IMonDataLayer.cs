@@ -13,6 +13,11 @@ public interface IMonDataLayer
     public StudyFileRecord? FetchStudyFileRecord(string sd_id, string db_name);
     public ObjectFileRecord? FetchObjectFileRecord(string sd_id);
     public IEnumerable<StudyFileRecord> FetchStudyIds();
+
+    public bool IsTestStudy(string sd_sid);
+    public bool IsWHOTestStudy(string db_name, string sd_sid);    
+    public bool IsTestObject(string sd_oid);
+    
     public bool UpdateDLEventRecord(DLEvent dl);
 
     public bool UpdateStudyLog(string sd_sid, string? remote_url,

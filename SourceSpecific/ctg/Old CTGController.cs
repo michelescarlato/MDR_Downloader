@@ -4,45 +4,36 @@ using MDR_Downloader.Helpers;
 
 namespace MDR_Downloader.ctg;
 
-class CTG_Controller : IDLController
+class Old_CTG_Controller : IDLController
 {
     private readonly IMonDataLayer _monDataLayer;
     private readonly ILoggingHelper _loggingHelper;
-    private readonly CtgDataLayer ctg_repo;
 
-    public CTG_Controller(IMonDataLayer monDataLayer, ILoggingHelper loggingHelper)
+    public Old_CTG_Controller(IMonDataLayer monDataLayer, ILoggingHelper loggingHelper)
     {
         _monDataLayer = monDataLayer;
         _loggingHelper = loggingHelper;
-        ctg_repo = new CtgDataLayer(_monDataLayer.Credentials);
     }
     
     public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
     {
         // Data retrieval is normally via an API call to revised files using a cut off revision date, 
         // that date being normally the date of the most recent download.
-        // t = 111 is new or revised records (as download) - requires a cutoff date to be supplied or calculated.
-        
         // Alternatively a range of Ids can be provided as the basis of the query string - the latter 
         // used during bulk downloads of large numbers of pre-determined files.
-        // t = 142 downloads all studies in a specified set of ids - the parameters refer to the initial
-        // line number in a numbered list of Id sets, grouped in 10s, and the amount of lines to be 
-        // used. Total number of lines is total records / 10 (i.e. about 46,000 - 50,000).
-        
         // A third option is to interrogate downloaded json files (e.g. as derived from the
         // bulk download of all CTG data) and re-save them using the local CTG data model.
-        // t = 141 is import and re-export of downloaded json files using different data model -
+
+        // The opts.FetchTypeId parameter needs to be inspected to determine which.
+        // t = 111 is new or revised records (as download) - requires a cutoff date to be supplied or calculated.
+        // t = 146 is download all studies in a specified Id range - requires offset of Id start position 
+        // in the records as ordered by Id, and amount of Ids to be checked.
+        // t = 303 is import and re-export of downloaded json files using different data model -
         // requires the path of the parent source folder, offset number of start folder and number of
         // child folders to be checked (0 = all beyond start number).
-        // *** This option does not yest seem to ba available with the new API / data structure ***
-        
-        // The opts.FetchTypeId parameter needs to be inspected to determine which.
+
         // In all cases new files will be added, and the amended files replaced, as necessary.
-        // Begin with general setup, required whichever download option is selected. 
-        
-        // Note that the two methods using the APi (t = 111 or 142) receive records 10 at a time, 
-        // together with a token to be used to fetch the next 10 in the sequence. The total amount 
-        // on each call should not be greater than a 1000. These limitations are built into the new API system.
+        // Begin with general setup, required whichever download option is selected.
 
         string? file_base = source.local_folder;
         if (file_base is null)
@@ -84,7 +75,8 @@ class CTG_Controller : IDLController
     }
 
     // The t = 111, new or revised record, option.
-    // Cut off date first decomposed so it can be inserted into the API call. An initial call is made to determine the number of records that will be downloaded.
+    // Cut off date first decomposed so it can be inserted into the API call.
+    // An initial call is made to determine the number of records that will be downloaded.
     // This allows the main loop to be established, with study details being downloaded
     // as json files 20 at a time, with a short pause before each download.
     // Each 'batch' of 20 records, i.e. each response body received, is passed to the
@@ -118,15 +110,14 @@ class CTG_Controller : IDLController
             _loggingHelper.LogLine($"No response to initial call. Download process aborted");
             return res;       // return zero result
         }
+        /*
         CTGRootobject? resp = JsonSerializer.Deserialize<CTGRootobject?>(responseBody);
         if (resp is null)
         {
             _loggingHelper.LogLine($"Not able to deserialise response to initial call. Download process aborted");
             return res;       // return zero result
         }
-        
-        //int? nums_studies_found = resp.FullStudiesResponse?.NStudiesFound;
-        /*
+        int? nums_studies_found = resp.FullStudiesResponse?.NStudiesFound;
         if (nums_studies_found == 0)
         {
             _loggingHelper.LogLine($"No value found for number of studies. Download process aborted");
@@ -173,7 +164,8 @@ class CTG_Controller : IDLController
         return res;   // return aggregated result 
     }
 
-    // The t = 142, download all studies in a specified set of Ids.
+
+    // The t = 142, download all studies in a specified Id range option.
     // If all parameters are present the main loop is set up and for each
     // iteration the first and last Ids are derived, for insertion in the 
     // query string. The resulting batch response (usually about 10 studies
@@ -186,36 +178,28 @@ class CTG_Controller : IDLController
         ScrapingHelpers ch = new(_loggingHelper);
         DownloadResult res = new();
 
-        // Requirement is to loop through the NCT Id sets, starting with the set
-        // on line <offset>, and ending the line before <offset + amount> (so <amount> lines all together
-        // Next batch should then start at line <offset + amount>. Initial line has line Id of 0.
-        
-        int end_id = offset + amount;
-        string start_url = "https://clinicaltrials.gov/api/v2/studies?filter.ids=";
-        
-        // Initial task is to establish the table of NCT Id sets.
-        
-        ctg_repo.EstablishIdTables(); 
-        
-        for (int i = offset; i < end_id; i++)
-        {
-            Thread.Sleep(1000);
+        int loop_count = amount % 100 == 0
+                        ? amount / 100
+                        : amount / 100 + 1;
 
-            // get the NCTId set (max of 10 in each line) corresponding to i
-            
-            string? id_strings = ctg_repo.FetchIdString(i);
-            if (id_strings is null)
-            {
-                return res;
-            }
-            
-            string url = start_url + id_strings;
+        for (int i = 0; i < loop_count; i++)
+        {
+            Thread.Sleep(800);
+            int min_id = offset + (i * 100) + 1;
+            int max_id = offset + (i * 100) + 100;
+
+            // get the correct NCTIds
+            string firstNctId = "NCT" + min_id.ToString("00000000");
+            string lastNctId = "NCT" + max_id.ToString("00000000");
+
+            string start_url = "https://clinicaltrials.gov/api/query/full_studies?expr=AREA%5BNCTId%5DRANGE%5B";
+            string id_params = firstNctId + "%2C" + lastNctId;
+            string end_url = $"%5D&min_rnk=1&max_rnk=100&fmt=json";
+            string url = start_url + id_params + end_url;
+
             string? responseBody = await ch.GetAPIResponseAsync(url);
             if (responseBody is not null)
             {
-                // need to first switch 'class' to 'nct_class'
-                
-                responseBody = responseBody.Replace("\"class\":", "\"ctg_class\":");
                 DownloadResult batch_res = await DownloadBatch(responseBody, file_base, json_options, 
                                source_id, dl_id);
 
@@ -223,11 +207,11 @@ class CTG_Controller : IDLController
                 res.num_downloaded += batch_res.num_downloaded;
                 res.num_added += batch_res.num_added;
 
-                _loggingHelper.LogLine($"Records checked, line {i}. Downloaded: {batch_res.num_downloaded}");
+                _loggingHelper.LogLine($"Records checked from {firstNctId} to {lastNctId}. Downloaded: {batch_res.num_downloaded}");
             }
             else
             {
-                _loggingHelper.LogLine($"Null response when requesting line {i} ({id_strings}). Download process aborted");
+                _loggingHelper.LogLine($"Null response when requesting {firstNctId} to {lastNctId}. Download process aborted");
                 return res;   // return res in current state - abort process because null response body returned
             }
         }
@@ -303,7 +287,7 @@ class CTG_Controller : IDLController
                             _loggingHelper.LogLine($"Unable to get a valid study object from {file_path}. Download process aborted");
                             return res;
                         }
-                       
+                        
                     }
                     */
 
@@ -327,9 +311,10 @@ class CTG_Controller : IDLController
     private async Task<DownloadResult> DownloadBatch(string responseBody, string file_base, 
             JsonSerializerOptions json_options, int source_id, int dl_id)
     {
-        CTGRootobject? json_resp;
+        
         DownloadResult res = new();
-
+/*
+        CTGRootobject? json_resp;
         try
         {
             json_resp = JsonSerializer.Deserialize<CTGRootobject?>(responseBody, json_options);
@@ -342,23 +327,25 @@ class CTG_Controller : IDLController
 
         if (json_resp is not null)
         {
-            JSONStudy[]? full_studies = json_resp.studies;
+            Fullstudy[]? full_studies = json_resp.FullStudiesResponse?.FullStudies;
             if (full_studies?.Any() is true)
             {
-                foreach (JSONStudy s in full_studies)
+                foreach (Fullstudy f in full_studies)
                 {
                     res.num_checked++;
+                    Study s = f.Study!;
+
                     // Obtain basic information from the file - enough for 
                     // the details to be filed in source_study_data table.
 
-                    string? sd_sid = s.protocolSection?.identificationModule?.nctId;
+                    string? sd_sid = s.ProtocolSection?.IdentificationModule?.NCTId;
                     if (sd_sid is not null)
                     {
                         string full_path = await WriteOutFile(s, sd_sid, file_base, json_options);
                         if (full_path != "error")
                         {
-                            string? last_updated_string = s.protocolSection?.statusModule?.lastUpdatePostDateStruct?.date;
-                            DateTime? last_updated = last_updated_string?.FetchDateTimeFromISO();
+                            string? last_updated_string = s.ProtocolSection?.StatusModule?.LastUpdatePostDateStruct?.LastUpdatePostDate;
+                            DateTime? last_updated = last_updated_string?.FetchDateTimeFromDateString();
                             string remote_url = "https://clinicaltrials.gov/ct2/show/" + sd_sid;
 
                             bool added = _monDataLayer.UpdateStudyLog(sd_sid, remote_url, dl_id,
@@ -370,6 +357,7 @@ class CTG_Controller : IDLController
                 }
             }
         }
+        */
         return res;
     }
 
@@ -378,7 +366,8 @@ class CTG_Controller : IDLController
     // Called from both the DownloadBatch and the ReexportBulkDownloadedRecords functions.
     // Returns the full file path as constructed, or an 'error' string if an exception occurred.
 
-    private async Task<string> WriteOutFile(JSONStudy s, string sd_sid, string file_base, 
+    /*
+    private async Task<string> WriteOutFile(Study s, string sd_sid, string file_base, 
                       JsonSerializerOptions json_options)
     {
         string file_name = sd_sid + ".json";
@@ -416,5 +405,7 @@ class CTG_Controller : IDLController
             _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
             return "error";
         }
+        
     }
+    */
 }

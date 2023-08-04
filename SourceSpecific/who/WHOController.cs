@@ -83,6 +83,16 @@ class WHO_Controller : IDLController
                             await using FileStream jsonStream = File.Create(full_path);
                             await JsonSerializer.SerializeAsync(jsonStream, r, json_options);
                             await jsonStream.DisposeAsync();
+                            
+                            if (_monDataLayer.IsWHOTestStudy(r.db_name, r.sd_sid))
+                            {
+                                // write out copy of the file in the test folder
+                                string test_path = _loggingHelper.TestFilePath;
+                                string full_test_path = Path.Combine(test_path, file_name);
+                                await using FileStream jsonStream2 = File.Create(full_test_path);
+                                await JsonSerializer.SerializeAsync(jsonStream2, r, json_options);
+                                await jsonStream2.DisposeAsync();
+                            }
                         }
                         catch (Exception e)
                         {

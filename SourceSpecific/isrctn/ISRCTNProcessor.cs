@@ -270,9 +270,6 @@ public class ISRCTN_Processor
         var ops = tr.outputs;
         if (ops?.Any() is true)
         {
-            //bool local_urls_collected = false;
-            //Dictionary<string, string>? output_urls = null;
-
             foreach (var v in ops)
             {
                 StudyOutput sop = new StudyOutput(v.description, v.productionNotes, v.outputType,
@@ -297,119 +294,10 @@ public class ISRCTN_Processor
                             }
                         }
                     }
-                    
-                    /*
-
-                    // need to go to the page to get the url for any local file
-                    // (Not available in the API data)
-                    // May have already been collected from an earlier output
-                    // in the 'ops' collection (i.e. if a study hgs 2 or more
-                    // local files). If not fill the url collection by web scraping.
-
-                    if (!local_urls_collected)
-                    {
-                        string details_url = "https://www.isrctn.com/" + st.sd_sid;
-                        ScrapingHelpers ch = new(logging_helper);
-                        Thread.Sleep(500);
-                        
-                        // The initial web page access results in a blocking page
-                        // A second access is required to actually access the page.
-                        
-                        WebPage? study_page = await ch.GetPageWithRetriesAsync(details_url, 100, st.sd_sid);
-                        if (study_page is not null)
-                        {
-                            output_urls = new();
-                            HtmlNode? section_div = study_page.Find("div", By.Class("l-Main")).FirstOrDefault();
-                            HtmlNode? article = section_div?.SelectSingleNode("article[1]");
-                            IEnumerable<HtmlNode>? publications = article?.SelectNodes("//section/div[1]/h2[text()='Results and Publications']/following-sibling::div[1]/h3");
-                            if (publications?.Any() is true)
-                            {
-                                foreach (var pub in publications)
-                                {
-                                    string? pub_name = pub.InnerText.Tidy();
-                                    if (pub_name == "Trial outputs")
-                                    {
-                                        HtmlNode? output_table = pub.SelectSingleNode("following-sibling::div[1]/table[1]/tbody[1]");
-                                        if (output_table is not null)
-                                        {
-                                            var table_rows = output_table.SelectNodes("tr");
-                                            if (table_rows?.Any() is true)
-                                            {
-                                                foreach (var table_row in table_rows)
-                                                {
-                                                    var output_attributes = table_row.SelectNodes("td")?.ToArray();
-                                                    if (output_attributes?.Any() is true)
-                                                    {
-                                                        HtmlNode? output_link = output_attributes[0]?.SelectSingleNode("a[1]");
-                                                        if (output_link is not null)
-                                                        {
-                                                            string? output_title = output_link.GetAttributeValue("title").ReplaceUnicodes();
-                                                            string? output_url = output_link.GetAttributeValue("href");
-                                                            if (!string.IsNullOrEmpty(output_title) && !string.IsNullOrEmpty(output_url))
-                                                            {
-                                                                if (!output_url.ToLower().StartsWith("http"))
-                                                                {
-                                                                    output_url = output_url.StartsWith("/") 
-                                                                        ? "https://www.isrctn.com" + output_url 
-                                                                        : "https://www.isrctn.com/" + output_url;
-                                                                }
-
-                                                                // Very occasionally the same file and output url is duplicated.
-                                                                // This must be trapped to avoid an exception.
-
-                                                                bool add_entry = true;
-                                                                if(output_urls.Count > 0)
-                                                                {
-                                                                    foreach(KeyValuePair<string, string> entry in output_urls)
-                                                                    {
-                                                                        if (output_title == entry.Key)
-                                                                        {
-                                                                            add_entry = false;
-                                                                            break;
-                                                                        }
-                                                                    }
-                                                                }
-                                                                
-                                                                if (add_entry)
-                                                                {
-                                                                    output_urls.Add(output_title, output_url);
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            local_urls_collected = true;
-                        }
-                        
-                    }
-
-                    if (output_urls?.Any() is true)
-                    {
-                        // Not clear if the original or download file name should
-                        // be used to try and match the url (normally identical).
-
-                        if (sop.downloadFilename is not null)
-                        {
-                            sop.localFileURL = output_urls[sop.downloadFilename];
-
-                            if (sop.localFileURL is null && sop.originalFilename is not null)
-                            {
-                                sop.localFileURL = output_urls[sop.originalFilename];
-                            }
-                        }
-                    }
-                    */
                 }
 
                 outputs.Add(sop);
             }
-           
         }
 
         var tr_contacts = ft.contact;

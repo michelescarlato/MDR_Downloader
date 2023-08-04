@@ -361,12 +361,12 @@ public class Correction
     public int? PMID_Value { get; set; }
     public string? RefType { get; set; }
 
-    public Correction(string? refSource, int? pMID_Version,
-                      int? pMID_Value, string? refType)
+    public Correction(string? refSource, int? pMID_Value,
+                      int? pMID_Version, string? refType)
     {
         RefSource = refSource;
+        PMID_Value = pMID_Value;        
         PMID_Version = pMID_Version;
-        PMID_Value = pMID_Value;
         RefType = refType;
     }
 }

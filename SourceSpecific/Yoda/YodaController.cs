@@ -169,6 +169,16 @@ namespace MDR_Downloader.yoda
                                         await JsonSerializer.SerializeAsync(jsonStream, st, json_options);
                                         await jsonStream.DisposeAsync();
                                         _loggingHelper.LogLine($"{res.num_checked}: {st.sd_sid} downloaded");
+                                        
+                                        if (_monDataLayer.IsTestStudy(st.sd_sid))
+                                        {
+                                            // write out copy of the file in the test folder
+                                            string test_path = _loggingHelper.TestFilePath;
+                                            string full_test_path = Path.Combine(test_path, file_name);
+                                            await using FileStream jsonStream2 = File.Create(full_test_path);
+                                            await JsonSerializer.SerializeAsync(jsonStream2, st, json_options);
+                                            await jsonStream2.DisposeAsync();
+                                        }
                                     }
                                     catch (Exception e)
                                     {

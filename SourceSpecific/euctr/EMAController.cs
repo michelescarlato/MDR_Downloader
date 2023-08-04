@@ -85,6 +85,16 @@ public class EMA_Controller : IDLController
                         await using FileStream jsonStream = File.Create(full_path);
                         await JsonSerializer.SerializeAsync(jsonStream, euctr_record, json_options);
                         await jsonStream.DisposeAsync();
+                        
+                        if (_monDataLayer.IsTestStudy(euctr_record.sd_sid))
+                        {
+                            // write out copy of the file in the test folder
+                            string test_path = _loggingHelper.TestFilePath;
+                            string full_test_path = Path.Combine(test_path, file_name);
+                            await using FileStream jsonStream2 = File.Create(full_test_path);
+                            await JsonSerializer.SerializeAsync(jsonStream2, euctr_record, json_options);
+                            await jsonStream2.DisposeAsync();
+                        }
                     }
                     catch (Exception e)
                     {

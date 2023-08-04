@@ -11,7 +11,6 @@ public class SourceController : ISourceController
     
     public async Task<DLEvent> ObtainDataFromSourceAsync(Options opts, Source source, DLEvent dl)
     {
-        
         DownloadResult res = await _dlController.ObtainDataFromSourceAsync(opts, source);
         dl.time_ended = DateTime.Now;
         dl.num_records_checked = res.num_checked;
@@ -19,6 +18,4 @@ public class SourceController : ISourceController
         dl.num_records_added = res.num_added;
         return dl;
     }
-    
-    
 }

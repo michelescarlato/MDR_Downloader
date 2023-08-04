@@ -61,7 +61,7 @@ namespace MDR_Downloader.who
                             &&  Regex.Match(sec_id.processed_id!, @"^NL\d{1,4}$").Success)
                         {
                             string new_sd_sid = sec_id.processed_id;
-                            sec_id.processed_id = sd_sid;  // change he secondary id to the old sd_sid
+                            sec_id.processed_id = sd_sid;  // change the secondary id to the old sd_sid
                             sec_id.sec_id = sd_sid;
                             sec_id.sec_id_type_id = 45;
                             sec_id.sec_id_type = "Obsolete NTR number";

@@ -463,6 +463,7 @@ public class WHOHelpers
             : new SecIdBase(sec_id, null, null, null) ;
     }
 
+    
     public string GetStatus(string study_status)
     {
         string status = study_status.ToLower();

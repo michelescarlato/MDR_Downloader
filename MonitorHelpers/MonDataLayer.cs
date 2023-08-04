@@ -149,6 +149,34 @@ public class MonDataLayer : IMonDataLayer
         using NpgsqlConnection conn = new(thisDBconnString);
         conn.Insert(file_record);
     }
+    
+    public bool IsTestStudy(string sd_sid)
+    {
+        using NpgsqlConnection conn = new(thisDBconnString);
+        string sql_string = @$"select for_testing
+                    from mn.source_data where sd_sid = '{sd_sid}';";
+        bool? res = conn.QueryFirstOrDefault<bool?>(sql_string);
+        return res == true;
+    }
+    
+    public bool IsWHOTestStudy(string dbname, string sd_sid)
+    {
+        string whoConnString = _credentials.GetConnectionString(dbname);
+        using NpgsqlConnection conn = new(whoConnString);
+        string sql_string = @$"select for_testing
+                    from mn.source_data where sd_sid = '{sd_sid}';";
+        bool? res = conn.QueryFirstOrDefault<bool?>(sql_string);
+        return res == true;
+    }
+
+    public bool IsTestObject(string sd_oid)
+    {
+        string sql_string = @$"select for_testing
+                    from mn.source_data where sd_sid = '{sd_oid}';";
+        using NpgsqlConnection conn = new(thisDBconnString);
+        bool? res = conn.QueryFirstOrDefault<bool?>(sql_string);
+        return res == true;
+    }
             
     public bool UpdateWhoStudyLog(string db_name, string sd_sid, string? remote_url,
         int? dl_id, DateTime? last_revised_date, string? full_path)

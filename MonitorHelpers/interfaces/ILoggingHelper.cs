@@ -3,6 +3,8 @@
 public interface ILoggingHelper
 {
         public string LogFilePath { get; }
+        public string TestFilePath { get; }
+        
         public void OpenLogFile(string? source_file_name, string database_name);
         public void OpenNoSourceLogFile();
         public void LogLine(string message);

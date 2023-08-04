@@ -1,6 +1,7 @@
 ﻿
 namespace MDR_Downloader.ctg;
 
+/*
 public class CTGRootobject
 {
     public Fullstudiesresponse? FullStudiesResponse { get; set; }
@@ -543,3 +544,5 @@ public class Largedoc
     public string? LargeDocUploadDate { get; set; }
     public string? LargeDocFilename { get; set; }
 }
+
+*/
