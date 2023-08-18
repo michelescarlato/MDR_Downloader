@@ -23,10 +23,17 @@ namespace MDR_Downloader.who
             if (source_id is 100120 or 100123 or 100126)
             {
                 // no need to process these - details input directly from registry
-                // (for CGT, ISRCTN, EU CTR).
+                // (for CGT, ISRCTN).
 
                 return null;
             }
+            
+            if (source_id == 0)
+            {
+                // investigate further...
+                
+            }
+            
             if (sd_sid == "null")
             {
                 // Seems to happen, or has happened in the past, with one Dutch trial.

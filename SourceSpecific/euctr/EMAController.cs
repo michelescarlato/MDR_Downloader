@@ -101,7 +101,7 @@ public class EMA_Controller : IDLController
                         _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
                     }
                    
-                    bool added = _monDataLayer.UpdateStudyLog(euctr_record.sd_sid, euctr_record.details_url, 
+                    bool added = _monDataLayer.UpdateStudyLog(euctr_record.sd_sid, euctr_record.search_url, 
                         dl_id, null, full_path);     
                     res.num_downloaded++;
                     if (res.num_downloaded % 20 == 0)

@@ -73,11 +73,14 @@ public class WHOHelpers
                     {
                         // does it have an ICD code or similar at the front?
                         // if so extract and put code in code field
+                        // Could be the whole thing is just a code...
 
                         string code = "", code_system = "";
 
                         if (s1.Contains("generalization"))
                         {
+                            // This all needs reviewing!
+  
                             string code_string = "";
                             if (Regex.Match(s1, @"^[A-Z]\d{2}.\d{2} - \[generalization [A-Z]\d{2}.\d:").Success)
                             {
@@ -88,7 +91,7 @@ public class WHOHelpers
                             else if (Regex.Match(s1, @"^[A-Z]\d{2}.\d{2} - \[generalization [A-Z]\d{2}:").Success)
                             {
                                 code_string = Regex.Match(s1, @"^[A-Z]\d{2}.\d{2} - \[generalization [A-Z]\d{2}:").Value.Trim();
-                                code = Regex.Match(code_string, @"[A-Z]\d{2}.\d:$").Value.Trim(':');
+                                code = Regex.Match(code_string, @"[A-Z]\d{2}:$").Value.Trim(':');
                             }
 
                             else if (Regex.Match(s1, @"^[A-Z]\d{2}.\d - \[generalization [A-Z]\d{2}").Success)
@@ -101,30 +104,30 @@ public class WHOHelpers
                             s1 = s1.Substring(code_string.Length).Trim(']').Trim();
                         }
 
-                        else if (Regex.Match(s1, @"^[A-Z]\d{2}(.\d)? ").Success)
+                        else if (Regex.Match(s1, @"^[A-Z]\d{2}(.\d)?\s?").Success)
                         {
-                            code = Regex.Match(s1, @"^[A-Z]\d{2}(.\d)? ").Value.Trim();
+                            code = Regex.Match(s1, @"^[A-Z]\d{2}(.\d)?\s?").Value.Trim();
                             code_system = "ICD 10";
                             s1 = s1.Substring(code.Length).Trim();
                         }
 
-                        else if (Regex.Match(s1, @"^[A-Z]\d{2}-[A-Z]\d{2} ").Success)
+                        else if (Regex.Match(s1, @"^[A-Z]\d{2}-[A-Z]\d{2}\s?").Success)
                         {
-                            code = Regex.Match(s1, @"^[A-Z]\d{2}-[A-Z]\d{2} ").Value.Trim();
+                            code = Regex.Match(s1, @"^[A-Z]\d{2}-[A-Z]\d{2}\s?").Value.Trim();
                             code_system = "ICD 10";
                             s1 = s1.Substring(code.Length).Trim();
                         }
 
-                        else if (Regex.Match(s1, @"^[A-Z]\d{2} - [A-Z]\d{2} ").Success)
+                        else if (Regex.Match(s1, @"^[A-Z]\d{2} - [A-Z]\d{2}\s?").Success)
                         {
-                            code = Regex.Match(s1, @"^[A-Z]\d{2} - [A-Z]\d{2} ").Value.Trim();
+                            code = Regex.Match(s1, @"^[A-Z]\d{2} - [A-Z]\d{2}\s?").Value.Trim();
                             code_system = "ICD 10";
                             s1 = s1.Substring(code.Length).Trim();
                         }
 
-                        else if (Regex.Match(s1, @"^[A-Z]\d{3} ").Success)
+                        else if (Regex.Match(s1, @"^[A-Z]\d{3}\s?").Success)
                         {
-                            code = Regex.Match(s1, @"^[A-Z]\d{3} ").Value.Trim();
+                            code = Regex.Match(s1, @"^[A-Z]\d{3}\s?").Value.Trim();
                             code_system = "ICD 10";
                             s1 = s1.Substring(code.Length).Trim();
                         }
@@ -146,14 +149,6 @@ public class WHOHelpers
                                 }
                             }
                         }
-
-                        // check not a too broad (range) ICD10 classification.
-
-                        if (Regex.Match(s1, @"^[A-Z]\d{2}-[A-Z]\d{2}$").Success)
-                        {
-                            add_condition = false;
-                        }
-
                         if (add_condition)
                         {
                             conditions.Add(code == "" ? new WhoCondition(s1) 
@@ -815,8 +810,10 @@ public class WHOHelpers
             100119 => "cris",
             100121 => "ctri",
             100122 => "rpcec",
+            100123 => "euctr",
             100124 => "drks",
             100125 => "irct",
+            100126 => "euctr",
             100127 => "jprn",
             100128 => "pactr",
             100129 => "rpuec",

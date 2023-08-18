@@ -37,7 +37,7 @@ public class CtgDataLayer
             ORDER BY sd_sid;";
         conn.Execute(sql_string);
         
-        sql_string = @"UPDATE mn.temp_sd_sids SET group_id = identity / 10;";
+        sql_string = @"UPDATE mn.temp_sd_sids SET group_id = identity / 25;";
         conn.Execute(sql_string);
 
         sql_string = @"INSERT INTO mn.temp_id_strings(group_id,id_string)

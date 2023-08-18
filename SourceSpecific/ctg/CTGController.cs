@@ -192,7 +192,7 @@ class CTG_Controller : IDLController
         
         int end_id = offset + amount;
         string start_url = "https://clinicaltrials.gov/api/v2/studies?filter.ids=";
-        
+        string end_url = "&pageSize=25";
         // Initial task is to establish the table of NCT Id sets.
         
         ctg_repo.EstablishIdTables(); 
@@ -209,7 +209,7 @@ class CTG_Controller : IDLController
                 return res;
             }
             
-            string url = start_url + id_strings;
+            string url = start_url + id_strings + end_url;
             string? responseBody = await ch.GetAPIResponseAsync(url);
             if (responseBody is not null)
             {
@@ -336,7 +336,7 @@ class CTG_Controller : IDLController
         }
         catch (Exception e)
         {
-            _loggingHelper.LogCodeError("Error with json with " + responseBody, e.Message, e.StackTrace);
+            _loggingHelper.LogCodeError("Error with json with " + responseBody[..1000], e.Message, e.StackTrace);
             return res;
         }
 

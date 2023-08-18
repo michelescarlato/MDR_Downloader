@@ -97,7 +97,7 @@ public class EMAProcessor
         
         ed.organisations = new List<EMAOrganisation>();
         
-        string? pri_spons = mn.primary_sponsor;
+        string? pri_spons = mn.primary_sponsor; 
         string[]? secspons = t.secondary_sponsor;
         string[]? srceSupp = t.source_support;
 
@@ -341,10 +341,7 @@ public class EMAProcessor
         string[]? countries = t.countries;
         if (countries?.Any() is true)
         {
-            if (ed.countries is null)  // Normally will not be 
-            {
-                ed.countries = new List<EMACountry>();
-            }
+            ed.countries ??= new List<EMACountry>();  // usually will not be null but just in case
 
             foreach (string country_name in countries)
             {
@@ -434,9 +431,8 @@ public class EMAProcessor
         Contact[]? contacts_info = t.contacts;
         if (contacts_info?.Any() is true)
         {
-            foreach (Contact cont in contacts_info)
+            /*   foreach (Contact cont in contacts_info)
             {
-                /*
                 int contact_type_id = 0;
                 string contact_type = "";
                 string contact_name = cont.firstname ?? "";
@@ -458,8 +454,8 @@ public class EMAProcessor
                 }
                 // To add to study_people or study_organisations
                 //ed.organisations.Add(new EMAOrganisation(contact_type_id, contact_type, contact_name));
-                */
-            }
+               
+            } */
             
         }
         
