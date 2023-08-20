@@ -51,15 +51,7 @@ namespace MDR_Downloader.yoda
         public string? csr_link { get; set; }
     }
 
-    /*
-    public class SponsorDetails
-    {
-        public int? org_id { get; set; }
-        public string? org_name { get; set; }
-        public string? prot_id { get; set; }
-    }
-*/
-
+    
     public class StudyDetails
     {
         public string? display_title { get; set; }
@@ -145,13 +137,24 @@ namespace MDR_Downloader.yoda
 
     public class SuppDoc
     {
-        public string? doc_name { get; set; }
+        public int? doc_type_id { get; set; }
+        public string? doc_type { get; set; }
         public string? comment { get; set; }
         public string? url { get; set; }
 
-        public SuppDoc(string? _doc_name)
+        public SuppDoc(int? docTypeId, string? docType, string? url)
         {
-            doc_name = _doc_name;
+            doc_type_id = docTypeId;
+            doc_type = docType;
+            comment = "Available now";
+            this.url = url;
+        }
+
+        public SuppDoc(int? _doc_type_id, string? _doc_type)
+        {
+            doc_type_id = _doc_type_id;
+            doc_type = _doc_type;
+            comment = "Available upon approval of data request";
         }
 
         public SuppDoc()

@@ -26,7 +26,7 @@ namespace MDR_Downloader.yoda
         }
 
 
-        public StudyDetails FetchStudyDetailsFromNCT(string nct_id)
+        public StudyDetails? FetchStudyDetailsFromNCT(string nct_id)
         {
             using var conn = new NpgsqlConnection(_ctg_connString);
             string sql_string = "Select sd_sid, display_title, brief_description, study_type_id from ad.studies ";
@@ -44,7 +44,7 @@ namespace MDR_Downloader.yoda
         }
 
 
-        public StudyDetails FetchStudyDetailsFromISRCTN(string isrctn_id)
+        public StudyDetails? FetchStudyDetailsFromISRCTN(string isrctn_id)
         {
             using var conn = new NpgsqlConnection(_isrctn_connString);
             string sql_string = "Select sd_sid, display_title, brief_description, study_type_id from ad.studies ";
@@ -53,7 +53,7 @@ namespace MDR_Downloader.yoda
         }
 
 
-        public NotRegisteredDetails FetchNonRegisteredDetailsFromTable(string pp_id)
+        public NotRegisteredDetails? FetchNonRegisteredDetailsFromTable(string pp_id)
         {
             using var conn = new NpgsqlConnection(_yoda_mn_connString);
             string sql_string = @"Select sponsor_id, sponsor_name, short_sponsor_name, short_protocol_id,
@@ -67,7 +67,7 @@ namespace MDR_Downloader.yoda
         public void AddNewNotRegisteredRecord(string pp_id, string title, string short_sponsor_name, string protid)
         {
             using var conn = new NpgsqlConnection(_yoda_mn_connString);
-            string sql_string = $@"INSERT INTO mn.not_registered (sd_sid, title, short_sponsor_name, short_protocol_id);
+            string sql_string = $@"INSERT INTO mn.not_registered (sd_sid, title, short_sponsor_name, short_protocol_id)
                 VALUES ('{pp_id}', '{title}', '{short_sponsor_name}', '{protid}');";
             conn.Execute(sql_string);
         }

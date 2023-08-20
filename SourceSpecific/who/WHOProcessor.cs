@@ -20,6 +20,14 @@ namespace MDR_Downloader.who
             r.sd_sid = sd_sid;
             int source_id = _wh.get_reg_source(sd_sid);
             
+            if (source_id == 100123 && sd_sid.EndsWith("-00") )
+            {
+                //  ctis ???
+
+                return null;
+            }
+            
+            
             if (source_id is 100120 or 100123 or 100126)
             {
                 // no need to process these - details input directly from registry

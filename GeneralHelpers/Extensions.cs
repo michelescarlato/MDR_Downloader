@@ -1,7 +1,6 @@
 ﻿using HtmlAgilityPack;
 using ScrapySharp.Extensions;
 using System.Text.RegularExpressions;
-
 namespace MDR_Downloader.Helpers;
 
 public static class StringExtensions
@@ -121,6 +120,25 @@ public static class StringExtensions
 
         return output_string;
     }
+    
+    
+    internal static string? TidyYodaText(this string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return null;
+        }
+        string? output = input.Replace("\n", "").Replace("\r", "").Trim();
+        if (string.IsNullOrEmpty(output))
+        {
+            return null;
+        }
+        output = output.ReplaceUnicodes();
+        output = output?.ReplaceNBSpaces();
+        output = output?.Replace("??", " ").Replace("&#039;", "’");
+        return output?.Replace("'", "’");
+    }
+    
 
 
     public static string? lang_3_to_2(this string input_lang_code)

@@ -102,7 +102,7 @@ public class EMA_Controller : IDLController
                     }
                    
                     bool added = _monDataLayer.UpdateStudyLog(euctr_record.sd_sid, euctr_record.search_url, 
-                        dl_id, null, full_path);     
+                        dl_id, euctr_record.date_last_revised, full_path);     
                     res.num_downloaded++;
                     if (res.num_downloaded % 20 == 0)
                     {

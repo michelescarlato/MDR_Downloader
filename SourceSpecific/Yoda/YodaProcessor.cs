@@ -4,8 +4,6 @@ using ScrapySharp.Extensions;
 using ScrapySharp.Html;
 using ScrapySharp.Network;
 using System.Security.Cryptography;
-using System.Web;
-
 
 namespace MDR_Downloader.yoda
 {
@@ -25,100 +23,72 @@ namespace MDR_Downloader.yoda
 
         public List<Summary> GetStudyInitialDetails(WebPage homePage)
         {
-            List<Summary> page_study_list = new ();
+            List<Summary> page_study_list = new();
 
-            HtmlNode? pageContent = homePage.Find("div", By.Class("view-content")).FirstOrDefault();
-            if (pageContent is null) 
+            HtmlNode? pageContent = homePage.Find("div", By.Class("trials-list__body")).FirstOrDefault();
+            if (pageContent is null)
             {
-                _logging_helper.LogError("Unable to find top level div on summary page");
-                return page_study_list;  // empty list
+                _logging_helper.LogError("Unable to find trial list div on summary page");
+                return page_study_list; // empty list
             }
 
-            List<HtmlNode> studyRows = pageContent.CssSelect("tbody tr").ToList();
-            if (!studyRows.Any())
-            {
-                _logging_helper.LogError("Unable to find study rows listing on summary page");
-                return page_study_list;  // empty list
-            }
-
+            List<HtmlNode> studyRows = pageContent.CssSelect(".trial").ToList();
             foreach (HtmlNode row in studyRows)
             {
                 // 6 columns in each row, 
                 // 0: NCT number, 1: generic name, 2: title, with link 3: Enrolment number, 
                 // 4: CSR download link, 5: view field ops (?)
 
+                HtmlNode? nct_id = row.CssSelect(".trial__nct-id").FirstOrDefault();
+                HtmlNode? generic_name = row.CssSelect(".trial__generic").FirstOrDefault();
+                HtmlNode? trial_title = row.CssSelect(".trial__title").FirstOrDefault();
+                HtmlNode? enrollment = row.CssSelect(".trial__enrollment").FirstOrDefault();
+                HtmlNode? crs_summary = row.CssSelect(".trial__crs-summary").FirstOrDefault();
                 Summary sm = new();
-                HtmlNode[] cols = row.CssSelect("td").ToArray();
-                string link_text = "";
-
-                for (int i = 0; i < 5; i++)
+                
+                HtmlNode? nct_link = nct_id.CssSelect("a").FirstOrDefault();
+                if (nct_link is not null)
                 {
-                    HtmlNode col = cols[i];
-                    string cellValue = col.InnerText?.Replace("\n", "").Replace("\r", "").Trim() ?? "";
-                    if (!string.IsNullOrEmpty(cellValue))
-                    {
-                        cellValue = cellValue.Replace("??", " ").Replace("&#039;", "’").Replace("'", "’");
-                    }
-                    switch (i)
-                    {
-                        case 0: sm.registry_id = cellValue; break;   // Usually NCT number, may be an ISRCTN id, may be blank
-                        case 1: sm.generic_name = cellValue; break;
-                        case 2:
-                            {
-                                sm.study_name = cellValue;
-                                HtmlNode? link = col.CssSelect("a").FirstOrDefault();
-                                if (link is not null)
-                                {
-                                    link_text = link.Attributes["href"].Value;
-                                    sm.details_link = "https://yoda.yale.edu" + link_text; // url for details page.
-                                }
-                                break;
-                            }
-                        case 3:
-                            {
-                                if (cellValue != "") cellValue = cellValue.Replace(" ", "");
-                                sm.enrolment_num = cellValue;
-                                break;
-                            }
-                        case 4:
-                            {
-                                sm.csr_link = "";
-                                if (cellValue != "")
-                                {
-                                    HtmlNode? link = col.CssSelect("a").FirstOrDefault();
-                                    if (link is not null)
-                                    {
-                                        sm.csr_link = link.Attributes["href"].Value;
-                                    }
-                                }
-                                break;
-                            }
-                    }
+                    sm.registry_id = nct_link.InnerText?.TidyYodaText();
+                }
+                sm.generic_name = generic_name?.InnerText?.TidyYodaText();
+                HtmlNode? page_link = trial_title.CssSelect("a").FirstOrDefault();
+                if (page_link is not null)
+                {
+                    sm.details_link = page_link.Attributes["href"].Value; // url for details page.
+                    sm.study_name = page_link.InnerText?.TidyYodaText();
+                }
+                sm.enrolment_num = enrollment?.InnerText?.TidyYodaText()?.Replace(" ", "");
+                HtmlNode? csr_link = crs_summary.CssSelect("a").FirstOrDefault();
+                if (csr_link is not null)
+                {
+                    sm.csr_link = csr_link.Attributes["href"].Value;
+                }
 
-                    // obtain an sd_id as either the registry id, prefixed by Y
-                    // or the details link - Within a single extraction this should be unique
-                    // and so can be used to pick up possible duplicates
+                // obtain an sd_id as either the registry id, prefixed by Y
+                // or the details link - Within a single extraction this should be unique
+                // and so can be used to pick up possible duplicates
 
-                    if (sm.registry_id is not null && 
-                       (sm.registry_id.StartsWith("NCT") || sm.registry_id.StartsWith("ISRCTN")))
+                if (sm.registry_id is not null &&
+                    (sm.registry_id.StartsWith("NCT") || sm.registry_id.StartsWith("ISRCTN")))
+                {
+                    sm.sd_sid = "Y-" + sm.registry_id;
+                }
+                else
+                {
+                    if (sm.details_link != "")
                     {
-                        sm.sd_sid = "Y-" + sm.registry_id;
+                        sm.sd_sid = "X-" + sm.details_link;
                     }
                     else
                     {
-                        if (link_text != "")
-                        {
-                            sm.sd_sid = "X-" + link_text;
-                        }
-                        else
-                        {
-                            sm.sd_sid = sm.study_name ?? "No study identifier - ????";  // should never happen, but...
-                        }
+                        sm.sd_sid = sm.study_name ?? "No study identifier - ????"; // should never happen, but...
                     }
                 }
+                
                 page_study_list.Add(sm);
             }
-
+            
             return page_study_list;
         }
 
@@ -126,60 +96,169 @@ namespace MDR_Downloader.yoda
         public async Task<Yoda_Record?> GetStudyDetailsAsync (HtmlNode page, Summary sm)
         {
             Yoda_Record st = new (sm);
-            string sid = st.sd_sid;
-
-            // Get page components.
-
-            HtmlNode? propsBlock = page.CssSelect("#block-views-trial-details-block-2").FirstOrDefault();
-            IEnumerable<HtmlNode>? leftCols = propsBlock.CssSelect(".left-col");
-            IEnumerable<HtmlNode>? rightCols = propsBlock.CssSelect(".right-col");
-            IEnumerable<HtmlNode> props = leftCols.CssSelect(".views-field").Concat(rightCols.CssSelect(".views-field"));
-
+            
+            ///////////////////////////////////////////////////////////////////////////////////////
+            // Identify main page components
+            ///////////////////////////////////////////////////////////////////////////////////////
+            
+            HtmlNode? iconsBlock = page.CssSelect(".trial-resources").FirstOrDefault();
+            HtmlNode? infoBlock = page.CssSelect(".trial-info-grid").FirstOrDefault();
+            HtmlNode? propsPanel = infoBlock.CssSelect(".trial-info-cell").FirstOrDefault();
+            HtmlNode? suppDocsPanel = infoBlock.CssSelect(".support-docs-cell").FirstOrDefault();
+            HtmlNode? LHprops = propsPanel.CssSelect(".info-cell").ToArray()[0];
+            HtmlNode? RHprops = propsPanel.CssSelect(".info-cell").ToArray()[1];
+            
+            
+            ///////////////////////////////////////////////////////////////////////////////////////
+            // Get data from components
+            ///////////////////////////////////////////////////////////////////////////////////////
+            
+            // Icons block is a ul with 4 components
+            // The first is a link to the CSR but this has already been obtained in the summary data
+            // The second is a link to the NCT (occasionally ISCTRN) web page, but the NCT if it exists will already have been obtained
+            // The third is a link to a primary citation and needs to be captured in the JSON file as a reference.
+            // The fourth is a link to a dataset specification - rarely present.
+            
             List<SuppDoc> supp_docs = new ();
             List<Identifier> study_identifiers = new();
             List<Title> study_titles = new();
             List<Reference> study_references = new();
 
-            foreach (HtmlNode fieldNode in props)
+            string? data_spec_url = null;
+            if (iconsBlock is not null)
             {
-                // get label
-                var labelNode = fieldNode.CssSelect(".views-label").FirstOrDefault();
-                if (labelNode is not null)
+                HtmlNode[] icons = iconsBlock.CssSelect("li").ToArray();
+                if (icons.Count() > 4)
                 {
-                    string label = labelNode.InnerText.Trim();
-                    string? value = HttpUtility.UrlDecode(fieldNode.InnerText);
-                    value = value.Replace("\n", "").Replace("\r", "").Trim();
-                    value = value.Replace("&amp;", "&").Replace("&nbsp;", " ").Trim();
-                    value = value.Replace("&#039;", "'");
-                    value = value.ReplaceNBSpaces();
-                    value = value?[label.Length..]?.Trim();
+                    // may be some annotated forms
+                }
 
-                    switch (label)
+                HtmlNode? citation = iconsBlock.CssSelect(".citation").FirstOrDefault();
+                HtmlNode? citation_link = citation.CssSelect("a").FirstOrDefault();
+                if (citation_link is not null)
+                {
+                    st.primary_citation_link = citation_link.Attributes["href"].Value;
+                }
+
+                HtmlNode? data_spec = iconsBlock.CssSelect(".data-specification").FirstOrDefault();
+                HtmlNode? data_spec_link = data_spec.CssSelect("a").FirstOrDefault();
+                if (data_spec_link is not null)
+                {
+                    data_spec_url = data_spec_link.Attributes["href"].Value;
+                }
+            }
+
+            if (LHprops is not null)
+            {
+                HtmlNode[] props = LHprops.CssSelect("span").ToArray();
+                if (props[0].InnerText?.Trim() == "Generic Name")
+                {
+                    st.compound_generic_name = props[1].InnerText?.TidyYodaText();
+                }
+                if (props[2].InnerText?.Trim() == "Product Name")
+                {
+                    st.compound_product_name = props[3].InnerText?.TidyYodaText();
+                }
+                if (props[4].InnerText?.Trim() == "Therapeutic Area")
+                {
+                    st.therapeutic_area = props[5].InnerText?.TidyYodaText();
+                }
+                if (props[6].InnerText?.Trim() == "Enrollment")
+                {
+                    st.enrolment = props[7].InnerText?.TidyYodaText();
+                }
+                if (props[8].InnerText?.Trim() == "% Female")
+                {
+                    st.percent_female = props[9].InnerText?.TidyYodaText();
+                }
+                if (props[10].InnerText?.Trim() == "% White")
+                {
+                    st.percent_white = props[11].InnerText?.TidyYodaText();
+                }
+            }
+            
+            if (RHprops is not null)
+            {
+                HtmlNode[] props = RHprops.CssSelect("span").ToArray();
+                if (props[0].InnerText?.Trim() == "Product Class")
+                {
+                    st.product_class = props[1].InnerText?.TidyYodaText();
+                }
+                if (props[2].InnerText?.Trim() == "Sponsor Protocol Number")
+                {
+                    st.sponsor_protocol_id = props[3].InnerText?.TidyYodaText();
+                }
+                if (props[4].InnerText?.Trim() == "Data Partner")
+                {
+                    st.data_partner = props[5].InnerText?.TidyYodaText();
+                }
+                if (props[6].InnerText?.Trim() == "Condition Studied")
+                {
+                    st.conditions_studied = props[7].InnerText?.TidyYodaText();
+                }
+            }
+
+            bool? datasets_av = null, protocol_av = null;
+            bool? sap_av = null, full_csr_av = null;
+            bool? data_defs_av = null, annotated_crfs_av = null, analysis_dsets_av = null;
+            if (suppDocsPanel is not null)
+            {
+                HtmlNode[] sp_docs = suppDocsPanel.CssSelect("li").ToArray();
+                if (sp_docs.Any())
+                {
+                    foreach (HtmlNode li in sp_docs)
                     {
-                        case "Generic Name": st.compound_generic_name = value; break;
-                        case "Product Name": st.compound_product_name = value; break;
-                        case "Therapeutic Area": st.therapeutic_area = value; break;
-                        case "Enrollment": st.enrolment = value; break;
-                        case "% Female": st.percent_female = value; break;
-                        case "% White": st.percent_white = value; break;
-                        case "Product Class": st.product_class = value; break;
-                        case "Sponsor Protocol Number": st.sponsor_protocol_id = value; break;
-                        case "Data Partner": st.data_partner = value; break;
-                        case "Condition Studied": st.conditions_studied = value; break;
+                        string? li_text = li.InnerText?.TidyYodaText()?.Replace("::before", "");
+                        if (li_text is not null)
+                        {
+                            if (li_text.Contains("Collected Datasets"))
+                            {
+                                datasets_av = true;
+                            }
+                            if (li_text.Contains("Protocol with Amendments"))
+                            {
+                                protocol_av = true;
+                            }
+                            if (li_text.Contains("Statistical Analysis"))
+                            {
+                                sap_av = true;
+                            }
+                            if (li_text.Contains("Clinical Study Report"))
+                            {
+                                full_csr_av = true;
+                            }
+                            if (li_text.Contains("Analysis Datasets"))
+                            {
+                                analysis_dsets_av = true;
+                            }
+                            if (li_text.Contains("Data Definition"))
+                            {
+                                data_defs_av = true;
+                            }
+                            if (li_text.Contains("nnotated"))
+                            {
+                                annotated_crfs_av = true;
+                            }
+                        }
                     }
                 }
             }
 
-            // org = sponsor - from CGT / ISRCTN tables if registered, otherwise from pp table
-            // In one case there is no sponsor id.
-            // First obtain the data from the other sources...
-
-            string? reg_id = st.registry_id;
+            ///////////////////////////////////////////////////////////////////////////////////////
+            // Get study basics and sponsor 
+            ///////////////////////////////////////////////////////////////////////////////////////
+            
+            string? reg_id = st.registry_id;  // i.e. as constructed in the initial summary data phase
             StudyDetails? sd = null;
             string? sponsor_name = "";
             bool isRegistered = sm.sd_sid.StartsWith("Y-");
             if (isRegistered)
             {
+                
+                ///////////////////////////////////////////////////////////////////////////////////////
+                // Use data from other sources if registered already (almost always CTG)
+                ///////////////////////////////////////////////////////////////////////////////////////
+                
                 if (reg_id is not null)
                 {
                     if (reg_id.StartsWith("NCT"))
@@ -196,8 +275,9 @@ namespace MDR_Downloader.yoda
                         study_identifiers.Add(new Identifier(reg_id, 11, "Trial Registry ID", 100126, "ISRCTN"));
                     }
                 }
-                // Insert the data if available
-                // Otherwise add as a new record to be manually completed
+                
+                // Insert the data, for sponsor name and study details respectively, if available -
+                // Otherwise log as an error 
 
                 if (string.IsNullOrEmpty(sponsor_name))
                 {
@@ -221,9 +301,13 @@ namespace MDR_Downloader.yoda
             }
             else
             {
-                // study is in Yoda but not registered elsewhere
-                // Details may be available from Yoda documents and
-                // manually added to local table mn.not_registered
+                ///////////////////////////////////////////////////////////////////////////////////////
+                // Not registered elsewhere - get details and change sd_sid
+                ///////////////////////////////////////////////////////////////////////////////////////
+                
+                // Study is in Yoda but not registered elsewhere. Details may be available from Yoda
+                // documents or elsewhere and manually added to local table mn.not_registered. sd_sid changed
+                // from the page link text to reflect (in most cases) the sponsor's protocol id 
 
                 string protid = "", sponsor_code = "", pp_id;
                 if (!string.IsNullOrEmpty(st.sponsor_protocol_id))
@@ -241,6 +325,7 @@ namespace MDR_Downloader.yoda
                             "Queen Mary University of London" => "QMUL",
                             "McNeil Consumer Healthcare" => "McNeil CH",
                             "Robert Wood Johnson Foundation" => "RWJFound",
+                            "SI-BONE, Inc" => "SIB",
                             _ => st.data_partner
                         };
                     }
@@ -248,21 +333,22 @@ namespace MDR_Downloader.yoda
                 }
                 else
                 {
+                    // As a last resort - only applies to a single study at present 
+                    
                     string input = sm.study_name + sm.enrolment_num + sm.csr_link;
                     byte[] inputBytes = System.Text.Encoding.ASCII.GetBytes(input);
                     byte[] hashBytes = MD5.HashData(inputBytes);
                     pp_id = "Y-" + string.Concat(hashBytes.Select(x => x.ToString("X2"))).ToLower();
                 }
 
-                // does this record already exist in the mn.not_registered table?
-                // if so get details, if not add it and log the fact that the
-                // table will need manually updating
+                // Does this record already exist in the mn.not_registered table? If so get details, if not
+                // add it and log the fact that the table will need manually updating
 
-                NotRegisteredDetails details = _repo.FetchNonRegisteredDetailsFromTable(pp_id);
-                if (details.title is null)
+                NotRegisteredDetails? details = _repo.FetchNonRegisteredDetailsFromTable(pp_id);
+                if (details is null)
                 {
                     _repo.AddNewNotRegisteredRecord(pp_id, st.yoda_title!, sponsor_code, protid);
-                    _logging_helper.LogError("Further details required for " + st.yoda_title + " in mn.not_registered table, from " + st.remote_url);
+                    _logging_helper.LogLine("Further details required for " + st.yoda_title + " in mn.not_registered table, from " + st.remote_url);
                 }
                 else
                 {
@@ -275,236 +361,66 @@ namespace MDR_Downloader.yoda
 
                 st.sd_sid = pp_id;    // replace the link id used initially (link id may not be fixed)
             }
-
-
-            // list of documents
-            HtmlNode? docsBlock = page.CssSelect("#block-views-trial-details-block-1").FirstOrDefault();
-            List<HtmlNode> docs = docsBlock.CssSelect(".views-field").ToList();
-
-            if (docs.Any())
-            {
-                foreach (HtmlNode docType in docs)
-                {
-                    string docName = docType.InnerText.Trim();
-                    if (docName != "")
-                    {
-                        SuppDoc supp_doc = new(docName);
-                        supp_docs.Add(supp_doc);
-                    }
-                }
-            }
-
-
-            //icons at top of page
-            HtmlNode? iconsBlock = page.CssSelect("#block-views-trial-details-block-3").FirstOrDefault();
-            if (iconsBlock is not null)
-            {
-                // csr summary
-                HtmlNode? csrSummary = iconsBlock.CssSelect(".views-field-field-study-synopsis").FirstOrDefault();
-                if (csrSummary is not null)
-                {
-                    HtmlNode? csrLinkNode = csrSummary.CssSelect("b a").FirstOrDefault();
-                    string csrLink = "", csrComment = "";
-
-                    if (csrLinkNode is not null)
-                    {
-                        csrLink = csrLinkNode.Attributes["href"].Value;
-                    }
-
-                    var csrCommentNode = csrSummary.CssSelect("p").FirstOrDefault();
-                    if (csrCommentNode is not null)
-                    {
-                        csrComment = csrCommentNode.InnerText.Trim();
-                    }
-
-                    if (csrLink != "" || csrComment != "")
-                    {
-                        // add a new supp doc record
-                        SuppDoc supp_doc = new("CSR Summary")
-                        {
-                            url = csrLink,
-                            comment = csrComment
-                        };
-                        supp_docs.Add(supp_doc);
-
-                        // is this the same link as in the main table
-                        // ought to be but...
-                        if (supp_doc.url != sm.csr_link)
-                        {
-                            string report = "mismatch in csr summary link - study id " + sid;
-                            report += "\nicon csr link = " + supp_doc.url;
-                            report += "\ntable csr link = " + sm.csr_link + "\n\n";
-                            _logging_helper.LogLine(report);
-                        }
-                    }
-                }
-
-                // primary citation
-                HtmlNode? primCitation = iconsBlock.CssSelect(".views-field-field-primary-citation").FirstOrDefault();
-                if (primCitation is not null)
-                {
-                    var citationLink = primCitation.CssSelect("a").FirstOrDefault();
-                    if (citationLink is not null)
-                    {
-                        st.primary_citation_link = citationLink.Attributes["href"].Value;
-                    }
-                    else
-                    {
-                        var citationCommentNode = primCitation.CssSelect("p").FirstOrDefault();
-                        if (citationCommentNode is not null)
-                        {
-                            st.primary_citation_link = citationCommentNode.InnerText.Trim();
-                        }
-                    }
-                }
-
-                // data specification
-                
-                HtmlNode? dataSpec = iconsBlock.CssSelect(".views-field-field-data-specification-spreads").FirstOrDefault();
-                if (dataSpec is not null)
-                {
-                    var dataLinkNode = dataSpec.CssSelect("b a").FirstOrDefault();
-                    string dataLink = "", dataComment = "";
-                    if (dataLinkNode is not null)
-                    {
-                        dataLink = dataLinkNode.Attributes["href"].Value;
-                    }
-
-                    var dataCommentNode = dataSpec.CssSelect("p").FirstOrDefault();
-                    if (dataCommentNode is not null)
-                    {
-                        dataComment = dataCommentNode.InnerText.Trim();
-                    }
-
-                    if (dataLink != "" || dataComment != "")
-                    {
-                        SuppDoc? matchingSD = FindSuppDoc(supp_docs, "Data Definition Specification");
-                        if (matchingSD is not null)
-                        {
-                            matchingSD.url = dataLink;
-                            matchingSD.comment = dataComment;
-                        }
-                        else
-                        {
-                            // add a new supp doc record
-                            SuppDoc supp_doc = new("Data Definition Specification")
-                            {
-                                url = dataLink,
-                                comment = dataComment
-                            };
-                            supp_docs.Add(supp_doc);
-                        }
-                    }
-                }
-
-                //annotated CRFs
-                HtmlNode? annotCRF = iconsBlock.CssSelect(".views-field-field-annotated-crf").FirstOrDefault();
-                if (annotCRF is not null)
-                {
-                    var crfLinkNode = annotCRF.CssSelect("b a").FirstOrDefault();
-                    string crfLink = "", crfComment = "";
-                    if (crfLinkNode is not null)
-                    {
-                        crfLink = crfLinkNode.Attributes["href"].Value;
-                    }
-
-                    var crfCommentNode = annotCRF.CssSelect("p").FirstOrDefault();
-                    if (crfCommentNode is not null)
-                    {
-                        crfComment = crfCommentNode.InnerText.Trim();
-                    }
-
-                    if (crfLink != "" || crfComment != "")
-                    {
-                        SuppDoc? matchingSD = FindSuppDoc(supp_docs, "Annotated Case Report Form");
-                        if (matchingSD is not null)
-                        {
-                            matchingSD.url = crfLink;
-                            matchingSD.comment = crfComment;
-                        }
-                        else
-                        {
-                            // add a new supp doc record
-                            SuppDoc supp_doc = new("Annotated Case Report Form")
-                            {  
-                                url = crfLink,
-                                comment = crfComment
-                            };
-                            supp_docs.Add(supp_doc);
-                        }
-                    }
-                }
-            }
-
-
-            // Review supp_docs.
-
-            List<SuppDoc> supp_docs_available = new();
-            foreach (SuppDoc supp_doc in supp_docs)
-            {
-                bool add_this_doc;
-                if (!string.IsNullOrEmpty(supp_doc.comment) && 
-                    (supp_doc.comment.ToLower() == "not available" || supp_doc.comment.ToLower() == "not yet available"
-                                                                   || supp_doc.comment.ToLower() == "not yet avaiable"))
-                {
-                    // Exclude docs explicitly described as not available.
-
-                     add_this_doc = false;
-                }
-                else
-                {
-                    // If a URL link present...indicate that in the comment, otherwise
-                    // add the presumed default condition in the comment
-
-                    supp_doc.comment = !string.IsNullOrEmpty(supp_doc.url) 
-                                             ? "Available now" 
-                                             : "Available upon approval of data request";
-                    add_this_doc = true;
-                }
-
-                if (add_this_doc) supp_docs_available.Add(supp_doc);
-            }
+            
+            ///////////////////////////////////////////////////////////////////////////////////////
+            // Add final study identifier
+            ///////////////////////////////////////////////////////////////////////////////////////
            
-
-            if (st.sponsor_protocol_id != "")
+            // Studies that are registered elsewhere already have the relevant identifiers entered
+            // as trial registry Ids. The Yoda internal identifier (sd_sid) is manufactured by the 
+            // MDR and is not a 'true' identifier, so is not added. The sponsor's identifier, if one 
+            // is present, should be added however.
+            
+            if (!string.IsNullOrEmpty(st.sponsor_protocol_id))
             {
                 study_identifiers.Add(new Identifier(st.sponsor_protocol_id, 14, "Sponsor ID", st.sponsor_id, st.sponsor));
             }
 
-            // for the study, add the yoda title (seems to be the full scientific title)
+            
+            ///////////////////////////////////////////////////////////////////////////////////////
+            // Study title - Add Yoda title as a scientific title
+            ///////////////////////////////////////////////////////////////////////////////////////
 
-            study_titles.Add(new Title(st.yoda_title!, 18, "Other scientific title", true, "From YODA web page"));
+            if (!string.IsNullOrEmpty(st.yoda_title))
+            {
+                study_titles.Add(new Title(st.yoda_title!, 18, "Other scientific title", true, "From YODA web page"));
+            }
 
-            // create study references (pmids)
+
+            ///////////////////////////////////////////////////////////////////////////////////////
+            // Study reference - almost always a PMID
+            ///////////////////////////////////////////////////////////////////////////////////////
+            
             if (st.primary_citation_link is not null && st.primary_citation_link.Contains("http"))
             {   
-                // try to extract pmid
-                if (st.primary_citation_link.Contains("pubmed"))
+                if (st.primary_citation_link.Contains("pubmed"))  // try to extract pmid
                 {
-                    // drop this common suffix if it is present
+                    // first drop this common suffix if it is present
+                    
                     string link = st.primary_citation_link.Replace("?dopt=Abstract", "");
-                    string pos_pmid = "";
-                        
+                    
+                    // Then try to find the pubmed id in the string, using two common url patterns
+                    
+                    string poss_pmid = "";
                     int pubmed_pos = link.IndexOf("pubmed/", StringComparison.Ordinal);
                     if (pubmed_pos != -1)
                     {
-                        pos_pmid = link[(pubmed_pos + 7)..];
+                        poss_pmid = link[(pubmed_pos + 7)..];
                     }
-
-                    if (pos_pmid == "")
+                    if (poss_pmid == "")
                     {
                         pubmed_pos = link.IndexOf("pubmed.ncbi.nlm.nih.gov/", StringComparison.Ordinal);
                         if (pubmed_pos != -1)
                         {
-                            pos_pmid = link[(pubmed_pos + 24)..];
+                            poss_pmid = link[(pubmed_pos + 24)..];
                         }
                     }
-
-                    if (pos_pmid != "")
+                    
+                    if (poss_pmid != "")    // a pmid id found, check it is an integer
                     {
-                        if (int.TryParse(pos_pmid, out _))
+                        if (int.TryParse(poss_pmid, out _))
                         {
-                            study_references.Add(new Reference(pos_pmid, link));
+                            study_references.Add(new Reference(poss_pmid, link));
                         }
                     }
                     else
@@ -512,6 +428,7 @@ namespace MDR_Downloader.yoda
                         // primary citation link includes pubmed but no number
                         // This usually seems to be just a link to the pubmed site (!)
                         // if so the citation itself should be blank.
+                        
                         if (link == "https://pubmed.ncbi.nlm.nih.gov/" || link.EndsWith("pubmed/"))
                         {
                             st.primary_citation_link = null;
@@ -522,6 +439,7 @@ namespace MDR_Downloader.yoda
                 else if (st.primary_citation_link.Contains("/pmc/articles/"))
                 {
                     // need to interrogate NLM API 
+                    
                     int pmc_pos = st.primary_citation_link.IndexOf("/pmc/articles/", StringComparison.Ordinal);
                     string pmc_id = st.primary_citation_link[(pmc_pos + 14)..];
                     pmc_id = pmc_id.Replace("/", "");
@@ -531,40 +449,59 @@ namespace MDR_Downloader.yoda
                         study_references.Add(new Reference(pubmed_id, st.primary_citation_link));
                     }
                 }
+                
+                // previous attempts to link to page in citation url for cases not caught above
+                // now abandoned as they never work  - servers return a 403 code ('forbidden').
+            }
+            
+            
+            ///////////////////////////////////////////////////////////////////////////////////////
+            // Identify and add supplementary docs
+            ///////////////////////////////////////////////////////////////////////////////////////
 
-                else
-                {
-                    // else try and retrieve from linking out to the pubmed page
-                    string pubmed_id = await GetPMIDFromPageAsync(st.primary_citation_link);
-                    if (!string.IsNullOrEmpty(pubmed_id))
-                    {
-                        study_references.Add(new Reference(pubmed_id, st.primary_citation_link));
-                    }
-                }
+            if (!string.IsNullOrEmpty(sm.csr_link))
+            {
+                supp_docs.Add(new SuppDoc(79, "Results or CSR summary", sm.csr_link));
+            }
+            if (!string.IsNullOrEmpty(data_spec_url))
+            {
+                supp_docs.Add(new SuppDoc(31, "Data dictionary", data_spec_url));
+            }
+            if (data_defs_av == true && string.IsNullOrEmpty(data_spec_url))
+            {
+                supp_docs.Add(new SuppDoc(31, "Data dictionary"));
+            }
+            if (datasets_av == true)
+            {
+                supp_docs.Add(new SuppDoc(80, "Individual participant data"));
+            }
+            if (protocol_av == true)
+            {
+                supp_docs.Add(new SuppDoc(11, "Study protocol"));
+            }
+            if (sap_av == true)
+            {
+                supp_docs.Add(new SuppDoc(22, "Statistical analysis plan"));
+            }
+            if (full_csr_av == true)
+            {
+                supp_docs.Add(new SuppDoc(26, "Clinical study report"));
+            }
+            if (annotated_crfs_av == true)
+            {
+                supp_docs.Add(new SuppDoc(30, "Annotated data collection forms"));
+            }
+            if (analysis_dsets_av == true)
+            {
+                supp_docs.Add(new SuppDoc(69, "Aggregated result dataset"));
             }
 
-            // for all studies there is a data object which is the YODA page itself, 
-            // as a web based study overview...
-            st.supp_docs = supp_docs_available;
+            st.supp_docs = supp_docs;
             st.study_identifiers = study_identifiers;
             st.study_titles = study_titles;
             st.study_references = study_references;
+            
             return st;
-        }
-
-
-        private SuppDoc? FindSuppDoc(List<SuppDoc> supp_docs, string name)
-        {
-            SuppDoc? sd = null;
-            foreach (SuppDoc s in supp_docs)
-            {
-                if (s.doc_name == name)
-                {
-                    sd = s;
-                    break;
-                }
-            }
-            return sd;
         }
 
 
@@ -597,7 +534,6 @@ namespace MDR_Downloader.yoda
             }
             return pmid;
         }
-
-
     }
+
 }

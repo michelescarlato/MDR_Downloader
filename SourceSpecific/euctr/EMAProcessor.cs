@@ -76,6 +76,7 @@ public class EMAProcessor
                              + mn.trial_id[..14] + @"/" + mn.trial_id[^2..];
         }
         ed.date_registration = mn.date_registration;
+        ed.date_last_revised = date_revised;
         
         // ed.start_date = mn.date_enrolment;  // don't overwrite the value from the 'whole study' box
         

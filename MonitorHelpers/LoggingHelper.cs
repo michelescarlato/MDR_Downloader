@@ -5,10 +5,10 @@ namespace MDR_Downloader;
 public class LoggingHelper : ILoggingHelper
 {
     private readonly string  _logfileStartOfPath;
+    private readonly string _testFilePath;    
     private readonly string _summaryLogfileStartOfPath;
     private string _logfilePath = "";
-    private string _summaryLogfilePath = "";
-    private string _testFilePath;
+    //private string _summaryLogfilePath = "";
     private string summary_string = "";
     private StreamWriter? _sw;
 
@@ -55,7 +55,7 @@ public class LoggingHelper : ILoggingHelper
 
         }
         _logfilePath = Path.Combine(log_folder_path, log_file_name);            
-        _summaryLogfilePath = Path.Combine(_summaryLogfileStartOfPath, log_file_name);
+        //_summaryLogfilePath = Path.Combine(_summaryLogfileStartOfPath, log_file_name);
         _sw = new StreamWriter(_logfilePath, true, System.Text.Encoding.UTF8);
     }
 
@@ -66,7 +66,7 @@ public class LoggingHelper : ILoggingHelper
         
         string log_file_name = "DL Source not set " + dt_string + ".log";
         _logfilePath = Path.Combine(_logfileStartOfPath, log_file_name);
-        _summaryLogfilePath = Path.Combine(_summaryLogfileStartOfPath, log_file_name);
+        //_summaryLogfilePath = Path.Combine(_summaryLogfileStartOfPath, log_file_name);
         _sw = new StreamWriter(_logfilePath, true, System.Text.Encoding.UTF8);
     }
 
@@ -222,11 +222,12 @@ public class LoggingHelper : ILoggingHelper
         }
         
         // Write out the summary file.
-    
+        /*
         var sw_summary = new StreamWriter(_summaryLogfilePath, true, System.Text.Encoding.UTF8);
         sw_summary.WriteLine(summary_string);
         sw_summary.Flush();
         sw_summary.Close();
+        */
     }
 
     private void Transmit(string message)

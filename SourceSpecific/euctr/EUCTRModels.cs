@@ -9,6 +9,7 @@ public class Euctr_Record
     public string? sponsor_name { get; set; }
     
     public string? date_registration { get; set; }
+    public DateTime? date_last_revised{ get; set; }
     public string? start_date { get; set; }
     public string? member_state { get; set; }
     public string? primary_objectives{ get; set; }

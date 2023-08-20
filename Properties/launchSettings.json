@@ -2,7 +2,7 @@
   "profiles": {
     "MDR_Downloader": {
       "commandName": "Project",
-      "commandLineArgs": "-s 100115 -t 113 -f \"F:\\MDR_Sources\\WHO\\202307 full download\\FullExport 2022307 009.csv\" "
+      "commandLineArgs": "-s 100115 -t 113 -f \"F:\\MDR_Sources\\WHO\\202307 full download\\FullExport 2022307 018.csv\" "
     } 
   }
 }

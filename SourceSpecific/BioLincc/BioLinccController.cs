@@ -147,41 +147,39 @@ public class BioLinccController : IDLController
                                     _biolinccRepo.InsertUnmatchedDocumentType(s);
                                 }
                             }
-                            else
-                            {
-                                // Write out study record as json.
-                               
-                                string file_name = st.sd_sid + ".json";
-                                string full_path = Path.Combine(folder_path, file_name);
-                                string assoc_docs_num = (st.assoc_docs is null) ? "0" : st.assoc_docs.Count.ToString();
-                                try
-                                {
-                                    await using FileStream jsonStream = File.Create(full_path);
-                                    await JsonSerializer.SerializeAsync(jsonStream, st, _jsonOptions);
-                                    await jsonStream.DisposeAsync();
-                                    _loggingHelper.LogLine($"{res.num_checked}: {bb.sd_sid} downloaded, with {assoc_docs_num} linked publications");
-                                    
-                                    if (_monDataLayer.IsTestStudy(st.sd_sid))
-                                    {
-                                        // write out copy of the file in the test folder
-                                        string test_path = _loggingHelper.TestFilePath;
-                                        string full_test_path = Path.Combine(test_path, file_name);
-                                        await using FileStream jsonStream2 = File.Create(full_test_path);
-                                        await JsonSerializer.SerializeAsync(jsonStream2, st, _jsonOptions);
-                                        await jsonStream2.DisposeAsync();
-                                    }
-                                }
-                                catch (Exception e)
-                                {
-                                    _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
-                                }
 
-                                bool added = _monDataLayer.UpdateStudyLog(st.sd_sid, st.remote_url, opts.dl_id,
-                                                                  st.datasets_updated_date, full_path);
-                                res.num_downloaded++;
-                                if (added) res.num_added++;
-                                Thread.Sleep(1000);  // Put a pause here 
+                            // Write out study record as json.
+                           
+                            string file_name = st.sd_sid + ".json";
+                            string full_path = Path.Combine(folder_path, file_name);
+                            string assoc_docs_num = (st.assoc_docs is null) ? "0" : st.assoc_docs.Count.ToString();
+                            try
+                            {
+                                await using FileStream jsonStream = File.Create(full_path);
+                                await JsonSerializer.SerializeAsync(jsonStream, st, _jsonOptions);
+                                await jsonStream.DisposeAsync();
+                                _loggingHelper.LogLine($"{res.num_checked}: {bb.sd_sid} downloaded, with {assoc_docs_num} linked publications");
+                                
+                                if (_monDataLayer.IsTestStudy(st.sd_sid))
+                                {
+                                    // write out copy of the file in the test folder
+                                    string test_path = _loggingHelper.TestFilePath;
+                                    string full_test_path = Path.Combine(test_path, file_name);
+                                    await using FileStream jsonStream2 = File.Create(full_test_path);
+                                    await JsonSerializer.SerializeAsync(jsonStream2, st, _jsonOptions);
+                                    await jsonStream2.DisposeAsync();
+                                }
                             }
+                            catch (Exception e)
+                            {
+                                _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
+                            }
+
+                            bool added = _monDataLayer.UpdateStudyLog(st.sd_sid, st.remote_url, opts.dl_id,
+                                                              st.datasets_updated_date, full_path);
+                            res.num_downloaded++;
+                            if (added) res.num_added++;
+                            Thread.Sleep(1000);  // Put a pause here 
                         }
                     }
                 }

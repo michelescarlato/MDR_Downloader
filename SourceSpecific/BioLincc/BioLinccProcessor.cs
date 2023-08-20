@@ -128,7 +128,6 @@ public class BioLINCC_Processor
                 ProcessConsents(st, entries);
             }
         }
-
         
         if (publications_link != "")
         {
@@ -148,7 +147,6 @@ public class BioLINCC_Processor
                 }
             }
         }
-
         
         // get sponsor details from linked NCT record
         // (or first one listed if multiple).
@@ -621,17 +619,16 @@ public class BioLINCC_Processor
                                     }
                                     else
                                     {
+                                        object_type = "UNKNOWN - to be mapped to a listed document type";
                                         _logging_helper.LogLine("!!!! Need to map " + doc_name + " in mn.document_types table !!!!");
                                         st.UnmatchedDocTypes.Add(doc_name);
                                     }
                                 }
                             }
-
-                            if (object_type_id != 0)
-                            {
-                                study_resources.Add(new Resource(doc_name, object_type_id, object_type, doc_type_id,
+                            
+                            study_resources.Add(new Resource(doc_name, object_type_id, object_type, doc_type_id,
                                                                  doc_type, access_type_id, url, size, sizeUnits));
-                            }
+
                         }
                     }
                 }
