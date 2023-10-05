@@ -8,15 +8,15 @@ using System.Web;
 
 namespace MDR_Downloader.euctr;
 
-public class EUCTR_Processor
+public class oldEUCTR_Processor
 {
     private readonly ILoggingHelper _loggingHelper;
-    
-    public EUCTR_Processor(ILoggingHelper loggingHelper)
+
+    public oldEUCTR_Processor(ILoggingHelper loggingHelper)
     {
         _loggingHelper = loggingHelper;
     }
-    
+
     public int GetListLength(WebPage homePage)
     {
         // gets the numbers of records found for the current search.
@@ -28,7 +28,7 @@ public class EUCTR_Processor
             _loggingHelper.LogError("Unable to obtain number of records on home page");
             return 0;
         }
-        
+
         int left_bracket_pos = results.IndexOf("(", StringComparison.Ordinal);
         int right_bracket_pos = results.IndexOf(")", StringComparison.Ordinal);
 
@@ -58,7 +58,7 @@ public class EUCTR_Processor
         foreach (HtmlNode box in studyBoxes)
         {
             // Ids and start date - three td elements in a fixed order in first row.
-            
+
             HtmlNode? studyDetails = box.Elements("tr").FirstOrDefault();
             if (studyDetails is not null)
             {
@@ -73,7 +73,7 @@ public class EUCTR_Processor
         return summaries;
     }
 
-    
+
     public Euctr_Record ExtractProtocolDetails(Euctr_Record st, WebPage detailsPage)
     {
         var summary = detailsPage.Find("table", By.Class("summary")).FirstOrDefault();
@@ -98,16 +98,16 @@ public class EUCTR_Processor
                 }
             }
         }
-        
+
         // Assume all studies are interventional - they always have been!
-        
+
         st.study_type = "Interventional";
-        
+
         // Construct search url - provided in EMA file but not in web page
         st.search_url = @"https://www.clinicaltrialsregister.eu/ctr-search/search?query=eudract_number:/" + st.sd_sid;
-        
+
         // Use each section of the page to obtain the relevant data points
-        
+
         HtmlNode? identifiers = detailsPage.Find("table", By.Id("section-a")).FirstOrDefault();
         IEnumerable<HtmlNode>? identifier_rows = identifiers?.CssSelect("tbody tr");
         if (identifier_rows is not null)
@@ -140,18 +140,18 @@ public class EUCTR_Processor
         IEnumerable<HtmlNode>? population_rows = population?.CssSelect("tbody tr");
         if (population_rows is not null)
         {
-           GetStudyPopulation(st, population_rows);
+            GetStudyPopulation(st, population_rows);
         }
 
         return st;
     }
 
-    
+
     private void GetStudyIdentifiers(Euctr_Record st, IEnumerable<HtmlNode> identifier_rows)
     {
         // add in initial identifiers representing EUDRACT number and sponsor id
 
-        List<Identifier> ids = new() 
+        List<Identifier> ids = new()
             { new Identifier(11, "Trial Registry ID", st.sd_sid, 100123, "EU Clinical Trials Register") };
         if (!string.IsNullOrEmpty(st.sponsors_id))
         {
@@ -160,9 +160,9 @@ public class EUCTR_Processor
                 : "No organisation name provided in source data";
             ids.Add(new Identifier(14, "Sponsor ID", st.sponsors_id, null, sp_name));
         }
-        
+
         // get others from web page
-        
+
         foreach (HtmlNode row in identifier_rows)
         {
             var row_class = row.Attributes["class"];
@@ -213,7 +213,7 @@ public class EUCTR_Processor
             else if (code.Contains("A.3"))  // titles
             {
                 // N.B. If more than one found only the first (usually English) one is used.
-                
+
                 if (code == "A.3" && string.IsNullOrEmpty(st.scientific_title))
                 {
                     st.scientific_title = value;
@@ -233,13 +233,13 @@ public class EUCTR_Processor
                 {
                     ids.Add(new Identifier(11, "Trial Registry ID", value, 100126, "ISRCTN"));
                 }
-                else  if (code == "A.5.2")  // NCT
+                else if (code == "A.5.2")  // NCT
                 {
                     ids.Add(new Identifier(11, "Trial Registry ID", value, 100120, "ClinicalTrials.gov"));
                 }
-                else  if (code == "A.5.3")  // WHO universal number
+                else if (code == "A.5.3")  // WHO universal number
                 {
-                    ids.Add(new Identifier(11, "Trial Registry ID", value, 100115, 
+                    ids.Add(new Identifier(11, "Trial Registry ID", value, 100115,
                         "International Clinical Trials Registry Platform"));
                 }
             }
@@ -248,7 +248,7 @@ public class EUCTR_Processor
         st.identifiers = ids;
     }
 
-    
+
     private void GetStudySponsors(Euctr_Record st, IEnumerable<HtmlNode> sponsor_rows)
     {
         List<EMAOrganisation> organisations = new();
@@ -273,7 +273,7 @@ public class EUCTR_Processor
                                 if (inner_cell is not null)
                                 {
                                     string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
-                                    if (!string.IsNullOrEmpty(value)) 
+                                    if (!string.IsNullOrEmpty(value))
                                     {
                                         ProcessSponsor(code, value);
                                     }
@@ -284,7 +284,7 @@ public class EUCTR_Processor
                     else
                     {
                         string value = HttpUtility.HtmlDecode(cells[2].InnerText).Trim();
-                        if (!string.IsNullOrEmpty(value)) 
+                        if (!string.IsNullOrEmpty(value))
                         {
                             ProcessSponsor(code, value);
                         }
@@ -335,7 +335,7 @@ public class EUCTR_Processor
                         // for tricell the three cells are code, item name, item value
 
                         string code = cells[0].InnerText;
-                        
+
                         // Get various names.
 
                         if (code is "D.2.1.1.1" or "D.3.1" or "D.3.8" or "D.3.9.1")
@@ -363,7 +363,7 @@ public class EUCTR_Processor
                             else
                             {
                                 string value = HttpUtility.HtmlDecode(cells[2].InnerText).Trim();
-                                if (current_imp is not null &&  !string.IsNullOrEmpty(value))
+                                if (current_imp is not null && !string.IsNullOrEmpty(value))
                                 {
                                     ProcessImpDetails(code, value);
                                 }
@@ -379,7 +379,7 @@ public class EUCTR_Processor
             current_imp = new EMAImp(imp_number);
             imps.Add(current_imp);
         }
-        
+
         void ProcessImpDetails(string code, string value)
         {
             if (current_imp is not null && code == "D.2.1.1.1")  // Trade name
@@ -407,7 +407,7 @@ public class EUCTR_Processor
     {
         List<EMACondition> conditions = new();
         List<EMAFeature> features = new();
-        
+
         foreach (HtmlNode row in details_rows)
         {
             var row_class = row.Attributes["class"];
@@ -482,7 +482,7 @@ public class EUCTR_Processor
             {
                 // necessary to do this more specific case 
                 // before the more general 'contains' below
-                
+
                 bool add_country = true;
                 if (st.countries is not null)
                 {
@@ -533,13 +533,13 @@ public class EUCTR_Processor
                     }
                 }
             }
-            
+
             st.conditions = conditions;
             st.features = features;
         }
     }
-    
- 
+
+
     private void GetStudyPopulation(Euctr_Record st, IEnumerable<HtmlNode> population_rows)
     {
         Dictionary<string, bool> pop_groups = new()
@@ -614,7 +614,7 @@ public class EUCTR_Processor
                 }
             }
         }
-        
+
         // get gender eligibility information
 
         if (pop_groups["includes_men"] && pop_groups["includes_women"])
@@ -633,7 +633,7 @@ public class EUCTR_Processor
         {
             st.gender = "Not provided";
         }
-        
+
         if (!pop_groups["includes_under18"])
         {
             // No children or adolescents included. If 'elderly' are included no age maximum is presumed.
@@ -711,9 +711,9 @@ public class EUCTR_Processor
                 }
             }
         }
-        
+
         // local function used to indicate which population flags are true.
-        
+
         void UpdatePopDictionary(string code)
         {
             string group_type = code switch

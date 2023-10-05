@@ -53,7 +53,7 @@ public class NLMRecord
     [XmlArrayItem("MeshHeading", IsNullable = false)]
     public MeshHeadingEntry[] MeshHeadingList { get; set; }
     public Classification Classification { get; set; }
-   
+
     [XmlArrayItem("ELocation", IsNullable = false)]
     public ELocation[] ELocationList { get; set; }
     public LCCN LCCN { get; set; }
@@ -532,7 +532,7 @@ public class ISSN
     public string IssnType { get; set; }
 
     [XmlText()]
-    public string Value { get; set; } 
+    public string Value { get; set; }
 }
 
 
@@ -555,11 +555,11 @@ public class ISSNLinking
 public class RecordOtherID
 {
     [XmlAttribute()]
-    public string prefix { get ; set; } 
+    public string prefix { get; set; }
 
     [XmlAttribute()]
     public string source { get; set; }
-   
+
     [XmlText()]
     public string value { get; set; }
 }

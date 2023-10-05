@@ -67,106 +67,13 @@ public class WHOHelpers
                     string s1 = s.Trim(chars_to_lose);
                     if (s1 != "" && s1.Length >= 3)
                     {
-
                         new_conds.Add(s1);
 
-                        // does it have an ICD code or similar at the front?
-                        // if so extract and put code in code field
-                        // Could be the whole thing is just a code...
-
-                        // BUT some things that start like ICD10 could be (much longer) MESH Tree codes
-                        // and some might be 'ordinary' D mesh codes
-                        // and some, like A00B99, appear to be ICD codes
-
-                        // So - PERHAPS - in the download don't try to split the strings - just take each 
-                        // condition as a string and return an array of strings...
-
-
-
-                        /*
-
-                        // Move all below to harvesting code
-
-                        string code = "", code_system = "";
-
-                        if (s1.Contains("generalization"))
-                        {
-                            // This all needs reviewing!
-  
-                            string code_string = "";
-                            if (Regex.Match(s1, @"^[A-Z]\d{2}.\d{2} - \[generalization [A-Z]\d{2}.\d:").Success)
-                            {
-                                code_string = Regex.Match(s1, @"^[A-Z]\d{2}.\d{2} - \[generalization [A-Z]\d{2}.\d:").Value.Trim();
-                                code = Regex.Match(code_string, @"[A-Z]\d{2}.\d:$").Value.Trim(':');
-                            }
-
-                            else if (Regex.Match(s1, @"^[A-Z]\d{2}.\d{2} - \[generalization [A-Z]\d{2}:").Success)
-                            {
-                                code_string = Regex.Match(s1, @"^[A-Z]\d{2}.\d{2} - \[generalization [A-Z]\d{2}:").Value.Trim();
-                                code = Regex.Match(code_string, @"[A-Z]\d{2}:$").Value.Trim(':');
-                            }
-
-                            else if (Regex.Match(s1, @"^[A-Z]\d{2}.\d - \[generalization [A-Z]\d{2}").Success)
-                            {
-                                code_string = Regex.Match(s1, @"^[A-Z]\d{2}.\d - \[generalization [A-Z]\d{2}:").Value.Trim();
-                                code = Regex.Match(code_string, @"[A-Z]\d{2}:$").Value.Trim(':');
-                            }
-
-                            code_system = "ICD 10";
-                            s1 = s1.Substring(code_string.Length).Trim(']').Trim();
-                        }
-
-                        else if (Regex.Match(s1, @"^[A-Z]\d{2}(.\d)?\s?").Success)
-                        {
-                            code = Regex.Match(s1, @"^[A-Z]\d{2}(.\d)?\s?").Value.Trim();
-                            code_system = "ICD 10";
-                            s1 = s1.Substring(code.Length).Trim();
-                        }
-
-                        else if (Regex.Match(s1, @"^[A-Z]\d{2}-[A-Z]\d{2}\s?").Success)
-                        {
-                            code = Regex.Match(s1, @"^[A-Z]\d{2}-[A-Z]\d{2}\s?").Value.Trim();
-                            code_system = "ICD 10";
-                            s1 = s1.Substring(code.Length).Trim();
-                        }
-
-                        else if (Regex.Match(s1, @"^[A-Z]\d{2} - [A-Z]\d{2}\s?").Success)
-                        {
-                            code = Regex.Match(s1, @"^[A-Z]\d{2} - [A-Z]\d{2}\s?").Value.Trim();
-                            code_system = "ICD 10";
-                            s1 = s1.Substring(code.Length).Trim();
-                        }
-
-                        else if (Regex.Match(s1, @"^[A-Z]\d{3}\s?").Success)
-                        {
-                            code = Regex.Match(s1, @"^[A-Z]\d{3}\s?").Value.Trim();
-                            code_system = "ICD 10";
-                            s1 = s1.Substring(code.Length).Trim();
-                        }
-
-                        char[] chars_to_lose2 = { ' ', '-', ',' };
-                        s1 = s1.Trim(chars_to_lose2);
-
-                        // check not duplicated.
-
-                        bool add_condition = true;
-                        if (conditions.Count > 0)
-                        {
-                            foreach (WhoCondition sc in conditions)
-                            {
-                                if (s1.ToLower() == sc.condition?.ToLower())
-                                {
-                                    add_condition = false;
-                                    break;
-                                }
-                            }
-                        }
-                        if (add_condition)
-                        {
-                            conditions.Add(code == "" ? new WhoCondition(s1) 
-                                                      : new WhoCondition(s1, code, code_system));
-                        }
-                        */
+                        // Processing code for condition data now all moved to Harvester
+                        // module, as it is easier to correct and extend there (changes
+                        // do not require global WHO re-download!).
+                        // Conditions exported from here a a simple string array.
+                       
                     }
                 }
             }

@@ -277,25 +277,4 @@ public class WhoStudyFeature
     { }
 }
 
-public class WhoCondition
-{
-    public string? condition { get; set; }
-    public string? code { get; set; }
-    public string? code_system { get; set; }
 
-    public WhoCondition(string? _condition)
-    { 
-        condition = _condition;
-    }
-
-    public WhoCondition(string? _condition,
-                           string? _code, string? _code_system)
-    {
-        condition = _condition;
-        code = _code;
-        code_system = _code_system;
-    }
-
-    public WhoCondition()
-    { }
-}

@@ -20,10 +20,10 @@ namespace MDR_Downloader.pubmed;
 public class PubMed_Controller : IDLController
 {
     private readonly IMonDataLayer _monDataLayer;
-    private readonly ILoggingHelper _loggingHelper;   
+    private readonly ILoggingHelper _loggingHelper;
     private readonly PubMedDataLayer _pubmedRepo;
-    
-    private readonly JsonSerializerOptions? _jsonOptions;    
+
+    private readonly JsonSerializerOptions? _jsonOptions;
     private readonly string postBaseURL;
     private readonly string searchBaseURL;
     private readonly string fetchBaseURL;
@@ -45,21 +45,21 @@ public class PubMed_Controller : IDLController
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             WriteIndented = true
         };
-        
+
         ch = new(_loggingHelper);
         helper = new();
-        
+
         string apiKey = "&api_key=" + _monDataLayer.PubmedAPIKey;
         string entrez_base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/";
-        postBaseURL = entrez_base +"epost.fcgi?db=pubmed" + apiKey;
-        searchBaseURL = entrez_base +"esearch.fcgi?db=pubmed" + apiKey;
-        fetchBaseURL = entrez_base +"efetch.fcgi?db=pubmed" + apiKey;
-        postNlmBaseURL = entrez_base +"epost.fcgi?db=nlmcatalog" + apiKey;
-        searchNlmBaseURL = entrez_base +"esearch.fcgi?db=nlmcatalog" + apiKey;
-        fetchNlmBaseURL = entrez_base +"efetch.fcgi?db=nlmcatalog" + apiKey;
+        postBaseURL = entrez_base + "epost.fcgi?db=pubmed" + apiKey;
+        searchBaseURL = entrez_base + "esearch.fcgi?db=pubmed" + apiKey;
+        fetchBaseURL = entrez_base + "efetch.fcgi?db=pubmed" + apiKey;
+        postNlmBaseURL = entrez_base + "epost.fcgi?db=nlmcatalog" + apiKey;
+        searchNlmBaseURL = entrez_base + "esearch.fcgi?db=nlmcatalog" + apiKey;
+        fetchNlmBaseURL = entrez_base + "efetch.fcgi?db=nlmcatalog" + apiKey;
     }
 
-    
+
     public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
     {
         DownloadResult res = new();
@@ -73,7 +73,7 @@ public class PubMed_Controller : IDLController
 
         // If opts.FetchTypeId == 114 date_string is constructed, giving
         // min and max dates. If opts.FetchTypeId == 121 date_string remains as "".
-        
+
         if (opts.FetchTypeId == 302)
         {
             res = await GetPublisherDataAsync(opts, source);
@@ -110,18 +110,18 @@ public class PubMed_Controller : IDLController
         return res;
     }
 
-    
+
     //********************************************************************************************************
     //               USING DATABASE REFERENCES DATA TO OBTAIN PUBMED RECORDS              (-q 10004)
     //********************************************************************************************************
-    
+
     // The study_reference records are collected - one database at a time - and transferred to a single table.
     // The pmids are aggregated into strings of 100, which are presented to the PubMed server to see if any have 
     // been revised or added since the supplied cut-off date (if no date, all records are downloaded).
     // Revised or new records are downloaded. This is dl_type 114 (with cutoff date) or dl_type 121 (with no
     // cutoff date) - both also requiring filter type 10004.
-    
-    public async Task<DownloadResult> ProcessPMIDsListFromDBSourcesAsync(Options opts, Source source, 
+
+    public async Task<DownloadResult> ProcessPMIDsListFromDBSourcesAsync(Options opts, Source source,
         string date_string)
     {
         DownloadResult res = new();
@@ -143,18 +143,18 @@ public class PubMed_Controller : IDLController
 
             _pubmedRepo.CreateDBRef_IDStrings();
             IEnumerable<string> id_strings = _pubmedRepo.FetchSourcePMIDStrings();
-            
+
             // Take each string and post it to the Entry history server, getting back the web environment
             // and query key parameters that can then be used to reference those ids on the server.
-            
+
             int string_num = 0;
             foreach (string id_string in id_strings)
             {
                 string_num++;
                 string postUrl = postBaseURL + "&id=" + id_string;
                 Thread.Sleep(300);
-                string? post_responseBody = await ch.GetAPIResponseWithRetriesAsync(postUrl, 1000, 
-                                             id_string.Length > 30 ?id_string[..30] : id_string);
+                string? post_responseBody = await ch.GetAPIResponseWithRetriesAsync(postUrl, 1000,
+                                             id_string.Length > 30 ? id_string[..30] : id_string);
                 if (post_responseBody is null)
                 {
                     _loggingHelper.LogError($"Null post result received, with {postUrl}");
@@ -167,7 +167,7 @@ public class PubMed_Controller : IDLController
                         {
                             // The 100 PMIDs have been successfully uploaded to the Entrez system.
                             // Get parameters required to reference them.
-                            
+
                             int query_key = post_result.QueryKey;
                             string? web_env = post_result.WebEnv;
                             if (web_env is not null)
@@ -176,7 +176,7 @@ public class PubMed_Controller : IDLController
                                 if (date_string == "")
                                 {
                                     // (t = 121) No need to search - fetch all 100 pubmed records immediately.
-                                    
+
                                     fetchUrl = fetchBaseURL + "&WebEnv=" + web_env + "&query_key=" + query_key;
                                     fetchUrl += "&retmax=100&retmode=xml";
                                     Thread.Sleep(300);
@@ -191,8 +191,8 @@ public class PubMed_Controller : IDLController
                                                        date_string;
                                     searchUrl += "&WebEnv=" + web_env + "&usehistory=y";
                                     Thread.Sleep(300);
-                                    string? search_responseBody = await ch.GetAPIResponseWithRetriesAsync(searchUrl, 
-                                        1000, id_string.Length > 30 ?id_string[..30] : id_string);
+                                    string? search_responseBody = await ch.GetAPIResponseWithRetriesAsync(searchUrl,
+                                        1000, id_string.Length > 30 ? id_string[..30] : id_string);
                                     eSearchResult? search_result = Deserialize<eSearchResult?>(search_responseBody,
                                                                    _loggingHelper);
 
@@ -222,7 +222,7 @@ public class PubMed_Controller : IDLController
 
                 if (string_num % 10 == 0) _loggingHelper.LogLine($"{string_num} lines of (up to 100) Ids processed");
             }
-            return res;       
+            return res;
         }
 
         catch (HttpRequestException e)
@@ -232,24 +232,24 @@ public class PubMed_Controller : IDLController
         }
     }
 
-    
+
     //********************************************************************************************************
     //        USING PUBMED DATA TO IDENTIFY RECORDS THAT REFERENCE TRIAL REGISTRIES              (-q 10003)
     //********************************************************************************************************
-    
+
     // 'Databank' pmid records are identified by an API call, one for each bank (trial registry), and usually
     // include only those that have been modified or added since the last similar download (t= 114). 
     // The records found for each bank are stored in a table in the DB These are compared with those 
     // already imported from the db references tables. Only those not pmids not already in the system, i.e. 
     // not in those tables, are downloaded from pubmed (about 20% of the total found). The same fetch mechanism
     // (downloading a 100 at a time after posting 100 pmids on the server) is followed as for the q=10004 method above.
-    
+
     // It is therefore IMPORTANT that this method runs soon after the method above, that uses -q = 100004.
     // It may be that in the future the two methods will be combined.
 
     // A variant allows all pmids with bank records to bne downloaded, irrespective of date, but otherwise 
     // the process is the same (t = 121). 
-    
+
     // There is a small chance that a study-pubmed link that is not listed in the db references,
     // but is listed in the pubmed bank linkage data, will be missed using this approach, if the pubmed data
     // includes some but not of the relevant links. This small risk of loss of data is seen as worth it
@@ -259,7 +259,7 @@ public class PubMed_Controller : IDLController
     {
         // Establish relevant temporary tables, get list of potential linked data banks
         // (only includes trial registries) and then get linked PMIDs for each
-        
+
         DownloadResult res = new();
         _pubmedRepo.SetUpTempPMIDsByBankTables();
         IEnumerable<PMSource> banks = _pubmedRepo.FetchDatabanks();
@@ -272,16 +272,16 @@ public class PubMed_Controller : IDLController
             string search_term = "&term=" + s.nlm_abbrev + "[SI]" + date_string;
             await GetBankPMIDsIntoDatabase(opts, search_term, s.id, date_string);
         }
-        
+
         // DB has all the relevant PMIDs - registry links - create a table with
         // only the ones not already in DB references tables (if they are in these tables
         // they should have been already downloaded if they have been revised or added in the period).
-        
+
         _pubmedRepo.CreatePMBanks_IDStrings();
-        
+
         // The pmbanks_id_strings now has the data for the id strings to be presented for fetching. All 
         // of the listed pubmed ids must be fetched, 100 at a time.
-        
+
         IEnumerable<string> id_strings = _pubmedRepo.FetchBankPMIDStrings();
         int string_num = 0;
         foreach (string id_string in id_strings)
@@ -289,8 +289,8 @@ public class PubMed_Controller : IDLController
             string_num++;
             string postUrl = postBaseURL + "&id=" + id_string;
             Thread.Sleep(300);
-            string? post_responseBody = await ch.GetAPIResponseWithRetriesAsync(postUrl, 1000, 
-                                        id_string.Length > 30 ?id_string[..30] : id_string);
+            string? post_responseBody = await ch.GetAPIResponseWithRetriesAsync(postUrl, 1000,
+                                        id_string.Length > 30 ? id_string[..30] : id_string);
             if (post_responseBody is null)
             {
                 _loggingHelper.LogError($"Null post result received, with {postUrl}");
@@ -317,13 +317,13 @@ public class PubMed_Controller : IDLController
                 }
             }
         }
-        
+
         if (string_num % 10 == 0) _loggingHelper.LogLine($"{string_num} lines of (up to 100) Ids processed");
         return res;
     }
 
-    
-    private async Task<int> GetBankPMIDsIntoDatabase(Options opts, string search_base, int? source_id, 
+
+    private async Task<int> GetBankPMIDsIntoDatabase(Options opts, string search_base, int? source_id,
                                                      string date_string)
     {
         string search_term = search_base + date_string;
@@ -334,7 +334,7 @@ public class PubMed_Controller : IDLController
         }
 
         // Download will not have taken place - need to retry with a smaller period...
-        
+
         int overall_total = 0;
         DateTime mindate, maxdate;
         string min_datestring, max_datestring;
@@ -354,16 +354,16 @@ public class PubMed_Controller : IDLController
 
             // then do by year (but unlikely to work with CGT for later years).
             // After 2010 done by months - necessary for CGT!
-            
+
             for (int y = 2005; y < 2011; y++)
             {
                 min_datestring = new DateTime(y, 1, 1).ToString("yyyy/MM/dd");
                 max_datestring = new DateTime(y + 1, 12, 31).ToString("yyyy/MM/dd");
-                search_term = search_base +  "&mindate=" + min_datestring
+                search_term = search_base + "&mindate=" + min_datestring
                                             + "&maxdate=" + max_datestring + "&datetype=edat";
                 overall_total += await GetPMIDsBYSourceAndPeriod(search_term, source_id);
             }
-            
+
             for (int y = 2019; y < DateTime.Now.Year + 1; y++)
             {
                 for (int m = 1; m < 13; m++)
@@ -374,12 +374,12 @@ public class PubMed_Controller : IDLController
                     }
                     min_datestring = new DateTime(y, m, 1).ToString("yyyy/MM/dd");
                     max_datestring = new DateTime(y, m, 1).AddMonths(1).AddDays(-1).ToString("yyyy/MM/dd");
-                    search_term = search_base +  "&mindate=" + min_datestring
+                    search_term = search_base + "&mindate=" + min_datestring
                                   + "&maxdate=" + max_datestring + "&datetype=edat";
                     overall_total += await GetPMIDsBYSourceAndPeriod(search_term, source_id);
                 }
             }
-            
+
         }
         else
         {
@@ -406,8 +406,8 @@ public class PubMed_Controller : IDLController
         }
         return overall_total;
     }
-    
-    
+
+
     private async Task<int> GetPMIDsBYSourceAndPeriod(string search_term, int? source_id)
     {
         string searchUrl = searchBaseURL + search_term;
@@ -431,13 +431,13 @@ public class PubMed_Controller : IDLController
         int totalRecords = search_result.Count;
         if (totalRecords > 10000)
         {
-            _loggingHelper.LogLine("More than 10000 records (" + totalRecords 
+            _loggingHelper.LogLine("More than 10000 records (" + totalRecords
                                    + ") found from search term:" + search_term);
         }
         else
-        {    
+        {
             // Ids should be retrievable - download and store in DB.
-            
+
             searchUrl += $"&retmax={totalRecords}";
             search_responseBody = await ch.GetAPIResponseAsync(searchUrl);
             search_result = Deserialize<eSearchResult?>(search_responseBody, _loggingHelper);
@@ -458,9 +458,9 @@ public class PubMed_Controller : IDLController
             _loggingHelper.LogLine(totalRecords + " retrieved and stored for source " + source_id);
         }
         return totalRecords;
-    } 
+    }
 
-    
+
     public async Task FetchPubMedRecordsAsync(string fetch_URL, DownloadResult res, int dl_id, string file_base)
     {
         string? responseBody = await ch.GetAPIResponseWithRetriesAsync(fetch_URL, 1000, fetch_URL);
@@ -538,8 +538,8 @@ public class PubMed_Controller : IDLController
             await using FileStream jsonStream = File.Create(full_path);
             await JsonSerializer.SerializeAsync(jsonStream, fob, _jsonOptions);
             await jsonStream.DisposeAsync();
-            
-            if (_monDataLayer.IsTestStudy(fob.sd_oid))
+
+            if (_monDataLayer.IsTestObject(fob.sd_oid))
             {
                 // write out copy of the file in the test folder
                 string test_path = _loggingHelper.TestFilePath;
@@ -548,7 +548,7 @@ public class PubMed_Controller : IDLController
                 await JsonSerializer.SerializeAsync(jsonStream2, fob, _jsonOptions);
                 await jsonStream2.DisposeAsync();
             }
-            
+
             return full_path;
         }
         catch (Exception e)
@@ -561,7 +561,7 @@ public class PubMed_Controller : IDLController
     //********************************************************************************************************
     //                                   OBTAIN NLM PUBLISHER DETAILS         
     //********************************************************************************************************
-    
+
     public async Task<DownloadResult> GetPublisherDataAsync(Options opts, Source source)
     {
         DownloadResult res = new();
@@ -574,7 +574,7 @@ public class PubMed_Controller : IDLController
 
             _pubmedRepo.SetUpTempJournalDataTables();
             string searchUrl = searchNlmBaseURL + "&term=%22Periodical%22[Publication%20Type]";
-            string? search_responseBody = await ch.GetAPIResponseWithRetriesAsync(searchUrl, 
+            string? search_responseBody = await ch.GetAPIResponseWithRetriesAsync(searchUrl,
                                                             1000, "initial journal query");
             if (string.IsNullOrEmpty(search_responseBody))
             {
@@ -582,14 +582,14 @@ public class PubMed_Controller : IDLController
             }
             eSearchResult? search_result = Deserialize<eSearchResult?>(search_responseBody,
                 _loggingHelper);
-            
+
             if (search_result is null)
             {
                 return res; // zero result
             }
-            
+
             int totalRecords = search_result.Count;
-            for (int j = 0; j < totalRecords; j += 1000)   
+            for (int j = 0; j < totalRecords; j += 1000)
             {
                 searchUrl = searchNlmBaseURL + $"&term=%22Periodical%22[Publication%20Type]&retstart={j}&retmax=1000";
                 search_responseBody = await ch.GetAPIResponseWithRetriesAsync(searchUrl, 1000, "journal id query");
@@ -612,18 +612,18 @@ public class PubMed_Controller : IDLController
             _pubmedRepo.CreateDJournal_IDStrings();
             _pubmedRepo.TruncatePeriodicalsTable();
             IEnumerable<string> id_strings = _pubmedRepo.FetchJournalIDStrings();
-            
+
             // Take each string and post it to the Entry history server, getting back the web environment
             // and query key parameters that can then be used to reference those ids on the server.
-            
+
             int string_num = 0;
             foreach (string id_string in id_strings)
             {
                 string_num++;
                 string postUrl = postNlmBaseURL + "&id=" + id_string;
                 Thread.Sleep(300);
-                string? post_responseBody = await ch.GetAPIResponseWithRetriesAsync(postUrl, 1000, 
-                                             id_string.Length > 30 ?id_string[..30] : id_string);
+                string? post_responseBody = await ch.GetAPIResponseWithRetriesAsync(postUrl, 1000,
+                                             id_string.Length > 30 ? id_string[..30] : id_string);
                 if (post_responseBody is null)
                 {
                     _loggingHelper.LogError($"Null post result received, with {postUrl}");
@@ -636,7 +636,7 @@ public class PubMed_Controller : IDLController
                         {
                             // The 100 UIDs have been successfully uploaded to the Entrez system.
                             // Get parameters required to reference them.
-                            
+
                             int query_key = post_result.QueryKey;
                             string? web_env = post_result.WebEnv;
                             if (web_env is not null)
@@ -698,7 +698,7 @@ public class PubMed_Controller : IDLController
             }
         }
     }
-    
+
     // General XML Deserialize function.
 
     private T? Deserialize<T>(string? inputString, ILoggingHelper logging_helper)
@@ -730,13 +730,13 @@ public class PubMed_Controller : IDLController
         {
             return null;
         }
-        
+
         // Temp to help with debugging
-        
+
         inputString = inputString.Replace("<PubmedArticle", "\n\n<PubmedArticle");
         inputString = inputString.Replace("<AuthorList", "\n<AuthorList");
         inputString = inputString.Replace("<ReferenceList", "\n<ReferenceList");
-        
+
         // Mainly Required if we add extraction of abstracts - unable to do
         // so at the moment because of copyright restrictions.
         // There may be better ways of handling this problem!
@@ -748,21 +748,21 @@ public class PubMed_Controller : IDLController
         inputString = inputString.Replace("</b>", "&lt;/b&gt;");
         inputString = inputString.Replace("<u>", "&lt;u&gt;");
         inputString = inputString.Replace("</u>", "&lt;/u&gt;");
-        
+
         inputString = inputString.Replace("<sup>", "&lt;sup&gt;");
         inputString = inputString.Replace("</sup>", "&lt;/sup&gt;");
         inputString = inputString.Replace("<sub>", "&lt;sub&gt;");
         inputString = inputString.Replace("</sub>", "&lt;/sub&gt;");
-        
+
         // Remove odd empty tags.
-        
+
         inputString = inputString.Replace("<sup/>", "");
         inputString = inputString.Replace("<sub/>", "");
 
         return inputString;
     }
-    
-    
+
+
     private string? EscapeCharacters(string? inputString)
     {
         if (string.IsNullOrEmpty(inputString))
@@ -772,7 +772,7 @@ public class PubMed_Controller : IDLController
         inputString = inputString.Replace("&", "&amp;");
         //inputString = inputString.Replace("\"", "&quote;");
         //inputString = inputString.Replace("'", "&apos;");
-        
+
         return inputString;
     }
 }

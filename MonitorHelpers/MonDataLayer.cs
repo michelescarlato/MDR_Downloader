@@ -172,12 +172,12 @@ public class MonDataLayer : IMonDataLayer
     public bool IsTestObject(string sd_oid)
     {
         string sql_string = @$"select for_testing
-                    from mn.source_data where sd_sid = '{sd_oid}';";
+                    from mn.source_data where sd_oid = '{sd_oid}';";
         using NpgsqlConnection conn = new(thisDBconnString);
         bool? res = conn.QueryFirstOrDefault<bool?>(sql_string);
         return res == true;
     }
-            
+
     public bool UpdateWhoStudyLog(string db_name, string sd_sid, string? remote_url,
         int? dl_id, DateTime? last_revised_date, string? full_path)
     {

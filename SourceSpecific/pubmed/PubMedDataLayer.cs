@@ -51,8 +51,8 @@ public class PubMedDataLayer
                    id_string varchar)";
         conn.Execute(sql_string);
     }
-    
-    
+
+
     public void SetUpTempPMIDsByBankTables()
     {
         using NpgsqlConnection conn = new(connString);
@@ -76,8 +76,8 @@ public class PubMedDataLayer
                    id_string varchar)";
         conn.Execute(sql_string);
     }
-    
-    
+
+
     public void SetUpTempJournalDataTables()
     {
         using NpgsqlConnection conn = new(connString);
@@ -103,8 +103,8 @@ public class PubMedDataLayer
                    where has_study_references = true and source_type <> 'test'";
         return conn.Query<Source>(sql_string);
     }
-    
-    
+
+
     public IEnumerable<PMSource> FetchDatabanks()
     {
         using NpgsqlConnection Conn = new(context_connString);
@@ -127,25 +127,25 @@ public class PubMedDataLayer
                     on r.sd_sid = s.sd_sid";
         return conn.Query<PMIDBySource>(sql_string);
     }
-    
-    public ulong StorePmidsBySource(PostgreSQLCopyHelper<PMIDBySource> copyHelper, 
+
+    public ulong StorePmidsBySource(PostgreSQLCopyHelper<PMIDBySource> copyHelper,
                  IEnumerable<PMIDBySource> entities)
     {
         using NpgsqlConnection conn = new(connString);
         conn.Open();
         return copyHelper.SaveAll(conn, entities);
     }
-    
-    
-    public ulong StorePmidsByBank(PostgreSQLCopyHelper<BankPmid> copyHelper, 
+
+
+    public ulong StorePmidsByBank(PostgreSQLCopyHelper<BankPmid> copyHelper,
         IEnumerable<BankPmid> entities)
     {
         using NpgsqlConnection conn = new(connString);
         conn.Open();
         return copyHelper.SaveAll(conn, entities);
     }
-    
-    public ulong StoreJournalUIDs(PostgreSQLCopyHelper<JournalUID> copyHelper, 
+
+    public ulong StoreJournalUIDs(PostgreSQLCopyHelper<JournalUID> copyHelper,
         IEnumerable<JournalUID> entities)
     {
         using NpgsqlConnection conn = new(connString);
@@ -157,7 +157,7 @@ public class PubMedDataLayer
     public void CreateDBRef_IDStrings()
     {
         using NpgsqlConnection conn = new(connString);
-        
+
         string sql_string = @"INSERT INTO mn.dbrefs_distinct_pmids(pmid)
                       SELECT DISTINCT pmid
                       FROM mn.dbrefs_all
@@ -184,14 +184,14 @@ public class PubMedDataLayer
         string sql_string = @"select id_string from mn.dbrefs_id_strings;";
         return conn.Query<string>(sql_string);
     }
-    
+
     public IEnumerable<string> FetchBankPMIDStrings()
     {
         using NpgsqlConnection conn = new(connString);
         string sql_string = @"select id_string from mn.pmbanks_id_strings;";
         return conn.Query<string>(sql_string);
     }
-    
+
     public IEnumerable<string> FetchJournalIDStrings()
     {
         using NpgsqlConnection conn = new(connString);
@@ -202,9 +202,9 @@ public class PubMedDataLayer
     public void CreatePMBanks_IDStrings()
     {
         using NpgsqlConnection conn = new(connString);
- 
+
         // Add in the PM Bank pubmed Ids not already in the dbref table
-        
+
         string sql_string = @"INSERT INTO mn.pmbanks_distinct_pmids(pmid)
                               SELECT distinct b.pmid from mn.pmbanks_all b
                               left join mn.dbrefs_distinct_pmids d
@@ -242,24 +242,24 @@ public class PubMedDataLayer
                     from mn.journal_uids;";
         conn.Execute(sql_string);
     }
-   
-    
+
+
     // Gets a 2 letter language code rather than than the original 3.
-    
+
     public string? lang_3_to_2(string lang_code_3)
     {
         using NpgsqlConnection Conn = new(context_connString);
         string sql_string = $@"select code from lup.language_codes where marc_code = '{lang_code_3}'";
         return Conn.Query<string>(sql_string).FirstOrDefault();
     }
-    
+
     public void TruncatePeriodicalsTable()
     {
         using NpgsqlConnection conn = new(context_connString);
         string sql_string = @"truncate table ctx.periodicals";
         conn.Execute(sql_string);
     }
-        
+
     public void StorePublisherDetails(Periodical p)
     {
         using NpgsqlConnection conn = new(context_connString);

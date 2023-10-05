@@ -48,10 +48,12 @@ public class Downloader
                 {
                     dl_controller = new ISRCTN_Controller(_monDataLayer, _loggingHelper); break;
                 }
+                /*
             case 100123:
                 {
                     dl_controller = new EUCTR_Controller(_monDataLayer, _loggingHelper); break;
                 }
+                */
             case 100159:
                 {
                     dl_controller = new EMA_Controller(_monDataLayer, _loggingHelper); break;
@@ -64,10 +66,18 @@ public class Downloader
                 {
                     dl_controller = new PubMed_Controller(_monDataLayer, _loggingHelper); break;
                 }
-            case 101940:
-                {
-                    dl_controller = new Vivli_Controller(_monDataLayer, _loggingHelper); break;
-                }
+                /*
+                case 110426:
+                    {
+                        // to be added when format of incoming data clearer
+                        dl_controller = new BBMRI_Controller(_monDataLayer, _loggingHelper); break;
+                    }
+                case 101940:
+                    {
+                        // to be added if and when use of Vivli data becomes possible
+                        dl_controller = new Vivli_Controller(_monDataLayer, _loggingHelper); break;
+                    }
+                 */
         }
 
         if (dl_controller is not null)

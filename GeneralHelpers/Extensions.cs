@@ -1,6 +1,5 @@
 ﻿using HtmlAgilityPack;
 using ScrapySharp.Extensions;
-using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 namespace MDR_Downloader.Helpers;
 

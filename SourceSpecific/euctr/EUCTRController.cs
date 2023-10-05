@@ -8,14 +8,14 @@ namespace MDR_Downloader.euctr;
 class EUCTR_Controller : IDLController
 {
     private readonly IMonDataLayer _monDataLayer;
-    private readonly ILoggingHelper _loggingHelper;    
-    
+    private readonly ILoggingHelper _loggingHelper;
+
     private readonly string _baseURL;
     private readonly JsonSerializerOptions? _json_options;
-    private readonly EUCTR_Processor _processor;
+    private readonly oldEUCTR_Processor _processor;
     private readonly EUCTR_Helper _euctrHelper;
     private int _access_error_num;
-    
+
     public EUCTR_Controller(IMonDataLayer monDataLayer, ILoggingHelper loggingHelper)
     {
         _monDataLayer = monDataLayer;
