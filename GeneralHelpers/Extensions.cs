@@ -1,5 +1,6 @@
 ﻿using HtmlAgilityPack;
 using ScrapySharp.Extensions;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 namespace MDR_Downloader.Helpers;
 
@@ -48,8 +49,10 @@ public static class StringExtensions
         }
         
         string output_string = input_string.Replace("&#32;", " ").Replace("&#37;", "%");
-        output_string = output_string.Replace("&#39;", "’").Replace("&quot;", "'");
-        output_string = output_string.Replace("#gt;", ">").Replace("#lt;", "<");
+        output_string = output_string.Replace("#gt;", ">").Replace("#lt;", "<");       
+        output_string = output_string.Replace("&#39;", "’").Replace("&rsquo;", "’");
+        output_string = output_string.Replace("&quot;", "'");
+        output_string = output_string.Replace("&gt;", ">").Replace("&lt;", "<");
         output_string = output_string.Replace("&amp;", "&");
         return output_string;
 

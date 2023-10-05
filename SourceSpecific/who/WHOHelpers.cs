@@ -47,33 +47,45 @@ public class WHOHelpers
     }
 
 
-    public List<WhoCondition> GetConditions(string sd_sid, string in_string)
+    public List<string> GetConditions(string sd_sid, string in_string)
     {
-        List<WhoCondition> conditions = new List<WhoCondition>();
+        List<string> new_conds = new();
         if (!string.IsNullOrEmpty(in_string))
         {
-            string? condition_list = in_string.Tidy();
+            string? condition_list = in_string.Tidy().ReplaceUnicodes();
             if (!string.IsNullOrEmpty(condition_list))
             {
-                // replace escaped characters to remove the semi-colons
-                string rsq = "’";
-                condition_list = condition_list.Replace("&lt;", "<").Replace("&gt;", ">");
-                condition_list = condition_list.Replace("&#39;", rsq).Replace("&rsquo;", rsq);
-
+                // replace unicodes should have removed spurious semi-colons
                 // replace line breaks and hashes with semi-colons, and split
+
                 condition_list = condition_list.Replace("<br>", ";").Replace("<br/>", ";");
                 condition_list = condition_list.Replace("#", ";");
                 List<string> conds = condition_list.Split(";").ToList();
-
                 foreach (string s in conds)
                 {
                     char[] chars_to_lose = { ' ', '(', '.', '-', ';' };
                     string s1 = s.Trim(chars_to_lose);
-                    if (s1 != "" && s1.Length > 4)
+                    if (s1 != "" && s1.Length >= 3)
                     {
+
+                        new_conds.Add(s1);
+
                         // does it have an ICD code or similar at the front?
                         // if so extract and put code in code field
                         // Could be the whole thing is just a code...
+
+                        // BUT some things that start like ICD10 could be (much longer) MESH Tree codes
+                        // and some might be 'ordinary' D mesh codes
+                        // and some, like A00B99, appear to be ICD codes
+
+                        // So - PERHAPS - in the download don't try to split the strings - just take each 
+                        // condition as a string and return an array of strings...
+
+
+
+                        /*
+
+                        // Move all below to harvesting code
 
                         string code = "", code_system = "";
 
@@ -154,11 +166,12 @@ public class WHOHelpers
                             conditions.Add(code == "" ? new WhoCondition(s1) 
                                                       : new WhoCondition(s1, code, code_system));
                         }
+                        */
                     }
                 }
             }
         }
-        return conditions;
+        return new_conds;
     }
 
 

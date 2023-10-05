@@ -3,6 +3,7 @@ using MDR_Downloader.Helpers;
 using ScrapySharp.Extensions;
 using ScrapySharp.Html;
 using ScrapySharp.Network;
+using System.ComponentModel.DataAnnotations;
 
 namespace MDR_Downloader.biolincc;
 
@@ -67,7 +68,7 @@ public class BioLINCC_Processor
             return null;
         }
 
-        HtmlNode? main = studyPage.Find("div", By.Class("main")).FirstOrDefault();
+        HtmlNode? main = studyPage.Find("main", By.Class("main")).FirstOrDefault();
         if (main is null)
         {
             _logging_helper.LogError("Could not find 'main' class on page for " + bb.acronym + " at " + bb.remote_url + ".");
@@ -108,7 +109,7 @@ public class BioLINCC_Processor
         }
         
         
-        IEnumerable<HtmlNode>? SideBar = main.CssSelect("div.col-md-3");
+        HtmlNode? SideBar = main.CssSelect("div.col-md-5").ToArray()[1];    // use the second of two
         IEnumerable<HtmlNode>? sections = SideBar?.CssSelect("div.detail-aside-row");
         if (sections != null)
         {
@@ -743,16 +744,17 @@ public class BioLINCC_Processor
                 // set up publication record.
 
                 AssocDoc articleDetails = new(link_url);
-                HtmlNode? mainArticleData = articleDetailsPage.Find("div", By.Class("main")).FirstOrDefault();
-                HtmlNode? articleTitle = mainArticleData?.CssSelect("h1 b")?.FirstOrDefault();
+                HtmlNode? mainArticleData = articleDetailsPage.Find("main", By.Class("main")).FirstOrDefault();
+                HtmlNode? articleTitle = mainArticleData?.CssSelect(".card-header")?.FirstOrDefault();
                 if (articleTitle is not null)
                 {
                     articleDetails.title = articleTitle.InnerText.Trim();
                 }
 
                 // Other available details.
-                
-                List<HtmlNode>? articleData = mainArticleData?.CssSelect("p").ToList();
+
+                HtmlNode? articleAttributes= mainArticleData?.CssSelect(".card-body")?.FirstOrDefault();
+                List<HtmlNode>? articleData = articleAttributes?.CssSelect("p").ToList();
                 if (articleData?.Any() is true)
                 {
                     foreach (HtmlNode node in articleData)
