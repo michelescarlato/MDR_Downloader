@@ -269,7 +269,7 @@ public class PubMed_Controller : IDLController
             // Get the number of total records that have this databank reference
             // and that (in most cases) have been revised recently. 
 
-            string search_term = "&term=" + s.nlm_abbrev + "[SI]" + date_string;
+            string search_term = "&term=" + s.nlm_abbrev + "[SI]";
             await GetBankPMIDsIntoDatabase(opts, search_term, s.id, date_string);
         }
 
@@ -330,7 +330,7 @@ public class PubMed_Controller : IDLController
         int totalRecords = await GetPMIDsBYSourceAndPeriod(search_term, source_id);
         if (totalRecords <= 10000)
         {
-            return totalRecords;
+            return totalRecords;   // Ids will have been stored
         }
 
         // Download will not have taken place - need to retry with a smaller period...

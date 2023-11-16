@@ -1,5 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
-
+using MailKit.Net.Smtp;
+using MailKit;
+using MimeKit;
 namespace MDR_Downloader;
 
 public class LoggingHelper : ILoggingHelper
@@ -161,7 +163,31 @@ public class LoggingHelper : ILoggingHelper
             LogLine($"Logging suppressed");
             summary_string += $"\nLogging suppressed";
         }
+
+        SendMailMessage();
     }
+
+    private void SendMailMessage()
+    { 
+        var message = new MimeMessage();
+        message.From.Add(new MailboxAddress("MDR_Downloader", "downloader@mdr2"));
+        message.To.Add(new MailboxAddress("Steve Canham", "stevecanham@outlook.com"));
+        message.Subject = "Test message";
+
+        message.Body = new TextPart("plain")
+        {
+            Text = @"I just did a download"
+        };
+
+        using (var client = new SmtpClient()) 
+        {
+            client.Connect("127.0.0.1", 25, false);
+
+            client.Send(message);
+            client.Disconnect(true);
+        }
+    }
+
 
     public void LogError(string message)
     {
