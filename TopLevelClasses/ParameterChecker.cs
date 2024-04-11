@@ -48,12 +48,20 @@ internal class ParameterChecker
                 opts.FetchTypeId = 302;
             }
             
-            // First check source id is valid. 
+            // First check source id is valid. If so, set up local folder path (DN name for WHO sourcs added later).
 
             Source? source = _mon_data_layer.FetchSourceParameters(opts.SourceId);
             if (source is null)
             {
                 throw new ArgumentException("The first argument does not correspond to a known source");
+            }
+            else
+            {
+                source.local_folder = _logging_helper.DataFolderPath;
+                if (source.id != 100135)
+                {
+                    source.local_folder += source.database_name;
+                }
             }
 
             // Check source fetch type id is valid and obtain parameter requirements associated with this type. 

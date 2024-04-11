@@ -6,7 +6,8 @@ namespace MDR_Downloader;
 
 public class LoggingHelper : ILoggingHelper
 {
-    private readonly string  _logfileStartOfPath;
+    private readonly string _dataFolderPath;
+    private readonly string _logfileStartOfPath;
     private readonly string _testFilePath;    
     private readonly string _summaryLogfileStartOfPath;
     private string _logfilePath = "";
@@ -14,21 +15,27 @@ public class LoggingHelper : ILoggingHelper
     private string summary_string = "";
     private StreamWriter? _sw;
 
-    public LoggingHelper()
+    public LoggingHelper(IConfiguration settings)
     {
+        /*
         IConfigurationRoot settings = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
             .AddJsonFile("appsettings.json")
             .Build();
+        */
 
         _logfileStartOfPath = settings["logFilePath"] ?? "";
         _summaryLogfileStartOfPath = settings["summaryFilePath"] ?? "";
         _testFilePath = settings["testFilePath"] ?? "";
+        _dataFolderPath = settings["dataFolderPath"] ?? "";
+
     }
 
     public string LogFilePath => _logfilePath;  // Used to check if a log file exists.
     public string TestFilePath => _testFilePath;
-    
+    public string DataFolderPath => _dataFolderPath;
+
+
     public void OpenLogFile(string? sourceFileName, string databaseName)
     {
         string dt_string = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture)
@@ -60,6 +67,7 @@ public class LoggingHelper : ILoggingHelper
         //_summaryLogfilePath = Path.Combine(_summaryLogfileStartOfPath, log_file_name);
         _sw = new StreamWriter(_logfilePath, true, System.Text.Encoding.UTF8);
     }
+
 
     public void OpenNoSourceLogFile()
     {
@@ -167,6 +175,7 @@ public class LoggingHelper : ILoggingHelper
         SendMailMessage();
     }
 
+
     private void SendMailMessage()
     { 
         var message = new MimeMessage();
@@ -256,11 +265,13 @@ public class LoggingHelper : ILoggingHelper
         */
     }
 
+
     private void Transmit(string message)
     {
         _sw?.WriteLine(message);
         Console.WriteLine(message);
     }
+
 
     public void LogRes(DLEvent dl)
     {

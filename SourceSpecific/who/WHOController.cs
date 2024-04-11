@@ -71,11 +71,7 @@ class WHO_Controller : IDLController
 
                     if (!string.IsNullOrEmpty(r.db_name))
                     {
-                        if (r.db_name == "euctr")
-                        {
-                            //
-                        }
-                        string folder_name = @"F:\MDR_Data\" + r.db_name + @"\";
+                        string folder_name = _loggingHelper.DataFolderPath + r.db_name + @"\";
                         if (!Directory.Exists(folder_name))
                         {
                             Directory.CreateDirectory(folder_name);

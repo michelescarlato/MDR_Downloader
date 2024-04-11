@@ -1,304 +1,147 @@
-﻿using MDR_Downloader.Helpers;
-using ScrapySharp.Network;
+﻿using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Xml.Serialization;
 
 namespace MDR_Downloader.euctr;
 
-class EUCTR_Controller : IDLController
+public class EUCTR_Controller : IDLController
 {
     private readonly IMonDataLayer _monDataLayer;
     private readonly ILoggingHelper _loggingHelper;
-
-    private readonly string _baseURL;
-    private readonly JsonSerializerOptions? _json_options;
-    private readonly oldEUCTR_Processor _processor;
-    private readonly EUCTR_Helper _euctrHelper;
-    private int _access_error_num;
 
     public EUCTR_Controller(IMonDataLayer monDataLayer, ILoggingHelper loggingHelper)
     {
         _monDataLayer = monDataLayer;
         _loggingHelper = loggingHelper;
-        
-        _baseURL = "https://www.clinicaltrialsregister.eu/ctr-search/search?page=";
-        _json_options = new()
-        {
-            AllowTrailingCommas = true,
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            WriteIndented = true
-        };
-        
-        _processor = new(loggingHelper);
-        _euctrHelper = new(loggingHelper);
     }
 
     public async Task<DownloadResult> ObtainDataFromSourceAsync(Options opts, Source source)
-        
     {
+        // The EMA Controller and process have similarities with the WHO controller, in that it 
+        // takes its input from a designated file, but it is linked to, and shares the same namespace as,
+        // the EUCTR controller.
+        // The only allowed download type is therefore 103, and it requires an associated file, the full
+        // path of which is included in options.
+        
         DownloadResult res = new();
-        ScrapingHelpers ch = new(_loggingHelper);
         string? file_base = source.local_folder;
+        int dl_id = (int)opts.dl_id!;    // will be non-null
 
         if (file_base is null)
         {
             _loggingHelper.LogError("Null value passed for local folder value for this source");
             return res;   // return zero result
         }
-
-        // first ensure that the web site is up
-        // and get total record numbers and total page numbers
+       
+        // Firstly does the specified file actually exist?
         
-        int dl_id = (int)opts.dl_id!;    // will be non-null
-        WebPage? initialPage = await ch. GetPageWithRetriesAsync(_baseURL + "1", 500, "page 1");
-        if (initialPage is null)
+        string file_name = opts.FileName!;
+        if (!File.Exists(file_name))
         {
-            _loggingHelper.LogError("Unable to open initial summary page (web site may be down), so unable to proceed");
-            return res;   // return zero result
+            _loggingHelper.LogError($"File does not appear to exist at {file_name}");
+            return res;  // empty result
         }
-
-        // first get total number of records 
-        // Only proceed if that initial task is possible
-
-        int rec_num = _processor.GetListLength(initialPage);
-        if (rec_num == 0)
+        
+        // Get the (approximate) date of revision from the file date stamp.
+               
+        string date = Regex.Match(file_name, @"\d{8}").Value;
+        int y = int.Parse(date[..4]);
+        int m = int.Parse(date[4..6]);
+        int d = int.Parse(date[6..]);
+        DateTime date_revised = new DateTime(y, m, d);
+        
+        // set up JSON options for later writing
+        
+        var json_options = new JsonSerializerOptions()
         {
-            _loggingHelper.LogError("Unable to capture total record numbers in preliminary set up, so unable to proceed");
-            return res;  // return zero result
-        }
-
-        int total_summary_pages = rec_num % 20 == 0 ? rec_num / 20 : (rec_num / 20) + 1;
-
-        // if sf_type = 145 only scrape & download files with a download status of 0
-        // if type = 146 scrape all records in the designated page range (20 records per page)
-        // in both cases ignore records that have been downloaded in recent interval (I, 'skip recent' parameter)
-        int start_page, end_page;
-
-        if (opts.FetchTypeId == 145)
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            WriteIndented = true
+        };
+        
+        // then open and read the file
+        
+        using StreamReader streamReader = new StreamReader(file_name, Encoding.UTF8);
+        string responseBodyAsString = await streamReader.ReadToEndAsync();
+        trials? foundTrials = DeserializeXML<trials?>(responseBodyAsString, _loggingHelper);
+        if (foundTrials?.trials_list is not null)
         {
-            // by default start at the beginning, but can be over-written by StartPage parameter
-            
-            opts.StartPage ??= 0;
-            start_page = (int)opts.StartPage;
-            end_page = total_summary_pages;
-        }
-        else if (opts.FetchTypeId == 146)
-        {
-            if (opts.StartPage is not null && opts.EndPage is not null)
+            EUCTRProcessor ep = new(_loggingHelper);
+            foreach (Trial t in foundTrials.trials_list)
             {
-                start_page = (int)opts.StartPage;
-                end_page = opts.EndPage > total_summary_pages ? total_summary_pages : (int)opts.EndPage;
-            }
-            else
-            {
-                _loggingHelper.LogError("Valid start and end page numbers not provided for page based download");
-                return res;  // return zero result
-            }
-        }
-        else
-        {
-            _loggingHelper.LogError("Download type requested not in allowed list for EU CTR"); 
-            return res;  // return zero result
-        }
-
-        res = await LoopThroughDesignatedPagesAsync(opts.FetchTypeId, start_page, end_page, opts.SkipRecentDays, 
-                                                    source.id, dl_id, file_base);
-
-        return res;
-    }
-
-
-    private async Task<DownloadResult> LoopThroughDesignatedPagesAsync(int type_id, int start_page, int end_page, 
-                               int? days_ago, int source_id, int dl_id, string file_base)
-    {
-        DownloadResult res = new DownloadResult();
-        ScrapingHelpers ch = new(_loggingHelper);
-
-        for (int i = start_page; i <= end_page; i++)
-        {
-            // if (res.num_downloaded > 2) break; // for testing
-            // Go to the summary page indicated by current value of i
-            // Each page has up to 20 listed studies. Get a list of their Ids.
-
-            WebPage? summaryPage = await ch.GetPageWithRetriesAsync(_baseURL + i, 600, "summary " + i);
-            if (summaryPage is null)
-            {
-                _loggingHelper.LogError($"Unable to reach summary data page {i} - skipping this page");
-                break;
-            }
-
-            List<Study_Summary>? summaries = _processor.GetStudyList(summaryPage);
-            if (summaries?.Any() != true)
-            {
-                _loggingHelper.LogError($"Problem in collecting summary data on page {i} - skipping this page");
-                break;
-            }
-
-            // Calculate how many of the 20 need to be downloaded and mark those that do.
-            // No 'last updated' field to check, so have to be selected using much cruder techniques
-
-            int num_to_download = 0;
-            foreach (Study_Summary s in summaries)
-            {
-                bool do_download = false;
-                res.num_checked++;
-                StudyFileRecord? file_record = _monDataLayer.FetchStudyFileRecord(s.eudract_id, "");
-                if (file_record is null)
-                {
-                    // a new record not yet existing in study source table - must be downloaded.
-
-                    do_download = true;
-                }
-                else
-                {
-                    if (type_id == 146 || (type_id == 145 && file_record.download_status == 0))
-                    {
-                        // download all records for download type 146 (in the designated pages),
-                        // but only those with download status 0 for type 145.
-
-                        do_download = true;
-
-                        // However, in either case may have been downloaded in designated recent days,
-                        // in which case do not need to download again.
-
-                        if (days_ago is not null)
-                        {
-                            if (_monDataLayer.Downloaded_recently(s.eudract_id, (int)days_ago))
-                            {
-                                do_download = false;
-                            }
-                        }
-                    }
-                }
+                // Send t to the processing function, to construct the study model class.
                 
-                s.do_download = do_download;
-                if (do_download) num_to_download++;
-            }
+                res.num_checked++;
+                Euctr_Record? euctr_record = await ep.ProcessTrial(t, date_revised);
+                if (euctr_record is not null)
+                { 
+                    // Write out study record as JSON, log the download.
 
-            // only proceed further if there are any studies to download on this page 
-            // For each study that needs to be downloaded...
-            // First, get full details into the summaries - transfer those details to
-            // a new main EUCTR Study object and then get full protocol details
-
-            if (num_to_download > 0)
-            {
-                foreach (var s in summaries)
-                {
-                    if (s.do_download is true)
+                    string new_file_name = "EU " + euctr_record.sd_sid + ".json";
+                    string full_path = Path.Combine(file_base, new_file_name);
+                    try
                     {
-                        Euctr_Record? st = _euctrHelper.GetInfoFromSummaryBox(s.details_box!);
-                        if (st is null)
+                        await using FileStream jsonStream = File.Create(full_path);
+                        await JsonSerializer.SerializeAsync(jsonStream, euctr_record, json_options);
+                        await jsonStream.DisposeAsync();
+                        
+                        if (_monDataLayer.IsTestStudy(euctr_record.sd_sid))
                         {
-                            _loggingHelper.LogError(
-                                $"Problem in obtaining summary details from summary page, for {s.eudract_id}");
-                            CheckAccessErrorCount();
-                        }
-                        else
-                        {
-                            if (string.IsNullOrEmpty(st.details_url))
-                            {
-                                _loggingHelper.LogError(
-                                    $"Problem in obtaining protocol details url from summary page, for {s.eudract_id}");
-                                CheckAccessErrorCount();
-                            }
-                            else
-                            {
-                                Thread.Sleep(300);
-                                WebPage? detailsPage = await ch.GetPageWithRetriesAsync(st.details_url, 500, st.sd_sid);
-                                if (detailsPage is null)
-                                {
-                                    _loggingHelper.LogError(
-                                        $"Problem in navigating to protocol details page for {s.eudract_id}");
-                                    CheckAccessErrorCount();
-                                }
-                                else
-                                {
-                                    st = _processor.ExtractProtocolDetails(st, detailsPage);
-
-                                    // Then get results details if available
-
-                                    if (st.results_url != null)
-                                    {
-                                        Thread.Sleep(600);
-                                        WebPage? resultsPage = await ch.GetPageAsync(st.results_url);
-                                        if (resultsPage is not null)
-                                        {
-                                            st = _euctrHelper.ExtractResultDetails(st, resultsPage);
-                                        }
-                                        else
-                                        {
-                                            _loggingHelper.LogError(
-                                                $"Problem in navigating to result details, for {s.eudract_id}");
-                                            CheckAccessErrorCount();
-                                        }
-                                    }
-
-                                    // Write out study record as json.
-                                    // Update the source data record, modifying it or adding a new one.
-
-                                    string full_path = await WriteOutFile(st, st.sd_sid, file_base);
-                                    if (full_path != "error")
-                                    {
-                                        string? remote_url = st.details_url;
-                                        bool added = _monDataLayer.UpdateStudyLog(s.eudract_id,
-                                            remote_url, dl_id, null, full_path);
-                                        res.num_downloaded++;
-                                        if (added) res.num_added++;
-                                    }
-                                }
-                            }
+                            // write out copy of the file in the test folder
+                            string test_path = _loggingHelper.TestFilePath;
+                            string full_test_path = Path.Combine(test_path, file_name);
+                            await using FileStream jsonStream2 = File.Create(full_test_path);
+                            await JsonSerializer.SerializeAsync(jsonStream2, euctr_record, json_options);
+                            await jsonStream2.DisposeAsync();
                         }
                     }
+                    catch (Exception e)
+                    {
+                        _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
+                    }
+                   
+                    bool added = _monDataLayer.UpdateStudyLog(euctr_record.sd_sid, euctr_record.search_url, 
+                        dl_id, euctr_record.date_last_revised, full_path);     
+                    res.num_downloaded++;
+                    if (res.num_downloaded % 20 == 0)
+                    {
+                        _loggingHelper.LogLine(
+                            $"{res.num_checked} studies checked, {res.num_downloaded} downloaded");
+                    }
+                    if (added) res.num_added++;
                 }
             }
-            string feedback = $"Page {i} done: {res.num_checked} studies checked, {res.num_downloaded} downloaded";
-            _loggingHelper.LogLine(feedback);
         }
 
         return res;
     }
-      
-    // Writes out the file with the correct name to the correct folder, as indented json.
-    // Called from the DownloadBatch function.
-    // Returns the full file path as constructed, or an 'error' string if an exception occurred.
+    
+    
+    // General XML Deserialize function.
 
-    private async Task<string> WriteOutFile(Euctr_Record s, string sd_sid, string file_base)
+    private T? DeserializeXML<T>(string? inputString, ILoggingHelper logging_helper)
     {
-        string file_name = "EU " + sd_sid + ".json";
-        string full_path = Path.Combine(file_base, file_name);
+        if (inputString is null)
+        {
+            return default;
+        }
+
+        T? instance;
         try
         {
-            await using FileStream jsonStream = File.Create(full_path);
-            await JsonSerializer.SerializeAsync(jsonStream, s, _json_options);
-            await jsonStream.DisposeAsync();
-            
-            if (_monDataLayer.IsTestStudy(sd_sid))
-            {
-                // write out copy of the file in the test folder
-                string test_path = _loggingHelper.TestFilePath;
-                string full_test_path = Path.Combine(test_path, file_name);
-                await using FileStream jsonStream2 = File.Create(full_test_path);
-                await JsonSerializer.SerializeAsync(jsonStream2, s, _json_options);
-                await jsonStream2.DisposeAsync();
-            }
-            
-            return full_path;
+            var xmlSerializer = new XmlSerializer(typeof(T));
+            using var stringReader = new StringReader(inputString);
+            instance = (T?)xmlSerializer.Deserialize(stringReader);
         }
-        catch (Exception e)
+        catch(Exception e)
         {
-            _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
-            return "error";
+            string error_heading = "Error when de-serialising ";
+            error_heading += inputString.Length >= 750 ? inputString[..750] : inputString;
+            logging_helper.LogCodeError(error_heading, e.Message, e.StackTrace);
+            return default;
         }
+        return instance;
     }
-
-    private void CheckAccessErrorCount()
-    {
-        _access_error_num++;
-        if (_access_error_num % 5 == 0)
-        {
-            TimeSpan pause = new TimeSpan(0, 1, 0);   // a 5 minute pause
-            Thread.Sleep(pause);
-        }
-    }
-
+    
 }

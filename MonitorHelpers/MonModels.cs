@@ -13,7 +13,7 @@ public class Source
     public string? db_conn { get; set; }
     public bool? uses_who_harvest { get; }
     public int? harvest_chunk { get; }
-    public string? local_folder { get; }
+    public string? local_folder { get; set; }
     public bool? local_files_grouped { get; }
     public int? grouping_range_by_id { get; }
     public string? local_file_prefix { get; }

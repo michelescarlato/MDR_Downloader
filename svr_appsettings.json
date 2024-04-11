@@ -1,0 +1,12 @@
+﻿{
+  "host": "localhost",
+  "user": "postgres",
+  "password": "WinterIsComing!",
+  "port": 5432,
+
+  "logFilePath": "F:\\MDR_Logs\\",
+  "summaryFilePath": "F:\\MDR_Logs\\",
+  "testFilePath": "F:\\MDR_Data\\test\\",
+  "pubmed_api_key": "68e483d1dd49564f4c8b41418256e2bb6408",
+  "pubmed_api_keyAS": "2648fcb68a114f71ac66058bd1cb0b6d"
+}

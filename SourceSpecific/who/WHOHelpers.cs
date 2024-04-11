@@ -697,6 +697,7 @@ public class WHOHelpers
             {
                 _ when tid.StartsWith("NCT") => 100120,
                 _ when tid.StartsWith("EUCTR") => 100123,
+                _ when tid.StartsWith("CTIS") => 110428,
                 _ when tid.StartsWith("JPRN") => 100127,
                 _ when tid.StartsWith("ACTRN") => 100116,
                 _ when tid.StartsWith("RBR") => 100117,
@@ -740,6 +741,7 @@ public class WHOHelpers
             100130 => "slctr",
             100131 => "thctr",
             100132 => "nntr",
+            110428 => "ctis",
             101989 => "lebctr",
             109108 => "itmctr",
             _ => ""

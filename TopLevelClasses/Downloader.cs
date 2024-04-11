@@ -48,15 +48,9 @@ public class Downloader
                 {
                     dl_controller = new ISRCTN_Controller(_monDataLayer, _loggingHelper); break;
                 }
-                /*
             case 100123:
                 {
                     dl_controller = new EUCTR_Controller(_monDataLayer, _loggingHelper); break;
-                }
-                */
-            case 100159:
-                {
-                    dl_controller = new EMA_Controller(_monDataLayer, _loggingHelper); break;
                 }
             case 100115:
                 {

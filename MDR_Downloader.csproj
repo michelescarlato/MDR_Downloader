@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
@@ -12,6 +12,9 @@
     <Compile Remove="SourceSpecific\ctg\ctgapi2.cs" />
     <Compile Remove="SourceSpecific\ctg\CTGModels.cs" />
     <Compile Remove="SourceSpecific\ctg\CTGProcessor.cs" />
+    <Compile Remove="SourceSpecific\euctr\EUCTRXMLModels.cs" />
+    <Compile Remove="SourceSpecific\euctr\xEUCTRController.cs" />
+    <Compile Remove="SourceSpecific\euctr\xEUCTRProcessor.cs" />
     <Compile Remove="SourceSpecific\isrctn\isctrn web model.cs" />
     <Compile Remove="SourceSpecific\pubmed\PubMedSearchResult.cs" />
     <Compile Remove="SourceSpecific\download_controller.cs" />
@@ -21,14 +24,14 @@
 
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
-    <PackageReference Include="CsvHelper" Version="30.0.1" />
-    <PackageReference Include="Dapper" Version="2.0.123" />
+    <PackageReference Include="CsvHelper" Version="31.0.3" />
+    <PackageReference Include="Dapper" Version="2.1.35" />
     <PackageReference Include="Dapper.Contrib" Version="2.0.78" />
-    <PackageReference Include="MailKit" Version="4.2.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.0" />
-    <PackageReference Include="Npgsql" Version="7.0.0" />
+    <PackageReference Include="MailKit" Version="4.4.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Npgsql" Version="8.0.2" />
     <PackageReference Include="PostgreSQLCopyHelper" Version="2.8.0" />
     <PackageReference Include="ScrapySharp" Version="3.0.0" />
   </ItemGroup>
@@ -49,6 +52,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="svr_appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

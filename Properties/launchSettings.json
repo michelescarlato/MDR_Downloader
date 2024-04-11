@@ -2,7 +2,7 @@
   "profiles": {
     "MDR_Downloader": {
       "commandName": "Project",
-      "commandLineArgs": "-s 100135 -t 114 -q 10003  -d \"2023-11-09\"  "
+      "commandLineArgs": "-s 101901 -t 102 "
     } 
   }
 }
