@@ -39,7 +39,7 @@ public class LoggingHelper : ILoggingHelper
     public void OpenLogFile(string? sourceFileName, string databaseName)
     {
         string dt_string = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture)
-                          .Replace(":", "").Replace("T", " ");
+                          .Replace(":", "").Replace("T", "_");
         
         string log_folder_path = Path.Combine(_logfileStartOfPath, databaseName);
         if (!Directory.Exists(log_folder_path))
@@ -47,7 +47,7 @@ public class LoggingHelper : ILoggingHelper
             Directory.CreateDirectory(log_folder_path);
         }
         
-        string log_file_name = "DL " + databaseName + " " + dt_string;
+        string log_file_name = "DL_" + databaseName + "_" + dt_string;
         
         // source file name used for WHO case, where the source is a file.
         // In other cases it is not required.
@@ -56,7 +56,7 @@ public class LoggingHelper : ILoggingHelper
         {
             int LastBackSlashPos = sourceFileName.LastIndexOf("\\", StringComparison.Ordinal);
             string file_name = sourceFileName[(LastBackSlashPos + 1)..];
-            log_file_name += " USING " + file_name + ".log";
+            log_file_name += "_USING_" + file_name + ".log";
         }
         else
         {
@@ -72,9 +72,9 @@ public class LoggingHelper : ILoggingHelper
     public void OpenNoSourceLogFile()
     {
         string dt_string = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture)
-            .Replace(":", "").Replace("T", " ");
+            .Replace(":", "").Replace("T", "_");
         
-        string log_file_name = "DL Source not set " + dt_string + ".log";
+        string log_file_name = "DL_Source_not_set_" + dt_string + ".log";
         _logfilePath = Path.Combine(_logfileStartOfPath, log_file_name);
         //_summaryLogfilePath = Path.Combine(_summaryLogfileStartOfPath, log_file_name);
         _sw = new StreamWriter(_logfilePath, true, System.Text.Encoding.UTF8);
@@ -172,7 +172,7 @@ public class LoggingHelper : ILoggingHelper
             summary_string += $"\nLogging suppressed";
         }
 
-        //SendMailMessage();
+        SendMailMessage();
     }
 
 
