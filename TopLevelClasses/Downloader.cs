@@ -80,7 +80,9 @@ public class Downloader
             // 'ObtainData' routine with parameters.
             
             SourceController sc = new(dl_controller);
-            dl = await sc.ObtainDataFromSourceAsync(opts, source, dl);        
+            _loggingHelper.LogLine($"Calling ObtainDataFromSourceAsync...");
+            dl = await sc.ObtainDataFromSourceAsync(opts, source, dl);
+            _loggingHelper.LogLine($"ObtainDataFromSourceAsync ended!");
             _loggingHelper.LogRes(dl);
         }
         
