@@ -38,6 +38,8 @@ public class EUCTR_Controller : IDLController
         // Firstly does the specified file actually exist?
         
         string file_name = opts.FileName!;
+        _loggingHelper.LogLine($"Checking if file exists: {file_name}");
+
         if (!File.Exists(file_name))
         {
             _loggingHelper.LogError($"File does not appear to exist at {file_name}");
@@ -45,7 +47,8 @@ public class EUCTR_Controller : IDLController
         }
         
         // Get the (approximate) date of revision from the file date stamp.
-               
+        
+        
         string date = Regex.Match(file_name, @"\d{8}").Value;
         int y = int.Parse(date[..4]);
         int m = int.Parse(date[4..6]);
@@ -59,6 +62,8 @@ public class EUCTR_Controller : IDLController
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             WriteIndented = true
         };
+        
+        _loggingHelper.LogLine($"Deserializing XML content from file: {file_name}");
         
         // then open and read the file
         
@@ -84,17 +89,19 @@ public class EUCTR_Controller : IDLController
         }
         if (foundTrials?.trials_list is not null)
         {
+            _loggingHelper.LogLine("Processing each trial found in the XML file...");
             EUCTRProcessor ep = new(_loggingHelper);
             foreach (Trial t in foundTrials.trials_list)
             {
                 // Send t to the processing function, to construct the study model class.
-                
+                _loggingHelper.LogLine($"Processing trial: {t}"); 
                 res.num_checked++;
+                _loggingHelper.LogLine("Caching trial data into study model..");
                 Euctr_Record? euctr_record = await ep.ProcessTrial(t, date_revised);
                 if (euctr_record is not null)
                 { 
                     // Write out study record as JSON, log the download.
-
+                    _loggingHelper.LogLine("Writing study record as JSON...");
                     string new_file_name = "EU " + euctr_record.sd_sid + ".json";
                     string full_path = Path.Combine(file_base, new_file_name);
                     try
@@ -117,7 +124,7 @@ public class EUCTR_Controller : IDLController
                     {
                         _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
                     }
-                   
+                    _loggingHelper.LogLine("Updating Study log...");
                     bool added = _monDataLayer.UpdateStudyLog(euctr_record.sd_sid, euctr_record.search_url, 
                         dl_id, euctr_record.date_last_revised, full_path);     
                     res.num_downloaded++;
