@@ -54,8 +54,8 @@ public class LoggingHelper : ILoggingHelper
         
         if (sourceFileName is not null)
         {
-            int LastBackSlashPos = sourceFileName.LastIndexOf("\\", StringComparison.Ordinal);
-            string file_name = sourceFileName[(LastBackSlashPos + 1)..];
+            int LastSlashPos = sourceFileName.LastIndexOf(Path.DirectorySeparatorChar);
+            string file_name = (LastSlashPos >= 0) ? sourceFileName.Substring(LastSlashPos + 1) : sourceFileName;
             log_file_name += "_USING_" + file_name + ".log";
         }
         else
