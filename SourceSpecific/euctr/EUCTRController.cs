@@ -98,19 +98,19 @@ public class EUCTR_Controller : IDLController
         }
         if (foundTrials?.trials_list is not null)
         {
-            _loggingHelper.LogLine("Processing each trial found in the XML file...");
+            //_loggingHelper.LogLine("Processing each trial found in the XML file...");
             EUCTRProcessor ep = new(_loggingHelper);
             foreach (Trial t in foundTrials.trials_list)
             {
                 // Send t to the processing function, to construct the study model class.
-                _loggingHelper.LogLine($"Processing trial: {t}"); 
+                //_loggingHelper.LogLine($"Processing trial: {t}"); 
                 res.num_checked++;
-                _loggingHelper.LogLine("Caching trial data into study model..");
+                //_loggingHelper.LogLine("Caching trial data into study model..");
                 Euctr_Record? euctr_record = await ep.ProcessTrial(t, date_revised);
                 if (euctr_record is not null)
                 { 
                     // Write out study record as JSON, log the download.
-                    _loggingHelper.LogLine("Writing study record as JSON...");
+                    //_loggingHelper.LogLine("Writing study record as JSON...");
                     string new_file_name = "EU " + euctr_record.sd_sid + ".json";
                     string full_path = Path.Combine(file_base, new_file_name);
                     try
@@ -133,7 +133,7 @@ public class EUCTR_Controller : IDLController
                     {
                         _loggingHelper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
                     }
-                    _loggingHelper.LogLine("Updating Study log...");
+                    //_loggingHelper.LogLine("Updating Study log...");
                     bool added = _monDataLayer.UpdateStudyLog(euctr_record.sd_sid, euctr_record.search_url, 
                         dl_id, euctr_record.date_last_revised, full_path);     
                     res.num_downloaded++;
