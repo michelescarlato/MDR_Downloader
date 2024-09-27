@@ -65,6 +65,23 @@ public class EUCTR_Controller : IDLController
         using StreamReader streamReader = new StreamReader(file_name, Encoding.UTF8);
         string responseBodyAsString = await streamReader.ReadToEndAsync();
         trials? foundTrials = DeserializeXML<trials?>(responseBodyAsString, _loggingHelper);
+        // check if the object is null
+        if (foundTrials == null)
+        {
+            _loggingHelper.LogError($"Deserialization failed, foundTrials object is null");
+        }
+        else
+        {
+            // check if the obtained trials list is null or empty
+            if (foundTrials.trials_list == null || !foundTrials.trials_list.Any())
+            {
+                _loggingHelper.LogError($"No trials found in the XML file. The trials_list is either null or empty");
+            }
+            else
+            {
+                _loggingHelper.LogLine($"{foundTrials.trials_list.Count()} trials found in the XML file");
+            }
+        }
         if (foundTrials?.trials_list is not null)
         {
             EUCTRProcessor ep = new(_loggingHelper);
