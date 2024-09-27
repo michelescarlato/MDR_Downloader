@@ -172,7 +172,7 @@ public class LoggingHelper : ILoggingHelper
             summary_string += $"\nLogging suppressed";
         }
 
-        SendMailMessage();
+        //SendMailMessage();
     }
 
 
