@@ -71,7 +71,7 @@ class WHO_Controller : IDLController
 
                     if (!string.IsNullOrEmpty(r.db_name))
                     {
-                        string folder_name = _loggingHelper.DataFolderPath + r.db_name + @"\";
+                        string folder_name = "/app/MDR_Data/" + r.db_name + @"/";
                         if (!Directory.Exists(folder_name))
                         {
                             Directory.CreateDirectory(folder_name);
