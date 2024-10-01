@@ -68,6 +68,7 @@ public class BioLinccController : IDLController
     {
         DownloadResult res = new ();
         string? folder_path = source.local_folder;
+        _loggingHelper.LogLine($"folder_path: {folder_path}");
         if (folder_path is null)
         {
             _loggingHelper.LogError("Null value passed for local folder value for this source");

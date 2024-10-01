@@ -65,12 +65,18 @@ public class PubMed_Controller : IDLController
         DownloadResult res = new();
         string date_string = "";
         string? file_base = source.local_folder;
+        _loggingHelper.LogLine($"file_base: {file_base}");
         if (file_base is null)
         {
             _loggingHelper.LogError("Null value passed for local folder value for this source");
             return new DownloadResult();   // return zero result
         }
 
+        if (!Directory.Exists(file_base))
+        {
+            Directory.CreateDirectory(file_base);  // ensure folder is present
+        }
+        
         // If opts.FetchTypeId == 114 date_string is constructed, giving
         // min and max dates. If opts.FetchTypeId == 121 date_string remains as "".
 
@@ -532,7 +538,7 @@ public class PubMed_Controller : IDLController
             Directory.CreateDirectory(folder_name);
         }
         string file_name = "PM" + ipmid.ToString("000000000") + ".json";
-        string full_path = Path.Combine(folder_name, "pubmed", file_name);
+        string full_path = Path.Combine(folder_name, file_name);
         _loggingHelper.LogLine("Full path: " + full_path);
         try
         {
