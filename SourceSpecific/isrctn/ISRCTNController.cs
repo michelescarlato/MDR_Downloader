@@ -46,6 +46,7 @@ class ISRCTN_Controller : IDLController
         DownloadResult res = new();
 
         string? file_base = source.local_folder;
+        _loggingHelper.LogLine($"file_base variable: {file_base}");
         if (file_base is null)
         {
             _loggingHelper.LogError("Null value passed for local folder value for this source");
