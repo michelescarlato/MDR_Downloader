@@ -394,6 +394,7 @@ class CTG_Controller : IDLController
         // Then write out study file as indented json
 
         string folder_path = file_base + " / " + file_folder;
+        _loggingHelper.LogLine($"Folder path {folder_path}");
         if (!Directory.Exists(folder_path))
         {
             Directory.CreateDirectory(folder_path);
