@@ -63,7 +63,6 @@ try
 
     var opts = paramsCheck.Pars!;     
     var source = paramsCheck.Source!;
-    logging_helper.LogLine($"Source local folder 0:{source.local_folder}");
     Downloader dl = new(mon_data_layer, logging_helper);
     await dl.RunDownloaderAsync(opts, source);
     return 0;

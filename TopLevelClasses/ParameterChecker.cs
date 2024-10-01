@@ -58,10 +58,7 @@ internal class ParameterChecker
             else
             {
                 source.local_folder = _logging_helper.DataFolderPath;
-                if (source.id != 100135)
-                {
-                    source.local_folder += source.database_name;
-                }
+                source.local_folder += source.database_name;
             }
 
             // Check source fetch type id is valid and obtain parameter requirements associated with this type. 
