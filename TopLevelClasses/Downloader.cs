@@ -24,7 +24,7 @@ public class Downloader
     {
         // Set up the search and fetch summary record for this download,
         // Open log file and log parameters, and establish appropriate controller class,
-
+        _loggingHelper.LogLine($"Source local folder :{source.local_folder}");
         opts.dl_id = _monDataLayer.GetNextDownloadId();
         DLEvent dl = new(opts, source.id);
         _loggingHelper.OpenLogFile(opts.FileName, source.database_name!);
@@ -84,6 +84,7 @@ public class Downloader
             dl = await sc.ObtainDataFromSourceAsync(opts, source, dl);
             _loggingHelper.LogLine($"ObtainDataFromSourceAsync ended!");
             _loggingHelper.LogRes(dl);
+            _loggingHelper.LogLine($"Source local folder :{source.local_folder}");
         }
         
         // Store the saf log record (unless specifically requested not to).
