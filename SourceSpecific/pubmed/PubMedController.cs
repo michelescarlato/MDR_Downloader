@@ -532,7 +532,7 @@ public class PubMed_Controller : IDLController
             Directory.CreateDirectory(folder_name);
         }
         string file_name = "PM" + ipmid.ToString("000000000") + ".json";
-        string full_path = Path.Combine(folder_name, file_name);
+        string full_path = Path.Combine(folder_name, "pubmed", file_name);
         _loggingHelper.LogLine("Full path: " + full_path);
         try
         {
