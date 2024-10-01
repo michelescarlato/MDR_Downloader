@@ -533,6 +533,7 @@ public class PubMed_Controller : IDLController
         }
         string file_name = "PM" + ipmid.ToString("000000000") + ".json";
         string full_path = Path.Combine(folder_name, file_name);
+        _loggingHelper.LogLine("Full path: " + full_path);
         try
         {
             await using FileStream jsonStream = File.Create(full_path);
