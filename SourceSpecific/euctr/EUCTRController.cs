@@ -111,7 +111,7 @@ public class EUCTR_Controller : IDLController
                 { 
                     // Write out study record as JSON, log the download.
                     //_loggingHelper.LogLine("Writing study record as JSON...");
-                    string new_file_name = "EU " + euctr_record.sd_sid + ".json";
+                    string new_file_name = "EU_" + euctr_record.sd_sid + ".json";
                     string full_path = Path.Combine(file_base, new_file_name);
                     try
                     {
