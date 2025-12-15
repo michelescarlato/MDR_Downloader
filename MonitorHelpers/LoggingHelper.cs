@@ -40,31 +40,23 @@ public class LoggingHelper : ILoggingHelper
     {
         string dt_string = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture)
                           .Replace(":", "").Replace("T", " ");
-        
+    
         string log_folder_path = Path.Combine(_logfileStartOfPath, databaseName);
-        if (!Directory.Exists(log_folder_path))
-        {
-            Directory.CreateDirectory(log_folder_path);
-        }
-        
+        Directory.CreateDirectory(log_folder_path);
+    
         string log_file_name = "DL " + databaseName + " " + dt_string;
-        
-        // source file name used for WHO case, where the source is a file.
-        // In other cases it is not required.
-        
-        if (sourceFileName is not null)
+    
+        if (!string.IsNullOrWhiteSpace(sourceFileName))
         {
-            int LastBackSlashPos = sourceFileName.LastIndexOf("\\", StringComparison.Ordinal);
-            string file_name = sourceFileName[(LastBackSlashPos + 1)..];
+            string file_name = Path.GetFileName(sourceFileName);   // <- cross-platform
             log_file_name += " USING " + file_name + ".log";
         }
         else
         {
             log_file_name += ".log";
-
         }
-        _logfilePath = Path.Combine(log_folder_path, log_file_name);            
-        //_summaryLogfilePath = Path.Combine(_summaryLogfileStartOfPath, log_file_name);
+    
+        _logfilePath = Path.Combine(log_folder_path, log_file_name);
         _sw = new StreamWriter(_logfilePath, true, System.Text.Encoding.UTF8);
     }
 
