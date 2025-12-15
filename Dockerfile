@@ -20,6 +20,6 @@ COPY --from=build /app/out ./
 RUN mkdir -p /data/MDR_Sources /data/biolincc /data/ctg /data/euctr /data/isrctn /data/pubmed /data/who /data/yoda
 
 # If the base image includes the non-root 'app' user (common in recent dotnet images), use it:
-# USER app
+USER app
 
 ENTRYPOINT ["dotnet", "MDR_Downloader.dll"]
