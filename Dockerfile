@@ -13,13 +13,21 @@ RUN dotnet publish -c Release -o /app/out --no-restore
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
+ARG PUID=1000
+ARG PGID=1000
+
+# Create user/group matching host IDs
+RUN groupadd -g "${PGID}" mdr \
+ && useradd  -u "${PUID}" -g "${PGID}" -m -s /usr/sbin/nologin mdr
+
 # App binaries
 COPY --from=build /app/out ./
 
 # Create data dirs (use volumes for real data)
-RUN mkdir -p /data/MDR_Sources /data/biolincc /data/ctg /data/euctr /data/isrctn /data/pubmed /data/who /data/yoda
+RUN mkdir -p /app/MDR_Data /app/MDR_Sources /app/test /app/MDR_Sources /app/biolincc /app/ctg /app/euctr /app/isrctn /app/pubmed /app/who /app/yoda \
+ && chown -R "${PUID}:${PGID}" /app
 
 # If the base image includes the non-root 'app' user (common in recent dotnet images), use it:
-USER app
+USER mdr
 
 ENTRYPOINT ["dotnet", "MDR_Downloader.dll"]
