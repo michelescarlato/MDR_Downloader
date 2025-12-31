@@ -71,12 +71,12 @@ class WHO_Controller : IDLController
 
                     if (!string.IsNullOrEmpty(r.db_name))
                     {
-                        string folder_name = _loggingHelper.DataFolderPath + r.db_name + @"\";
+                        string folder_name = Path.Combine(_loggingHelper.DataFolderPath, r.db_name);
                         if (!Directory.Exists(folder_name))
                         {
                             Directory.CreateDirectory(folder_name);
                         }
-                        string file_name = r.sd_sid + ".json";
+                        string file_name = $"{r.sd_sid}.json";
                         string full_path = Path.Combine(folder_name, file_name);
                         try
                         {
