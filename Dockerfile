@@ -21,7 +21,9 @@ RUN groupadd -g "${PGID}" mdr \
  && useradd  -u "${PUID}" -g "${PGID}" -m -s /usr/sbin/nologin mdr
 
 # App binaries
-COPY --from=build /app/out ./
+COPY --from=build /app/out /app/
+
+RUN ls -la /app && test -f /app/MDR_Downloader.dll
 
 # Create data dirs (use volumes for real data)
 RUN mkdir -p /app/MDR_Data /app/MDR_Sources /app/test /app/MDR_Sources /app/biolincc /app/ctg /app/euctr /app/isrctn /app/pubmed /app/who /app/yoda \
@@ -30,4 +32,6 @@ RUN mkdir -p /app/MDR_Data /app/MDR_Sources /app/test /app/MDR_Sources /app/biol
 # If the base image includes the non-root 'app' user (common in recent dotnet images), use it:
 USER mdr
 
-ENTRYPOINT ["dotnet", "MDR_Downloader.dll"]
+WORKDIR /app/MDR_Data
+
+ENTRYPOINT ["dotnet", "/app/MDR_Downloader.dll"]

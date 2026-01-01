@@ -318,6 +318,7 @@ class ISRCTN_Controller : IDLController
     {
         string file_name = sd_sid + ".json";
         string full_path = Path.Combine(file_base, file_name);
+        //_loggingHelper.LogLine($"[WRITE] cwd='{Environment.CurrentDirectory}' base='{file_base}' full='{full_path}'");
         try
         {
             await using FileStream jsonStream = File.Create(full_path);
