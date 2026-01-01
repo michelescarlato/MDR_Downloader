@@ -318,6 +318,7 @@ class ISRCTN_Controller : IDLController
     {
         string file_name = sd_sid + ".json";
         string full_path = Path.Combine(file_base, file_name);
+        _loggingHelper.LogLine("Full path " + full_path + ":: ");
         try
         {
             await using FileStream jsonStream = File.Create(full_path);
@@ -329,6 +330,7 @@ class ISRCTN_Controller : IDLController
                 // write out copy of the file in the test folder
                 string test_path = _loggingHelper.TestFilePath;
                 string full_test_path = Path.Combine(test_path, file_name);
+                _loggingHelper.LogLine("Test full path " + full_test_path + ":: ");
                 await using FileStream jsonStream2 = File.Create(full_test_path);
                 await JsonSerializer.SerializeAsync(jsonStream2, s, _json_options);
                 await jsonStream2.DisposeAsync();
