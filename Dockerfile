@@ -32,4 +32,4 @@ USER mdr
 
 WORKDIR /app/MDR_Data
 
-ENTRYPOINT ["dotnet", "MDR_Downloader.dll"]
+ENTRYPOINT ["dotnet", "/app/MDR_Downloader.dll"]
