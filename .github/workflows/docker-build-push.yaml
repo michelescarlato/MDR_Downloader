@@ -2,7 +2,7 @@ name: Build & Push (GHCR)
 
 on:
   push:
-    branches: ["master", "ci", "ci-ts-isrctn-writeoutfile"]
+    branches: ["master", "ci"]
     tags: ["v*"]
   pull_request:
 
