@@ -32,6 +32,6 @@ RUN mkdir -p /app/MDR_Data /app/MDR_Sources /app/test /app/MDR_Sources /app/biol
 # If the base image includes the non-root 'app' user (common in recent dotnet images), use it:
 USER mdr
 
-# WORKDIR /app/MDR_Data
+WORKDIR /app/MDR_Data
 
 ENTRYPOINT ["dotnet", "/app/MDR_Downloader.dll"]
