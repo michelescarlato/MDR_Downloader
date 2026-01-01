@@ -539,7 +539,6 @@ public class PubMed_Controller : IDLController
         }
         string file_name = "PM" + ipmid.ToString("000000000") + ".json";
         string full_path = Path.Combine(folder_name, file_name);
-        _loggingHelper.LogLine($"[WRITE] cwd='{Environment.CurrentDirectory}' base='{fileBase}' full='{full_path}'");
         
         try
         {
