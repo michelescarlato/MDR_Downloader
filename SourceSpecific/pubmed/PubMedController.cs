@@ -463,6 +463,12 @@ public class PubMed_Controller : IDLController
 
     public async Task FetchPubMedRecordsAsync(string fetch_URL, DownloadResult res, int dl_id, string file_base)
     {
+        // Default folder if caller passed nothing
+        if (string.IsNullOrWhiteSpace(file_base))
+        {
+            _loggingHelper.LogLine($"[PUBMED] file_base is empty for dl_id={dl_id}. Defaulting to 'pubmed'.");
+            file_base = "pubmed";
+        }
         string? responseBody = await ch.GetAPIResponseWithRetriesAsync(fetch_URL, 1000, fetch_URL);
         if (responseBody is null)
         {
@@ -533,6 +539,7 @@ public class PubMed_Controller : IDLController
         }
         string file_name = "PM" + ipmid.ToString("000000000") + ".json";
         string full_path = Path.Combine(folder_name, file_name);
+        
         try
         {
             await using FileStream jsonStream = File.Create(full_path);
