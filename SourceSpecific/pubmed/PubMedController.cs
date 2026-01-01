@@ -180,6 +180,7 @@ public class PubMed_Controller : IDLController
                                     fetchUrl = fetchBaseURL + "&WebEnv=" + web_env + "&query_key=" + query_key;
                                     fetchUrl += "&retmax=100&retmode=xml";
                                     Thread.Sleep(300);
+                                    _loggingHelper.LogLine($"[PUBMED] source.local_folder='{source.local_folder ?? "<null>"}'");
                                     await FetchPubMedRecordsAsync(fetchUrl, res, (int)opts.dl_id!,
                                         source.local_folder!);
                                 }
@@ -210,6 +211,7 @@ public class PubMed_Controller : IDLController
                                             fetchUrl = fetchBaseURL + "&WebEnv=" + web_env + "&query_key=" + query_key;
                                             fetchUrl += "&retmax=100&retmode=xml";
                                             Thread.Sleep(200);
+                                            _loggingHelper.LogLine($"[PUBMED] source.local_folder='{source.local_folder ?? "<null>"}'");
                                             await FetchPubMedRecordsAsync(fetchUrl, res, (int)opts.dl_id!,
                                                 source.local_folder!);
                                         }
@@ -311,6 +313,7 @@ public class PubMed_Controller : IDLController
                             string fetchUrl = fetchBaseURL + "&WebEnv=" + web_env + "&query_key=" + query_key;
                             fetchUrl += "&retmax=100&retmode=xml";
                             Thread.Sleep(300);
+                            _loggingHelper.LogLine($"[PUBMED] source.local_folder='{source.local_folder ?? "<null>"}'");
                             await FetchPubMedRecordsAsync(fetchUrl, res, (int)opts.dl_id!, source.local_folder!);
                         }
                     }
@@ -534,7 +537,7 @@ public class PubMed_Controller : IDLController
         string file_name = "PM" + ipmid.ToString("000000000") + ".json";
         string full_path = Path.Combine(folder_name, file_name);
         _loggingHelper.LogLine($"[WRITE] cwd='{Environment.CurrentDirectory}' base='{fileBase}' full='{full_path}'");
-
+        
         try
         {
             await using FileStream jsonStream = File.Create(full_path);
